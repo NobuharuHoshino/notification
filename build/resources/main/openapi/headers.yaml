@@ -1,0 +1,138 @@
+request:
+  x-api-key:
+    name: "x-api-key"
+    in: "header"
+    required: true
+    description: "API認証キー。19のスマホ対向から呼び出される場合のみ必須"
+    schema:
+      type: "string"
+      format: "uuid"
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+      example: "固定キー"
+  content-type:
+    name: "content-type"
+    in: "header"
+    required: true
+    description: "リクエストボディのメディアタイプ"
+    schema:
+      type: "string"
+      pattern: "^[ -~]{1,50}$"
+      maxLength: 50
+      example: "application/json"
+  connection-keep-alive:
+    name: "connection"
+    in: "header"
+    required: true
+    description: "接続の管理方法を指定"
+    schema:
+      type: "string"
+      pattern: "^[ -~]{1,50}$"
+      maxLength: 50
+      example: "keep-alive"
+  connection-close:
+    name: "connection"
+    in: "header"
+    required: true
+    description: "接続の管理方法を指定"
+    schema:
+      type: "string"
+      pattern: "^[ -~]{1,50}$"
+      maxLength: 50
+      example: "close"
+  accept-encoding:
+    name: "accept-encoding"
+    in: "header"
+    required: true
+    description: "クライアントが受け入れ可能なエンコーディング"
+    schema:
+      type: "string"
+      pattern: "^[ -~]{1,50}$"
+      maxLength: 50
+      example: "gzip"
+  x-correlation-id:
+    name: "x-correlation-id"
+    in: "header"
+    required: true
+    description: "相関ID"
+    schema:
+      type: "string"
+      format: "uuid"
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    example: "123e4567-e89b-12d3-a456-426614174000"
+  user-access-key:
+    name: "user-access-key"
+    in: "header"
+    required: true
+    description: "ユーザー認証キー"
+    schema:
+      type: "string"
+      pattern: "^[ -~]{1,50}$"
+      maxLength: 50
+    example: "Base64で暗号化したパスポート情報"
+  x-smartgbook:
+    name: "x-smartgbook"
+    in: "header"
+    required: true
+    description: "端末情報"
+    schema:
+      type: "string"
+      pattern: "^[ -~]{1,50}$"
+      maxLength: 50
+    example: "端末情報"
+
+response:
+  content-type:
+    description: "レスポンスのメディアタイプ"
+    schema:
+      type: "string"
+      example: "application/json"
+  pragma:
+    description: "キャッシュ保存の禁止"
+    schema:
+      type: "string"
+      example: "no-cache"
+  expires:
+    description: "キャッシュの有効期限"
+    schema:
+      type: "string"
+      example: "-1"
+  cache-control:
+    description: "キャッシュの制御"
+    schema:
+      type: "string"
+      example: "no-cache"
+  content-encoding:
+    description: "レスポンスのエンコーディング"
+    schema:
+      type: "string"
+      example: "gzip"
+  referrer-policy:
+    description: "参照元情報の送信を抑止"
+    schema:
+      type: "string"
+      example: "no-referrer"
+  x-content-type-options:
+    description: "ブラウザによるMIMEタイプ推測を抑止"
+    schema:
+      type: "string"
+      example: "nosniff"
+  x-frame-options:
+    description: "FRAMEへの埋め込みを拒否"
+    schema:
+      type: "string"
+      example: "DENY"
+  content-security-policy:
+    description: "読み込み可能なリソースを制限"
+    schema:
+      type: "string"
+      example: "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+  permissions-policy:
+    description: "ブラウザ機能へのアクセスを制限"
+    schema:
+      type: "string"
+      example: "accelerometer=(), autoplay=(), camera=(), clipboard-write=(), display-capture=(), document-domain=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=()"
+  strict-transport-security:
+    description: "HTTPS接続を強制"
+    schema:
+      type: "string"
+      example: "max-age=31536000; includeSubDomains"

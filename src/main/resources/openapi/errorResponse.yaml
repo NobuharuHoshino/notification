@@ -1,0 +1,10 @@
+components:
+  resultCode:
+    title: "処理結果コード"
+    type: string
+    description: ""
+    example: "1204XXXX9999"
+  errorCode:
+    type: string
+    description: "エラーコード"
+    example: "VALIDATION_ERROR"

@@ -1,0 +1,99 @@
+components:
+  resultCode:
+    title: "処理結果コード"
+    type: "string"
+    description: ""
+    example: "00001548N001"
+
+  internalUserId:
+    title: "内部UserID"
+    type: "string"
+    description: "※中東の場合、必須。"
+    example: "XXXXXXXXXX"
+
+  processId:
+    title: "processId"
+    type: "string"
+    description: "※サウジのみ指定可。内部userIdか、processIdのどちらか必須"
+    example: "XXXXXXXXXX"
+
+  vin:
+    title: "VIN"
+    type: "string"
+    description: ""
+    example: "XXXXXXXXXX"
+
+  platform:
+    title: "platform"
+    type: "string"
+    description: "1:Android, 2:iOS, 3:HarmonyOS, 4:Other<br>\
+                  3,4は異常値扱いとなるため、400応答。"
+    example: "1"
+
+  deviceToken:
+    title: "デバイストークン"
+    type: "string"
+    description: "APNs：64文字のHex文字列（ハイフンなし）<br>\
+                    取得方法：didRegisterForRemoteNotificationsWithDeviceToken<br>\
+                  FCM：100文字以上の文字列<br>\
+                    取得方法：FirebaseMessaging.getInstance().token.addOnCompleteListener"
+    example: "XXXXXXXXXX"
+
+  body:
+    title: "body"
+    type: "string"
+    description: "Push通知のPayload"
+    example: "XXXXXXXXXX"
+
+  body_text:
+    title: "メール本文（テキスト)"
+    type: "string"
+    description: ""
+    example: "XXXXXXXXXX"
+
+  body_html:
+    title: "メール本文（HTML)"
+    type: "string"
+    description: ""
+    example: "XXXXXXXXXX"
+
+  body_sms:
+    title: "SMSメッセージ"
+    type: "string"
+    description: ""
+    example: "XXXXXXXXXX"
+
+  title:
+    title: "メールのタイトル"
+    type: "string"
+    description: ""
+    example: "XXXXXXXXXX"
+
+  emailAddress:
+    title: "emailAddress"
+    type: "string"
+    description: ""
+    example: "xxxx@xxxx.com"
+
+  mobileNumber:
+    title: "mobileNumber"
+    type: "string"
+    description: ""
+    example: "XXXXXXXXXX"
+
+  dvcId:
+    title: "端末番号"
+    type: "string"
+    description: "Android - UUID形式（ハイフン含む36文字） 構成：8-4-4-4-12<br>\
+                    例：DVC_ID=31c6109f-2cff-489e-b4bf-77cd53eebb37<br>\
+                  iOS - UUID形式（ハイフン含む36文字） 構成：8-4-4-4-12<br>\
+                    例：DVC_ID=626E77BE-31DB-4935-88AA-31BF4660520D"
+    example: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+  brdCd:
+    title: "ブランド区分"
+    type: "string"
+    description: "0:判断不可, 1:TOYOTA, 2:LEXUS, 3:ローカルアプリ<br>\
+                  通知端末情報登録時は1か2が設定されていなければ400応答。<br>\
+                  3については異常値扱いとなるため、400応答。"
+    example: "1"

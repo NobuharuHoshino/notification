@@ -1,0 +1,447 @@
+openapi: 3.0.3
+info:
+  title: "通知基盤I/F"
+  description: ""
+  version: "1.0.0"
+  contact:
+    name: ""
+
+servers:
+  - url: "https://api-dev.example.com"
+    description: "開発環境"
+  - url: "https://api-staging.example.com"
+    description: "検証環境"
+  - url: "https://api.example.com"
+    description: "本番環境"
+
+# タググループ設定（Redoc用）
+x-tagGroups:
+  - name: "主要機能"
+    tags:
+      - "個人情報更新"
+  - name: "更新履歴"
+    tags:
+      - "v1.0.0"
+
+tags:
+  - name: "通知基盤"
+    description: "Push、SMS、emailでメッセージ送信する"
+  - name: "v1.0.0"
+    description: |
+      ## 新規作成  - 初版リリース
+    x-displayName: "📝 v1.0.0 (2025-09-17)"
+
+paths:
+  /v1/dcm/service-list/registNotificationDeviceInfo:
+    post:
+      tags:
+        - "通知端末情報登録"
+      summary: ""
+      description: |
+        ### インターフェースID: I01548N001
+        ### Push通知する端末情報を登録する。スマホログイン時にリージョナルのログイン処理から呼び出される。
+
+      operationId: "RegistNotificationDeviceInfo"
+
+      parameters:
+        - $ref: "./headers.yaml#/request/x-correlation-id"
+        - $ref: "./headers.yaml#/request/x-api-key"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request1"
+            examples:
+              standard1:
+                summary: "通知端末情報登録リクエスト"
+                value:
+                  internalUserId: "xxxxxxxxxx"
+                  platform: "iOS"
+                  deviceToken: "xxxxxxxxxx"
+                  dvcId: "xxxxxxxxxx"
+                  brdCd: "1"
+
+      responses:
+        "200":
+          description: "正常処理完了"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                success:
+                  summary: "正常終了"
+                  value:
+                    resultCode: "00001548N001"
+        "400":
+          description: "Bad request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "20001548N001"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "30001548N001"
+
+  /v1/dcm/service-list/sendPush:
+    post:
+      tags:
+        - "Push通知要求"
+      summary: ""
+      description: |
+        ### インターフェースID: I01548N002
+        ### 指定したユーザの最終ログインしたスマホに対してPush通知する。
+
+      operationId: "RegistNotificationDeviceInfo"
+
+      parameters:
+        - $ref: "./headers.yaml#/request/x-correlation-id"
+        - $ref: "./headers.yaml#/request/x-api-key"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request2"
+            examples:
+              standard1:
+                summary: "Push通知要求リクエスト"
+                value:
+                  processId: "xxxxxxxxxx"
+                  internalUserId: "xxxxxxxxxx"
+                  body: "xxxxxxxxxx"
+
+      responses:
+        "200":
+          description: "正常処理完了"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                success:
+                  summary: "正常終了"
+                  value:
+                    resultCode: "00001548N002"
+        "400":
+          description: "Bad request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "20001548N002"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "30001548N002"
+
+  /v1/dcm/service-list/sendPrimaryContact:
+    post:
+      tags:
+        - "Primary contactメッセージ送信要求"
+      summary: ""
+      description: |
+        ### インターフェースID: I01548N003
+        ### 指定したユーザのprimary contactに対してメッセージを送信する、(primary contactがemailの場合、メール、電話番号の場合は、SMSを送信する）
+
+      operationId: "sendPrimaryContact"
+
+      parameters:
+        - $ref: "./headers.yaml#/request/x-correlation-id"
+        - $ref: "./headers.yaml#/request/x-api-key"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request3"
+            examples:
+              standard1:
+                summary: "PrimaryContactメッセージ送信要求リクエスト"
+                value:
+                  processId: "xxxxxxxxxx"
+                  internalUserId: "xxxxxxxxxx"
+                  brdCd: "xxxxxxxxxx"
+                  title: "xxxxxxxxxx"
+                  body_text: "xxxxxxxxxx"
+                  body_html: "xxxxxxxxxx"
+                  body_sms: "xxxxxxxxxx"
+
+      responses:
+        "200":
+          description: "正常処理完了"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                success:
+                  summary: "正常終了"
+                  value:
+                    resultCode: "00001548N003"
+        "400":
+          description: "Bad request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "20001548N003"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "30001548N003"
+
+  /v1/dcm/service-list/sendMail:
+    post:
+      tags:
+        - "メール送信要求"
+      summary: ""
+      description: |
+        ### インターフェースID: I01548N004
+        ### 指定したメールアドレスに対してメールを送信する。※中東のみ、利用可
+
+      operationId: "sendMail"
+
+      parameters:
+        - $ref: "./headers.yaml#/request/x-correlation-id"
+        - $ref: "./headers.yaml#/request/x-api-key"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request4"
+            examples:
+              standard1:
+                summary: "メール送信要求リクエスト"
+                value:
+                  brdCd: "xxxxxxxxxx"
+                  emailAddress: "xxxxxxxxxx"
+                  title: "xxxxxxxxxx"
+                  body_text: "xxxxxxxxxx"
+                  body_html: "xxxxxxxxxx"
+
+      responses:
+        "200":
+          description: "正常処理完了"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                success:
+                  summary: "正常終了"
+                  value:
+                    resultCode: "00001548N004"
+        "400":
+          description: "Bad request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "20001548N004"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "30001548N004"
+
+  /v1/dcm/service-list/sendSms:
+    post:
+      tags:
+        - "SMS送信要求"
+      summary: ""
+      description: |
+        ### インターフェースID: I01548N005
+        ### 指定した電話番号に対してSMSを送信する。※中東のみ、利用可
+
+      operationId: "sendSms"
+
+      parameters:
+        - $ref: "./headers.yaml#/request/x-correlation-id"
+        - $ref: "./headers.yaml#/request/x-api-key"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Request5"
+            examples:
+              standard1:
+                summary: "SMS送信要求リクエスト"
+                value:
+                  brdCd: "1"
+                  mobileNumber: "xxxxxxxxxx"
+                  body_sms: "xxxxxxxxxx"
+
+      responses:
+        "200":
+          description: "正常処理完了"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Response"
+              examples:
+                success:
+                  summary: "正常終了"
+                  value:
+                    resultCode: "00001548N005"
+        "400":
+          description: "Bad request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "20001548N005"
+        "500":
+          description: "Internal Server Error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemErrorResponse"
+              example:
+                resultCode: "30001548N005"
+
+components:
+  schemas:
+    Request1:
+      title: "registDeviceInfoReqForm"
+      type: "object"
+      required:
+        - "internalUserId"
+        - "platform"
+        - "deviceToken"
+        - "brdCd"
+      properties:
+        internalUserId:
+          $ref: "./parameters.yaml#/components/internalUserId"
+        platform:
+          $ref: "./parameters.yaml#/components/platform"
+        deviceToken:
+          $ref: "./parameters.yaml#/components/deviceToken"
+        brdCd:
+          $ref: "./parameters.yaml#/components/brdCd"
+
+    Request2:
+      title: "pushReqForm"
+      type: "object"
+      required:
+        - "processId"
+        - "internalUserId"
+        - "body"
+      properties:
+        processId:
+          $ref: "./parameters.yaml#/components/processId"
+        internalUserId:
+          $ref: "./parameters.yaml#/components/internalUserId"
+        body:
+          $ref: "./parameters.yaml#/components/body"
+
+    Request3:
+      title: "sendMessagePrimaryContactReqForm"
+      type: "object"
+      required:
+        - "processId"
+        - "internalUserId"
+        - "brdCd"
+        - "title"
+        - "body_text"
+        - "body_html"
+        - "body_sms"
+      properties:
+        processId:
+          $ref: "./parameters.yaml#/components/processId"
+        internalUserId:
+          $ref: "./parameters.yaml#/components/internalUserId"
+        brdCd:
+          $ref: "./parameters.yaml#/components/brdCd"
+        title:
+          $ref: "./parameters.yaml#/components/title"
+        body_text:
+          $ref: "./parameters.yaml#/components/body_text"
+        body_html:
+          $ref: "./parameters.yaml#/components/body_html"
+        body_sms:
+          $ref: "./parameters.yaml#/components/body_sms"
+
+    Request4:
+      title: "sendMailReqForm"
+      type: "object"
+      required:
+        - "brdCd"
+        - "emailAddress"
+        - "title"
+        - "body_text"
+        - "body_html"
+      properties:
+        brdCd:
+          $ref: "./parameters.yaml#/components/brdCd"
+        emailAddress:
+          $ref: "./parameters.yaml#/components/emailAddress"
+        title:
+          $ref: "./parameters.yaml#/components/title"
+        body_text:
+          $ref: "./parameters.yaml#/components/body_text"
+        body_html:
+          $ref: "./parameters.yaml#/components/body_html"
+
+    Request5:
+      title: "sendSmsReqForm"
+      type: "object"
+      required:
+        - "brdCd"
+        - "mobileNumber"
+        - "body_sms"
+      properties:
+        brdCd:
+          $ref: "./parameters.yaml#/components/brdCd"
+        mobileNumber:
+          $ref: "./parameters.yaml#/components/mobileNumber"
+        body_sms:
+          $ref: "./parameters.yaml#/components/body_sms"
+
+    Response:
+      type: "object"
+      required:
+        - "resultCode"
+        - "userIdChangeCategory"
+      properties:
+        resultCode:
+          $ref: "./parameters.yaml#/components/resultCode"
+
+    # システム向けエラーレスポンス
+    SystemErrorResponse:
+      type: "object"
+      required:
+        - "resultCode"
+      properties:
+        resultCode:
+          $ref: "./errorResponse.yaml#/components/resultCode"
