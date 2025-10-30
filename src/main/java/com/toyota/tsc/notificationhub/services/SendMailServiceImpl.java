@@ -1,22 +1,16 @@
 package com.toyota.tsc.notificationhub.services;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.toyota.tsc.notificationhub.models.SendMailRequestDto;
-import com.sendgrid.SendGrid;
-import com.sendgrid.Request;
-import com.sendgrid.Method;
 import com.sendgrid.helpers.mail.Mail;
-import com.sendgrid.helpers.mail.objects.Content;
-
-import com.sendgrid.helpers.mail.objects.Email;
-import com.sendgrid.helpers.mail.objects.Personalization;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
+import com.toyota.tsc.notificationhub.commons.SendGridUtil;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
@@ -35,9 +29,10 @@ public class SendMailServiceImpl implements SendMailServiceIF {
     @Value("${sendgrid.from.name-L}")
     private String fromNameLexus;
 
-    private final String BRD_TOYOTA = "1";
-    private final String BRD_LEXUS = "2";
     private static final String PROCCESS_NAME = "メール送信";
+
+    @Autowired
+    private SendGridUtil sendGridUtil;
 
     @Override
     public String sendMail(SendMailRequestDto request, RequestHeaderDto header) {
@@ -54,9 +49,14 @@ public class SendMailServiceImpl implements SendMailServiceIF {
             }
 
             // メール生成
-            Mail mail = generateEmail(request, header);
+            Mail mail = sendGridUtil.generateEmail(
+                    request.getEmailAddress(), request.getTitle(), request.getBody_text(),
+                    request.getBody_html(), request.getBrdCd());
             // メール送信実行
-            executeSendEmail(request, header, mail);
+            LogUtil.info(SendMailServiceImpl.class, CommonUtil.getMessage(
+                    "RS07I00011", request.getBrdCd(), CommonUtil.maskText(request.getEmailAddress()),
+                    request.getTitle(), header.getCorrelationId()));
+            sendGridUtil.executeSendEmail(mail);
             String resultCode = CommonUtil.getResultCode("SUCCESS");
             // 正常終了ログ
             LogUtil.info(SendMailServiceImpl.class, CommonUtil.getMessage(
@@ -77,54 +77,6 @@ public class SendMailServiceImpl implements SendMailServiceIF {
                 throw new RuntimeException();
             }
         }
-    }
-
-    private void executeSendEmail(SendMailRequestDto request, RequestHeaderDto header, Mail mail) {
-        SendGrid sg = new SendGrid(sendGridApiKey);
-        Request sgRequest = new Request();
-        try {
-            LogUtil.info(SendMailServiceImpl.class, CommonUtil.getMessage(
-                    "RS07I00011", request.getBrdCd(), CommonUtil.maskText(request.getEmailAddress()),
-                    request.getTitle(), header.getCorrelationId()));
-            sgRequest.setMethod(Method.POST);
-            sgRequest.setEndpoint("mail/send");
-            sgRequest.setBody(mail.build());
-            sg.api(sgRequest);
-        } catch (IOException sgEx) {
-            throw new TscEMailException("Failed to send email", sgEx);
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    private Mail generateEmail(SendMailRequestDto request, RequestHeaderDto header) {
-        String mailFrom;
-        String mailFromName;
-        if (request.getBrdCd().equals(BRD_TOYOTA)) {
-            mailFrom = fromAddressToyota;
-            mailFromName = fromNameToyota;
-        } else if (request.getBrdCd().equals(BRD_LEXUS)) {
-            mailFrom = fromAddressLexus;
-            mailFromName = fromNameLexus;
-        } else {
-            return null; // バリデーションチェックしているため、対応ブランド以外は到達しない想定。
-        }
-
-        Email from = new Email(mailFrom, mailFromName);
-        Personalization personalization = new Personalization();
-        personalization.addTo(new Email(request.getEmailAddress()));
-        Content contentText = new Content("text/plain", request.getBody_text());
-        Content contentHtml = new Content("text/html", request.getBody_html());
-
-        // Mail Object生成
-        Mail mail = new Mail();
-        mail.setFrom(from);
-        mail.setSubject(request.getTitle());
-        mail.addPersonalization(personalization);
-        mail.addContent(contentText);
-        mail.addContent(contentHtml);
-
-        return mail;
     }
 
     // #region Validation Methods

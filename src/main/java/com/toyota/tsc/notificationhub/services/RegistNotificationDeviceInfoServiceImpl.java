@@ -35,14 +35,6 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     @Autowired
     private NotificationHubUtil notificationHubUtil;
 
-    @Value("${azure.notification-hub.namespace-t}")
-    private String namespaceT;
-    @Value("${azure.notification-hub.hub-name-t}")
-    private String hubNameT;
-    @Value("${azure.notification-hub.namespace-l}")
-    private String namespaceL;
-    @Value("${azure.notification-hub.hub-name-l}")
-    private String hubNameL;
     @Value("${azure.notification-hub.retry-count}")
     private int retryCount;
 
