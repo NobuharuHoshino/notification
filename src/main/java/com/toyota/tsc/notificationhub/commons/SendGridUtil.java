@@ -28,8 +28,8 @@ public class SendGridUtil {
     @Value("${sendgrid.from.name-L}")
     private String fromNameLexus;
 
-    private static final String BRD_TOYOTA = "T";
-    private static final String BRD_LEXUS = "L";
+    private static final String BRD_TOYOTA = "1";
+    private static final String BRD_LEXUS = "2";
 
     public Mail generateEmail(
             String toAddress, String title, String body_text, String body_html, String brdCd) {
