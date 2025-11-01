@@ -47,7 +47,9 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
      */
     @Override
     public String registDeviceInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
+
         try {
+
             // 開始ログ
             LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00001", PROCCESS_NAME, CommonUtil.toJson(request), header.getCorrelationId()));

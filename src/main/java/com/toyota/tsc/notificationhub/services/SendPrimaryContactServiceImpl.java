@@ -82,6 +82,9 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
     private void sendRequest(List<PersonalInfoResponseDto.ContactDto> contactList,
             SendPrimaryContactRequestDto request, RequestHeaderDto header) {
         contactList.stream().forEach(contact -> {
+            if (!contact.isPrimaryContactFlag()) {
+                return; // primaryContactFlagがfalseの場合はスキップ
+            }
             if (contact.getContactType().equals(CONTACT_PHONE) && contact.isPrimaryContactFlag()) {
                 // SMS送信要求
                 LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
@@ -94,6 +97,8 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
                         "RS07I00014", request.getInternalUserId(), request.getBrdCd(), contact.getContact(),
                         request.getTitle(), header.getCorrelationId()));
                 executeSendEmail(request, header, contact.getContact());
+            } else {
+                return;
             }
         });
     }

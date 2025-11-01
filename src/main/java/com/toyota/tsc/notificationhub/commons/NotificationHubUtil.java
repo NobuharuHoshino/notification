@@ -13,7 +13,10 @@ import org.springframework.stereotype.Component;
 import com.windowsazure.messaging.NotificationHubsException;
 import com.windowsazure.messaging.NotificationHub;
 import com.windowsazure.messaging.FcmV1Installation;
+import com.windowsazure.messaging.FcmV1Notification;
+import com.windowsazure.messaging.Notification;
 import com.windowsazure.messaging.AppleInstallation;
+import com.windowsazure.messaging.AppleNotification;
 
 @Component
 public class NotificationHubUtil {
@@ -179,4 +182,47 @@ public class NotificationHubUtil {
         NotificationHub hub = new NotificationHub(connectionString, hubName);
         hub.deleteInstallation(installationId);
     }
+
+    public void postMessage(
+            String installationId, String payload, String brdCd, String platform) throws NotificationHubsException {
+        // ブランドでHub接続情報を切り替え
+        final String namespace;
+        final String hubName;
+        final String keyName;
+        final String key;
+        if (BRD_TOYOTA.equals(brdCd)) {
+            namespace = namespaceT;
+            hubName = hubNameT;
+            keyName = keyNameT;
+            key = keyT;
+        } else if (BRD_LEXUS.equals(brdCd)) {
+            namespace = namespaceL;
+            hubName = hubNameL;
+            keyName = keyNameL;
+            key = keyL;
+        } else {
+            return;
+        }
+
+        Notification notification;
+        switch (platform) {
+            case PLATFORM_ANDROID: { // FCM v1
+                notification = new FcmV1Notification(payload);
+                break;
+            }
+            case PLATFORM_IOS: { // APNs
+                notification = new AppleNotification(payload);
+                break;
+            }
+            default:
+                return;
+        }
+
+        // NotificationHub クライアント生成
+        final String connectionString = String.format(sdkConnectionStringTemplate, namespace, keyName, key);
+        NotificationHub hub = new NotificationHub(connectionString, hubName);
+        // 端末（device handle）宛のダイレクト送信
+        hub.sendDirectNotification(notification, installationId);
+    }
+
 }
