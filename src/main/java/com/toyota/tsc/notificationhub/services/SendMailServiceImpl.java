@@ -1,12 +1,6 @@
+
 package com.toyota.tsc.notificationhub.services;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import com.toyota.tsc.notificationhub.models.SendMailRequestDto;
 import com.sendgrid.helpers.mail.Mail;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
@@ -14,6 +8,12 @@ import com.toyota.tsc.notificationhub.commons.SendGridUtil;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
+import com.toyota.tsc.notificationhub.models.SendMailRequestDto;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SendMailServiceImpl implements SendMailServiceIF {
@@ -52,28 +52,37 @@ public class SendMailServiceImpl implements SendMailServiceIF {
             Mail mail = sendGridUtil.generateEmail(
                     request.getEmailAddress(), request.getTitle(), request.getBody_text(),
                     request.getBody_html(), request.getBrdCd());
+
             // メール送信実行
             LogUtil.info(SendMailServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00011", request.getBrdCd(), CommonUtil.maskText(request.getEmailAddress()),
                     request.getTitle(), header.getCorrelationId()));
             sendGridUtil.executeSendEmail(mail);
+            LogUtil.info(SendMailServiceImpl.class, CommonUtil.getMessage(
+                    "RS07I00012", request.getBrdCd(), CommonUtil.maskText(request.getEmailAddress()),
+                    request.getTitle(), header.getCorrelationId()));
+
             String resultCode = CommonUtil.getResultCode("SUCCESS");
+
             // 正常終了ログ
             LogUtil.info(SendMailServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
             return resultCode;
+
+        } catch (TscEMailException e) {
+            LogUtil.error(SendMailServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00007", e.getStatusCode(), CommonUtil.maskText(request.getEmailAddress()),
+                    request.getTitle(), header.getCorrelationId()));
+            throw new RuntimeException();
+
         } catch (Exception e) {
+
             if (e instanceof TscApplicationException) {
                 throw new TscApplicationException();
-            } else if (e instanceof TscEMailException) {
-                LogUtil.error(SendMailServiceImpl.class, CommonUtil.getMessage(
-                        "RS07E00007", "StatusCode", CommonUtil.maskText(request.getEmailAddress()),
-                        request.getTitle(), header.getCorrelationId()));
-                throw new TscEMailException("Failed to send email");
+
             } else {
-                LogUtil.error(
-                        RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                                "RS07E0000", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
+                LogUtil.error(SendMailServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
                 throw new RuntimeException();
             }
         }
@@ -90,22 +99,14 @@ public class SendMailServiceImpl implements SendMailServiceIF {
     private String validate(SendMailRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
-            LogUtil.error(
-                    SendMailServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00012",
-                            missingField,
-                            header.getCorrelationId()));
-            throw new TscApplicationException("Missing required field: " + missingField);
+            LogUtil.error(SendMailServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00012", missingField, header.getCorrelationId()));
+            throw new TscApplicationException();
         }
         if (!isValidBrdCd(request.getBrdCd())) {
-            LogUtil.error(
-                    SendMailServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00008",
-                            request.getBrdCd(),
-                            header.getCorrelationId()));
-            throw new TscApplicationException("Invalid brdCd: " + request.getBrdCd());
+            LogUtil.error(SendMailServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
+            throw new TscApplicationException();
         }
         return null;
     }

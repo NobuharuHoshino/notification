@@ -1,3 +1,4 @@
+
 package com.toyota.tsc.notificationhub;
 
 import org.springframework.boot.SpringApplication;

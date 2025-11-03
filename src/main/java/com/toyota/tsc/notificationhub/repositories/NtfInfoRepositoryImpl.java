@@ -1,14 +1,14 @@
-package com.toyota.tsc.notificationhub.repositories;
 
-import java.util.List;
+package com.toyota.tsc.notificationhub.repositories;
 
 import java.sql.SQLException;
 import java.sql.SQLNonTransientException;
 import java.sql.SQLTransientException;
+import java.util.List;
 import java.util.concurrent.Callable;
-import org.springframework.stereotype.Repository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Repository;
 
 @Repository
 public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
@@ -16,10 +16,8 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
 
     @Value("${ntfinfo.upsert.retry.count:3}")
     private int upsertRetryCount;
-
     @Value("${ntfinfo.upsert.retry.base-interval:100}")
     private long upsertRetryBaseInterval;
-
     @Value("${ntfinfo.upsert.retry.max-interval:20000}")
     private long upsertRetryMaxInterval;
 
@@ -40,7 +38,7 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
 
     @Override
     public int delete(String internalUserId, String installationId) {
-        return ntfInfoMapper.delete(internalUserId, installationId);
+        return executeWithRetry(() -> ntfInfoMapper.delete(internalUserId, installationId), upsertRetryCount);
     }
 
     @Override
@@ -76,9 +74,9 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
                 // Determine if we should retry or not
                 if (!(sqlEx instanceof SQLTransientException)) {
                     if (sqlEx instanceof SQLNonTransientException) {
-                        throw new RuntimeException("DBリトライ非推奨例外(SQLNonTransientException)", sqlEx);
+                        throw new RuntimeException(sqlEx);
                     } else if (sqlEx != null) {
-                        throw new RuntimeException("DBリトライ非推奨例外(SQLException)", sqlEx);
+                        throw new RuntimeException(sqlEx);
                     } else {
                         throw new RuntimeException(e);
                     }

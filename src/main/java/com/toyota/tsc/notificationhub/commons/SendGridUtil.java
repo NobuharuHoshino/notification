@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import com.sendgrid.Method;
 import com.sendgrid.Request;
+import com.sendgrid.Response;
 import com.sendgrid.SendGrid;
 import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Content;
@@ -69,9 +70,13 @@ public class SendGridUtil {
             sgRequest.setMethod(Method.POST);
             sgRequest.setEndpoint("mail/send");
             sgRequest.setBody(mail.build());
-            sg.api(sgRequest);
+            Response response = sg.api(sgRequest);
+            if (response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
+                throw new TscEMailException(response.getStatusCode(), response.getBody(),
+                        mail.getPersonalization().get(0).getTos().get(0).getEmail());
+            }
         } catch (IOException sgEx) {
-            throw new TscEMailException("Failed to send email", sgEx);
+            throw new RuntimeException(sgEx);
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }

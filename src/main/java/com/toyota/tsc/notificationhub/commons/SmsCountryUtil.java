@@ -57,7 +57,19 @@ public class SmsCountryUtil {
             return entity;
 
         } catch (Exception e) {
-            throw new RuntimeException("Error creating SMS request", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void sendSmsCountry(HttpEntity<String> entity, String phoneNo) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<String> response = restTemplate.postForEntity(smsCountryApiUrl, entity, String.class);
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new TscSMSException(response.getStatusCode().value(), response.getBody(), phoneNo);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -68,18 +80,6 @@ public class SmsCountryUtil {
             sb.append(String.format("%02X", b));
         }
         return sb.toString();
-    }
-
-    public void sendSmsCountry(HttpEntity<String> entity) {
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-            ResponseEntity<String> response = restTemplate.postForEntity(smsCountryApiUrl, entity, String.class);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new TscSMSException(response.getStatusCode().toString());
-            }
-        } catch (Exception e) {
-            throw new TscSMSException("Error sending SMS", e);
-        }
     }
 
 }

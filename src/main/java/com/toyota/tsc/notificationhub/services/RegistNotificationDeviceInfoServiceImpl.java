@@ -3,6 +3,7 @@ package com.toyota.tsc.notificationhub.services;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
+import com.toyota.tsc.notificationhub.commons.NotificationHubUtil;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
@@ -10,9 +11,7 @@ import com.toyota.tsc.notificationhub.models.RegistNotificationDeviceInfoRequest
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
 import com.toyota.tsc.notificationhub.repositories.NtfInfoEntity;
 import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
-import java.util.List;
 import com.windowsazure.messaging.NotificationHubsException;
-import com.toyota.tsc.notificationhub.commons.NotificationHubUtil;
 
 import java.sql.SQLException;
 import java.sql.SQLNonTransientException;
@@ -20,6 +19,7 @@ import java.sql.SQLTransientException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -40,11 +40,6 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
 
     private static final String PROCCESS_NAME = "通知端末情報登録";
 
-    /**
-     * 通知先デバイス情報をNotificationHubおよびDBに登録します。
-     * - リクエストされたデバイストークンに一致するDBレコード情報がない場合に登録処理を実行します。
-     * - 既存で登録済みの場合は、何も処理せず正常終了します。
-     */
     @Override
     public String registDeviceInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
 
@@ -60,22 +55,16 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                 return validateResult;
             }
 
-            // 内部UserIDで既存登録情報を取得
-            // リクエスト.デバイストークンに一致するレコードがない場合、installationID発番・DB登録・installation実行
+            // Installation実行
             List<NtfInfoEntity> deviceList = getAllDeviceData(request.getInternalUserId());
             if (extractByDeviceToken(deviceList, request.getDeviceToken()).size() == 0) {
-                // generate installationID
                 String installationId = generateInstallationId(request, header);
-                // upsert
                 int upsertCount = upsertDeviceInfo(request, header, installationId);
                 if (upsertCount == 0) {
                     throw new RuntimeException();
                 }
-                // installation削除APIリクエストをUtil経由で実行
                 operationDeleteInstallation(request, header, deviceList);
-                // installation実行
                 operationUpsertInstallation(request, header, installationId);
-                // 不要データ削除実行(最新+1件以外のデータがある場合、当該データを削除)
                 if (deviceList.size() > 2) {
                     int deleteCount = deleteDeviceData(request, header, deviceList);
                     if (deleteCount == 0) {
@@ -99,9 +88,6 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     }
 
     // #region NotificationHub Methods
-    /**
-     * InstallationIDを発番します。
-     */
     private String generateInstallationId(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
         String installationId = UUID.randomUUID().toString();
         LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
@@ -109,13 +95,9 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         return installationId;
     }
 
-    /**
-     * NotificationHubのInstallation削除APIを呼び出します。
-     */
     private void operationDeleteInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, List<NtfInfoEntity> deviceList) {
 
-        // installation削除APIリクエストをUtil経由で実行
         deviceList.forEach(entity -> {
             // 削除開始ログ
             LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
@@ -130,9 +112,6 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         });
     }
 
-    /**
-     * 削除API実行部
-     */
     private void executeDeleteInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, NtfInfoEntity entity) {
         int cnt = 0;
@@ -166,9 +145,6 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         }
     }
 
-    /**
-     * NotificationHubのInstallation登録/更新APIを呼び出します。
-     */
     private void operationUpsertInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, String installationId) {
         // installation開始ログ
@@ -182,9 +158,6 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                 "StatusCode", request.getBrdCd(), request.getInternalUserId(), header.getCorrelationId()));
     }
 
-    /**
-     * InstallationAPI実行部
-     */
     private void executeUpsertInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, String installationId) {
         int cnt = 0;
@@ -238,7 +211,8 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                 request.getBrdCd(), request.getPlatform(), LocalDateTime.now(), LocalDateTime.now());
         int upsertCount = ntfInfoRepository.upsert(entity);
         LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                "RS07D00005", request.getInternalUserId(), CommonUtil.toJson(entity), header.getCorrelationId()));
+                "RS07D00005", request.getInternalUserId(), installationId, request.getDeviceToken(),
+                request.getDvcId(), request.getBrdCd(), request.getPlatform(), header.getCorrelationId()));
         return upsertCount;
     }
 
@@ -261,50 +235,26 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     // #endregion
 
     // #region Validation Methods
-    /**
-     * リクエスト内容の検証処理を呼び出します。
-     * 
-     * @param request
-     * @param header
-     * @return
-     */
     private String validate(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
-            LogUtil.error(
-                    RegistNotificationDeviceInfoServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00012",
-                            missingField,
-                            header.getCorrelationId()));
-            throw new TscApplicationException("Missing required field: " + missingField);
+            LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00012", missingField, header.getCorrelationId()));
+            throw new TscApplicationException();
         }
         if (!isValidBrdCd(request.getBrdCd())) {
-            LogUtil.error(
-                    RegistNotificationDeviceInfoServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00008",
-                            request.getBrdCd(),
-                            header.getCorrelationId()));
-            throw new TscApplicationException("Invalid brdCd: " + request.getBrdCd());
+            LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
+            throw new TscApplicationException();
         }
         if (!isValidPlatform(request.getPlatform())) {
-            LogUtil.error(
-                    RegistNotificationDeviceInfoServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00009",
-                            request.getPlatform(),
-                            header.getCorrelationId()));
-            throw new TscApplicationException("Invalid platform: " + request.getPlatform());
+            LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00009", request.getPlatform(), header.getCorrelationId()));
+            throw new TscApplicationException();
         }
         return null;
     }
 
-    /**
-     * リクエスト内容の必須項目検証を行います。
-     * 
-     * @return 必須エラーの項目名（Swagger定義の項目名）、またはnull（エラーなし）
-     */
     private String validateRequired(RegistNotificationDeviceInfoRequestDto request) {
         if (request == null) {
             return "requestBody";
@@ -332,64 +282,43 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         return null;
     }
 
-    /**
-     * プラットフォームの妥当性検証を行います。
-     * 
-     * @return true: Android(1)またはiOS(2)、false: その他の非対応プラットフォーム
-     */
     private boolean isValidPlatform(String platform) {
         return platform.equals("1") || platform.equals("2");
     }
 
-    /**
-     * brdCdの妥当性検証を行います。
-     * 
-     * @return true: トヨタ(1)またはレクサス(2)、false: その他の非対応ブランド
-     */
     private boolean isValidBrdCd(String brdCd) {
         return brdCd.equals("1") || brdCd.equals("2");
     }
     // #endregion
 
     // #region Exception Handling Methods
-    /**
-     * Exceptionハンドリング共通処理
-     */
     private void handleException(Exception e, RequestHeaderDto header) {
+
         if (e instanceof SQLException || e.getCause() instanceof SQLException) {
+            // SQL関連エラーハンドリング
             SQLException sqlEx = e instanceof SQLException ? (SQLException) e : (SQLException) e.getCause();
             if (ExtractSqlExceptionUtil.isSqlConnectionError(sqlEx)) {
-                LogUtil.error(
-                        RegistNotificationDeviceInfoServiceImpl.class,
-                        CommonUtil.getMessage(
-                                "RS07E00010",
-                                sqlEx.getMessage(),
-                                sqlEx.getStackTrace(),
-                                header.getCorrelationId()));
+                // 接続エラー
+                LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
                 throw new RuntimeException();
-
             } else if (sqlEx instanceof SQLTransientException || sqlEx instanceof SQLNonTransientException) {
-                LogUtil.error(
-                        RegistNotificationDeviceInfoServiceImpl.class,
-                        CommonUtil.getMessage(
-                                "RS07E00011",
-                                sqlEx.getMessage(),
-                                sqlEx.getStackTrace(),
-                                header.getCorrelationId()));
+                // 操作エラー
+                LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
                 throw new CustomSqlException();
             }
+
         } else if (e instanceof TscApplicationException) {
+            // 業務エラー（必須チェック違反/ブランドコードなどの不正）
             throw new TscApplicationException();
         } else if (e instanceof TscNotificationHubsException) {
+            // AzureNotificationHub関連エラー
             throw new RuntimeException();
         } else {
-            LogUtil.error(
-                    RegistNotificationDeviceInfoServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00001",
-                            e.getMessage(),
-                            e.getStackTrace(),
-                            header.getCorrelationId()));
+            // その他予期せぬエラー
+            LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
             throw new RuntimeException();
         }
     }

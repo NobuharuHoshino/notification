@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.windowsazure.messaging.NotificationHubsException;
+import com.windowsazure.messaging.NotificationOutcome;
 import com.windowsazure.messaging.NotificationHub;
 import com.windowsazure.messaging.FcmV1Installation;
 import com.windowsazure.messaging.FcmV1Notification;
@@ -183,7 +184,7 @@ public class NotificationHubUtil {
         hub.deleteInstallation(installationId);
     }
 
-    public void postMessage(
+    public NotificationOutcome postMessage(
             String installationId, String payload, String brdCd, String platform) throws NotificationHubsException {
         // ブランドでHub接続情報を切り替え
         final String namespace;
@@ -201,7 +202,7 @@ public class NotificationHubUtil {
             keyName = keyNameL;
             key = keyL;
         } else {
-            return;
+            return null; // サービスでバリデーションチェックしているため、対応ブランド以外は到達しない想定。
         }
 
         Notification notification;
@@ -215,14 +216,14 @@ public class NotificationHubUtil {
                 break;
             }
             default:
-                return;
+                return null;
         }
 
         // NotificationHub クライアント生成
         final String connectionString = String.format(sdkConnectionStringTemplate, namespace, keyName, key);
         NotificationHub hub = new NotificationHub(connectionString, hubName);
         // 端末（device handle）宛のダイレクト送信
-        hub.sendDirectNotification(notification, installationId);
+        return hub.sendDirectNotification(notification, installationId);
     }
 
 }

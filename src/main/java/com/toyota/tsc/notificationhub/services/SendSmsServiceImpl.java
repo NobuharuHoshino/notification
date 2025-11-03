@@ -1,19 +1,19 @@
+
 package com.toyota.tsc.notificationhub.services;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.http.HttpEntity;
-import com.toyota.tsc.notificationhub.models.SendSmsRequestDto;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.commons.SmsCountryUtil;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
+import com.toyota.tsc.notificationhub.models.SendSmsRequestDto;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SendSmsServiceImpl implements SendSmsServiceIF {
@@ -50,30 +50,31 @@ public class SendSmsServiceImpl implements SendSmsServiceIF {
             LogUtil.info(SendSmsServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00009", request.getBrdCd(), CommonUtil.maskPhoneNumber(request.getMobileNumber()),
                     header.getCorrelationId()));
-            smsCountryUtil.sendSmsCountry(entity);
+            smsCountryUtil.sendSmsCountry(entity, request.getMobileNumber());
             LogUtil.info(SendSmsServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00010", request.getBrdCd(), CommonUtil.maskPhoneNumber(request.getMobileNumber()),
                     header.getCorrelationId()));
 
             String resultCode = CommonUtil.getResultCode("SUCCESS");
+
             // 正常終了ログ
             LogUtil.info(SendSmsServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
             return resultCode;
 
+        } catch (TscSMSException e) {
+            LogUtil.error(SendSmsServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00006", e.getStatusCode(), CommonUtil.maskPhoneNumber(request.getMobileNumber()),
+                    header.getCorrelationId()));
+            throw new RuntimeException();
+
         } catch (Exception e) {
             if (e instanceof TscApplicationException) {
                 throw new TscApplicationException();
-            } else if (e instanceof TscSMSException) {
-                LogUtil.error(
-                        SendSmsServiceImpl.class, CommonUtil.getMessage(
-                                "RS07E00006", e.getMessage(), CommonUtil.maskPhoneNumber(request.getMobileNumber()),
-                                header.getCorrelationId()));
-                throw new TscSMSException(e.getMessage(), e.getCause());
+
             } else {
-                LogUtil.error(
-                        RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                                "RS07E0000", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
+                LogUtil.error(SendSmsServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
                 throw new RuntimeException();
             }
         }
@@ -90,22 +91,14 @@ public class SendSmsServiceImpl implements SendSmsServiceIF {
     private String validate(SendSmsRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
-            LogUtil.error(
-                    SendSmsServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00012",
-                            missingField,
-                            header.getCorrelationId()));
-            throw new TscApplicationException("Missing required field: " + missingField);
+            LogUtil.error(SendSmsServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00012", missingField, header.getCorrelationId()));
+            throw new TscApplicationException();
         }
         if (!isValidBrdCd(request.getBrdCd())) {
-            LogUtil.error(
-                    SendSmsServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00008",
-                            request.getBrdCd(),
-                            header.getCorrelationId()));
-            throw new TscApplicationException("Invalid brdCd: " + request.getBrdCd());
+            LogUtil.error(SendSmsServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
+            throw new TscApplicationException();
         }
         return null;
     }

@@ -1,16 +1,15 @@
+
 package com.toyota.tsc.notificationhub.commons;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
 import java.text.MessageFormat;
 import java.util.ResourceBundle;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
 import org.springframework.web.client.RestTemplate;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class CommonUtil {
 

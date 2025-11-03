@@ -1,12 +1,6 @@
+
 package com.toyota.tsc.notificationhub.services;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.stereotype.Service;
-import com.toyota.tsc.notificationhub.models.SendPrimaryContactRequestDto;
 import com.sendgrid.helpers.mail.Mail;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
@@ -17,6 +11,12 @@ import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
 import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
 import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
+import com.toyota.tsc.notificationhub.models.SendPrimaryContactRequestDto;
+import java.util.ArrayList;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceIF {
@@ -52,25 +52,29 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             sendRequest(contactList, request, header);
 
             String resultCode = CommonUtil.getResultCode("SUCCESS");
+
             // 正常終了ログ
             LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
             return resultCode;
 
+        } catch (TscEMailException e) {
+            LogUtil.error(SendMailServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00007", e.getStatusCode(), CommonUtil.maskText(e.getAddress()),
+                    request.getTitle(), header.getCorrelationId()));
+            throw new RuntimeException();
+
+        } catch (TscSMSException e) {
+            LogUtil.error(SendSmsServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00006", e.getStatusCode(), CommonUtil.maskPhoneNumber(e.getPhoneNo()),
+                    header.getCorrelationId()));
+            throw new RuntimeException();
+
         } catch (Exception e) {
+
             if (e instanceof TscApplicationException) {
                 throw new TscApplicationException();
-            } else if (e instanceof TscEMailException) {
-                LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                        "RS07E00007", "StatusCode", "MaskedMail",
-                        request.getTitle(), header.getCorrelationId()));
-                throw new TscEMailException("Failed to send email");
-            } else if (e instanceof TscSMSException) {
-                LogUtil.error(
-                        SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                                "RS07E00006", e.getMessage(), "MaskedPhoneNumber",
-                                header.getCorrelationId()));
-                throw new TscSMSException(e.getMessage(), e.getCause());
+
             } else {
                 LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                         "RS07E0000", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
@@ -107,7 +111,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         HttpEntity<String> entity = smsCountryUtil.createRequest(
                 CommonUtil.normalizePhoneNumber(phoneNo), request.getBody_sms(),
                 request.getBrdCd());
-        smsCountryUtil.sendSmsCountry(entity);
+        smsCountryUtil.sendSmsCountry(entity, phoneNo);
     }
 
     private void executeSendEmail(SendPrimaryContactRequestDto request, RequestHeaderDto header, String email) {
@@ -118,13 +122,6 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
     }
 
     // #region Validation Methods
-    /**
-     * リクエスト内容の検証処理を呼び出します。
-     * 
-     * @param request
-     * @param header
-     * @return
-     */
     private String validate(SendPrimaryContactRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
@@ -148,11 +145,6 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         return null;
     }
 
-    /**
-     * リクエスト内容の必須項目検証を行います。
-     * 
-     * @return 必須エラーの項目名（Swagger定義の項目名）、またはnull（エラーなし）
-     */
     private String validateRequired(SendPrimaryContactRequestDto request) {
         if (request == null) {
             return "requestBody";
@@ -174,11 +166,6 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         return null;
     }
 
-    /**
-     * brdCdの妥当性検証を行います。
-     * 
-     * @return true: トヨタ(1)またはレクサス(2)、false: その他の非対応ブランド
-     */
     private boolean isValidBrdCd(String brdCd) {
         return brdCd.equals("0") || brdCd.equals("1") || brdCd.equals("2");
     }

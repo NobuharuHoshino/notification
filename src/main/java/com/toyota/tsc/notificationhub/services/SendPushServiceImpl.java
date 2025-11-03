@@ -1,18 +1,6 @@
+
 package com.toyota.tsc.notificationhub.services;
 
-import java.sql.SQLException;
-import java.sql.SQLNonTransientException;
-import java.sql.SQLTransientException;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import com.toyota.tsc.notificationhub.models.SendPushRequestDto;
-import com.toyota.tsc.notificationhub.repositories.NtfInfoEntity;
-import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
-import com.windowsazure.messaging.NotificationHubsException;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
@@ -21,6 +9,23 @@ import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
+import com.toyota.tsc.notificationhub.models.SendPushRequestDto;
+import com.toyota.tsc.notificationhub.repositories.NtfInfoEntity;
+import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
+import com.windowsazure.messaging.NotificationHubsException;
+import com.windowsazure.messaging.NotificationOutcome;
+
+import java.sql.SQLException;
+import java.sql.SQLNonTransientException;
+import java.sql.SQLTransientException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 @Service
 public class SendPushServiceImpl implements SendPushServiceIF {
@@ -36,6 +41,8 @@ public class SendPushServiceImpl implements SendPushServiceIF {
     private NotificationHubUtil notificationHubUtil;
 
     private static final String PROCCESS_NAME = "プッシュ通知送信要求";
+
+    private static final Pattern TRACKING_ID_PATTERN = Pattern.compile("Tracking ID:\\s*(\\S+)");
 
     @Override
     public String sendPush(SendPushRequestDto request, RequestHeaderDto header) {
@@ -82,32 +89,32 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                 "RS07I00007", request.getInternalUserId(), request.getBody(), deviceData.getInstallationId(),
                 deviceData.getBrdCd(), header.getCorrelationId()));
         // 実行
-        executePostMessage(request, header, deviceData);
+        NotificationOutcome outcome = executePostMessage(request, header, deviceData);
         // プッシュ通知完了ログ
         LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
-                "RS07I00008", "STATUSCODE", request.getBody(), deviceData.getInternalUserId(),
-                header.getCorrelationId()));
+                "RS07I00008", outcome.getNotificationId(), request.getBody(), deviceData.getInstallationId(),
+                deviceData.getInternalUserId(), header.getCorrelationId()));
     }
 
     /**
      * InstallationAPI実行部
      */
-    private void executePostMessage(
+    private NotificationOutcome executePostMessage(
             SendPushRequestDto request, RequestHeaderDto header, NtfInfoEntity deviceData) {
         int cnt = 0;
         while (cnt < this.retryCount) {
             try {
-                notificationHubUtil.postMessage(
+                NotificationOutcome outcome = notificationHubUtil.postMessage(
                         deviceData.getInstallationId(), request.getBody(), deviceData.getBrdCd(),
                         deviceData.getPlatformType());
-                return;
+                return outcome;
             } catch (NotificationHubsException ex) {
                 if (ex.isTransient()) {
                     cnt++;
                     if (cnt >= this.retryCount) {
                         LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                                 "RS07E00005", ex.httpStatusCode(), request.getInternalUserId(),
-                                request.getBody(), deviceData.getInstallationId(), "TRACKID",
+                                request.getBody(), deviceData.getInstallationId(), extractTrackingId(ex),
                                 header.getCorrelationId()));
                         throw new TscNotificationHubsException(ex);
                     }
@@ -118,12 +125,19 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                 }
                 LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00005", ex.httpStatusCode(), request.getInternalUserId(),
-                        request.getBody(), deviceData.getInstallationId(), "TRACKID", header.getCorrelationId()));
+                        request.getBody(), deviceData.getInstallationId(), extractTrackingId(ex),
+                        header.getCorrelationId()));
                 throw new TscNotificationHubsException(ex);
             } catch (Exception e) {
                 throw e;
             }
         }
+        return null;
+    }
+
+    private String extractTrackingId(NotificationHubsException ex) {
+        Matcher matcher = TRACKING_ID_PATTERN.matcher(ex.getMessage());
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     private List<NtfInfoEntity> getAllDeviceData(String internalUserId) {
@@ -140,32 +154,16 @@ public class SendPushServiceImpl implements SendPushServiceIF {
     }
 
     // #region Validation Methods
-    /**
-     * リクエスト内容の検証処理を呼び出します。
-     * 
-     * @param request
-     * @param header
-     * @return
-     */
     private String validate(SendPushRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
-            LogUtil.error(
-                    SendPushServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00012",
-                            missingField,
-                            header.getCorrelationId()));
-            throw new TscApplicationException("Missing required field: " + missingField);
+            LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00012", missingField, header.getCorrelationId()));
+            throw new TscApplicationException();
         }
         return null;
     }
 
-    /**
-     * リクエスト内容の必須項目検証を行います。
-     * 
-     * @return 必須エラーの項目名（Swagger定義の項目名）、またはnull（エラーなし）
-     */
     private String validateRequired(SendPushRequestDto request) {
         if (request == null) {
             return "requestBody";
@@ -186,30 +184,17 @@ public class SendPushServiceImpl implements SendPushServiceIF {
     // #endregion
 
     // #region Exception Handling Methods
-    /**
-     * Exceptionハンドリング共通処理
-     */
     private void handleException(Exception e, RequestHeaderDto header) {
         if (e instanceof SQLException || e.getCause() instanceof SQLException) {
             SQLException sqlEx = e instanceof SQLException ? (SQLException) e : (SQLException) e.getCause();
             if (ExtractSqlExceptionUtil.isSqlConnectionError(sqlEx)) {
-                LogUtil.error(
-                        RegistNotificationDeviceInfoServiceImpl.class,
-                        CommonUtil.getMessage(
-                                "RS07E00010",
-                                sqlEx.getMessage(),
-                                sqlEx.getStackTrace(),
-                                header.getCorrelationId()));
+                LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
                 throw new RuntimeException();
 
             } else if (sqlEx instanceof SQLTransientException || sqlEx instanceof SQLNonTransientException) {
-                LogUtil.error(
-                        RegistNotificationDeviceInfoServiceImpl.class,
-                        CommonUtil.getMessage(
-                                "RS07E00011",
-                                sqlEx.getMessage(),
-                                sqlEx.getStackTrace(),
-                                header.getCorrelationId()));
+                LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
                 throw new CustomSqlException();
             }
         } else if (e instanceof TscApplicationException) {
@@ -217,13 +202,8 @@ public class SendPushServiceImpl implements SendPushServiceIF {
         } else if (e instanceof TscNotificationHubsException) {
             throw new RuntimeException();
         } else {
-            LogUtil.error(
-                    RegistNotificationDeviceInfoServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00001",
-                            e.getMessage(),
-                            e.getStackTrace(),
-                            header.getCorrelationId()));
+            LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
             throw new RuntimeException();
         }
     }
