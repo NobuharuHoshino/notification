@@ -41,6 +41,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-json'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation platform("com.azure.spring:spring-cloud-azure-dependencies:6.0.0")
+    implementation "com.azure.spring:spring-cloud-azure-starter-keyvault-secrets"
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly 'org.postgresql:postgresql:42.7.4'
     testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5'
