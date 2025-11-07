@@ -1,7 +1,5 @@
 package com.toyota.tsc.notificationhub.commons;
 
-import java.io.IOException;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -75,8 +73,8 @@ public class SendGridUtil {
                 throw new TscEMailException(response.getStatusCode(), response.getBody(),
                         mail.getPersonalization().get(0).getTos().get(0).getEmail());
             }
-        } catch (IOException sgEx) {
-            throw new RuntimeException(sgEx);
+        } catch (TscEMailException sgEx) {
+            throw new TscEMailException(sgEx.getStatusCode(), sgEx.getResponseBody(), sgEx.getAddress());
         } catch (Exception ex) {
             throw new RuntimeException(ex);
         }

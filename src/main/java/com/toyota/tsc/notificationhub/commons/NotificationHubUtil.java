@@ -135,16 +135,18 @@ public class NotificationHubUtil {
 
         switch (platformCode) {
             case PLATFORM_ANDROID: { // FCM v1
-                FcmV1Installation installation = new FcmV1Installation(installationId);
-                installation.setPushChannel(deviceToken);
-                installation.getTags().add(internalUserId);
+                FcmV1Installation installation = new FcmV1Installation(
+                        installationId,
+                        deviceToken,
+                        new String[] { internalUserId });
                 hub.createOrUpdateInstallation(installation);
                 break;
             }
             case PLATFORM_IOS: { // APNs
-                AppleInstallation installation = new AppleInstallation(installationId);
-                installation.setPushChannel(deviceToken);
-                installation.getTags().add(internalUserId);
+                AppleInstallation installation = new AppleInstallation(
+                        installationId,
+                        deviceToken,
+                        new String[] { internalUserId });
                 hub.createOrUpdateInstallation(installation);
                 break;
             }

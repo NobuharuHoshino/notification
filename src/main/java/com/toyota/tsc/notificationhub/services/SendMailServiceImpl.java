@@ -40,7 +40,7 @@ public class SendMailServiceImpl implements SendMailServiceIF {
         try {
             // 開始ログ
             LogUtil.info(SendMailServiceImpl.class, CommonUtil.getMessage(
-                    "RS07I00001", PROCCESS_NAME, CommonUtil.toJson(request), header.getCorrelationId()));
+                    "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
             String validateResult = validate(request, header);

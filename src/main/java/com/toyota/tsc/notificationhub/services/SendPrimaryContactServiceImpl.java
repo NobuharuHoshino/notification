@@ -36,7 +36,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
 
             // 開始ログ
             LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                    "RS07I00001", PROCCESS_NAME, CommonUtil.toJson(request), header.getCorrelationId()));
+                    "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
             String validateResult = validate(request, header);
@@ -77,7 +77,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
 
             } else {
                 LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                        "RS07E0000", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
+                        "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
                 throw new RuntimeException();
             }
         }

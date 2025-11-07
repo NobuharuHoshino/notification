@@ -47,7 +47,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
 
             // 開始ログ
             LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                    "RS07I00001", PROCCESS_NAME, CommonUtil.toJson(request), header.getCorrelationId()));
+                    "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
             String validateResult = validate(request, header);
@@ -71,6 +71,10 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                         throw new RuntimeException();
                     }
                 }
+            } else {
+                LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                        "RS07D00002", request.getDeviceToken(), "SKIP",
+                        CommonUtil.toJson(extractToDeviceTokenList(deviceList)), header.getCorrelationId()));
             }
 
             String resultCode = CommonUtil.getResultCode("SUCCESS");
@@ -107,7 +111,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
             executeDeleteInstallation(request, header, entity);
             // 削除完了ログ
             LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                    "RS07I00004", "StatusCode", request.getBrdCd(), request.getInternalUserId(),
+                    "RS07I00004", "削除はVoid仕様なのでステータスが取れない", request.getBrdCd(), request.getInternalUserId(),
                     header.getCorrelationId()));
         });
     }
@@ -155,7 +159,8 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         executeUpsertInstallation(request, header, installationId);
         // installation完了ログ
         LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                "StatusCode", request.getBrdCd(), request.getInternalUserId(), header.getCorrelationId()));
+                "RS07I00006", "削除はVoid仕様なのでステータスが取れない", request.getBrdCd(), request.getInternalUserId(),
+                header.getCorrelationId()));
     }
 
     private void executeUpsertInstallation(
@@ -196,6 +201,12 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     private List<NtfInfoEntity> extractByDeviceToken(List<NtfInfoEntity> deviceList, String deviceToken) {
         return deviceList.stream()
                 .filter(entity -> entity.getDeviceToken().equals(deviceToken)).collect(Collectors.toList());
+    }
+
+    private List<String> extractToDeviceTokenList(List<NtfInfoEntity> deviceList) {
+        return deviceList.stream()
+                .map(NtfInfoEntity::getDeviceToken)
+                .collect(Collectors.toList());
     }
 
     private List<NtfInfoEntity> getAllDeviceData(String internalUserId) {

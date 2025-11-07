@@ -30,8 +30,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class SendPushServiceImpl implements SendPushServiceIF {
 
-    @Value("${notification-hub.payload.template}")
-    private String payloadTemplate;
     @Value("${azure.notification-hub.retry-count}")
     private int retryCount;
 
@@ -49,8 +47,8 @@ public class SendPushServiceImpl implements SendPushServiceIF {
 
         try {
             // 開始ログ
-            LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                    "RS07I00001", PROCCESS_NAME, CommonUtil.toJson(request), header.getCorrelationId()));
+            LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
+                    "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
             String validateResult = validate(request, header);
@@ -68,7 +66,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             String resultCode = CommonUtil.getResultCode("SUCCESS");
 
             // 正常終了ログ
-            LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
 
             return resultCode;
@@ -86,13 +84,13 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             SendPushRequestDto request, RequestHeaderDto header, NtfInfoEntity deviceData) {
         // プッシュ通知開始ログ
         LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
-                "RS07I00007", request.getInternalUserId(), request.getBody(), deviceData.getInstallationId(),
+                "RS07I00007", request.getInternalUserId(), request.getBody(),
                 deviceData.getBrdCd(), header.getCorrelationId()));
         // 実行
-        NotificationOutcome outcome = executePostMessage(request, header, deviceData);
+        executePostMessage(request, header, deviceData);
         // プッシュ通知完了ログ
         LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
-                "RS07I00008", outcome.getNotificationId(), request.getBody(), deviceData.getInstallationId(),
+                "RS07I00008", request.getInternalUserId(), request.getBody(), deviceData.getInstallationId(),
                 deviceData.getInternalUserId(), header.getCorrelationId()));
     }
 

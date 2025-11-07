@@ -7,12 +7,14 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
 
 import org.springframework.beans.factory.annotation.Value;
 
+@Component
 public class SmsCountryUtil {
 
     @Value("${sms-country.user}")
@@ -68,6 +70,8 @@ public class SmsCountryUtil {
             if (!response.getStatusCode().is2xxSuccessful()) {
                 throw new TscSMSException(response.getStatusCode().value(), response.getBody(), phoneNo);
             }
+        } catch (TscSMSException scEx) {
+            throw new TscSMSException(scEx.getStatusCode(), scEx.getResponseBody(), scEx.getPhoneNo());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
