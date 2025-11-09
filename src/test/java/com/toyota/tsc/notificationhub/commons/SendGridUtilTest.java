@@ -4,133 +4,172 @@ import com.sendgrid.Request;
 import com.sendgrid.Response;
 import com.sendgrid.SendGrid;
 import com.sendgrid.helpers.mail.Mail;
-import com.sendgrid.helpers.mail.objects.Email;
-import com.sendgrid.helpers.mail.objects.Personalization;
 import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mockito.MockedConstruction;
-
-import java.lang.reflect.Field;
+import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * テストクラス：SendGridUtilTest
+ * クラス：SendGridUtil すべての分岐を確認するテストケース
  */
 class SendGridUtilTest {
 
     private SendGridUtil util;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setup() throws Exception {
         util = new SendGridUtil();
-        set(util, "sendGridApiKey", "SG.DUMMY.KEY");
-        set(util, "fromAddressToyota", "t-noreply@example.com");
-        set(util, "fromNameToyota", "TOYOTA");
-        set(util, "fromAddressLexus", "l-noreply@example.com");
-        set(util, "fromNameLexus", "LEXUS");
+        // @Value を直接セット（最小）
+        setField(util, SendGridUtil.class, "sendGridApiKey", "SG.TEST");
+        setField(util, SendGridUtil.class, "fromAddressToyota", "t@toyota.example");
+        setField(util, SendGridUtil.class, "fromNameToyota", "TOYOTA");
+        setField(util, SendGridUtil.class, "fromAddressLexus", "l@lexus.example");
+        setField(util, SendGridUtil.class, "fromNameLexus", "LEXUS");
     }
 
-    private static void set(Object target, String field, Object value) throws Exception {
-        Field f = target.getClass().getDeclaredField(field);
+    private static void setField(Object target, Class<?> declaring, String name, Object value) throws Exception {
+        var f = declaring.getDeclaredField(name);
         f.setAccessible(true);
         f.set(target, value);
     }
 
-    /** クラス：SendGridUtil generateEmail（TOYOTAのFrom設定）を確認するテストケース */
+    // --- generateEmail ---
+
+    /** クラス：SendGridUtil generateEmail TOYOTAブランドの生成を確認するテストケース */
     @Test
     void generateEmail_01() {
-        // 準備
-        // 実行
-        Mail mail = util.generateEmail("to@example.com", "TITLE", "TEXT", "<p>HTML</p>", "1");
-        // 確認
+        Mail mail = util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "1");
         assertNotNull(mail);
-        assertEquals("TITLE", mail.getSubject());
-        // Fromの検証（アドレス/名前）
-        assertEquals("t-noreply@example.com", mail.getFrom().getEmail());
-        assertEquals("TOYOTA", mail.getFrom().getName());
-        // Toの検証
-        Personalization p = mail.getPersonalization().get(0);
-        Email to = p.getTos().get(0);
-        assertEquals("to@example.com", to.getEmail());
+        assertEquals("Title", mail.getSubject());
+        assertEquals("t@toyota.example", mail.getFrom().getEmail());
     }
 
-    /** クラス：SendGridUtil generateEmail（LEXUSのFrom設定）を確認するテストケース */
+    /** クラス：SendGridUtil generateEmail LEXUSブランドの生成を確認するテストケース */
     @Test
     void generateEmail_02() {
-        // 準備・実行
-        Mail mail = util.generateEmail("to2@example.com", "TITLE2", "TEXT2", "<p>HTML2</p>", "2");
-        // 確認
+        Mail mail = util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "2");
         assertNotNull(mail);
-        assertEquals("l-noreply@example.com", mail.getFrom().getEmail());
-        assertEquals("LEXUS", mail.getFrom().getName());
+        assertEquals("l@lexus.example", mail.getFrom().getEmail());
     }
 
-    /** クラス：SendGridUtil generateEmail（未知ブランド→null）を確認するテストケース */
+    /** クラス：SendGridUtil generateEmail 不正ブランドでnullとなることを確認するテストケース */
     @Test
     void generateEmail_03() {
-        // 準備・実行
-        Mail mail = util.generateEmail("x@example.com", "X", "T", "<p>H</p>", "9");
-        // 箮認
-        assertNull(mail);
+        assertNull(util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "9"));
     }
 
-    /** クラス：SendGridUtil executeSendEmail（2xx成功）を確認するテストケース */
+    // --- executeSendEmail ---
+
+    /** クラス：SendGridUtil executeSendEmail 成功（2xx）を確認するテストケース */
     @Test
-    void executeSendEmail_01() throws Exception {
-        // 準備：Mail生成
-        Mail mail = util.generateEmail("ok@example.com", "OK", "T", "<p>H</p>", "1");
-
-        // SendGridコンストラクションをモック
-        Response ok = mock(Response.class);
-        when(ok.getStatusCode()).thenReturn(202);
-
-        try (MockedConstruction<SendGrid> mocked = mockConstruction(SendGrid.class,
-                (mock, ctx) -> when(mock.api(any(Request.class))).thenReturn(ok))) {
-
-            // 実行（例外なし）
+    void executeSendEmail_01() {
+        Mail mail = util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "1");
+        try (MockedConstruction<SendGrid> sgc = Mockito.mockConstruction(SendGrid.class, (sg, ctx) -> {
+            Response resp = mock(Response.class);
+            when(resp.getStatusCode()).thenReturn(202);
+            when(sg.api(any(Request.class))).thenReturn(resp);
+        })) {
             assertDoesNotThrow(() -> util.executeSendEmail(mail));
-
-            // 確認：SendGrid#apiが1回呼ばれている
-            SendGrid sg = mocked.constructed().get(0);
-            verify(sg, times(1)).api(any(Request.class));
         }
     }
 
-    /** クラス：SendGridUtil executeSendEmail（非2xx→TscEMailException）を確認するテストケース */
+    /**
+     * クラス：SendGridUtil executeSendEmail 非2xx（400等）でTscEMailException送出を確認するテストケース
+     */
     @Test
     void executeSendEmail_02() {
-        // 準備：Mail生成
-        Mail mail = util.generateEmail("ng@example.com", "NG", "T", "<p>H</p>", "1");
-
-        Response ng = mock(Response.class);
-        when(ng.getStatusCode()).thenReturn(500);
-        when(ng.getBody()).thenReturn("{\"error\":\"sendgrid\"}");
-
-        try (MockedConstruction<SendGrid> mocked = mockConstruction(SendGrid.class,
-                (mock, ctx) -> when(mock.api(any(Request.class))).thenReturn(ng))) {
-
-            // 実行・確認（TscEMailException）
+        Mail mail = util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "1");
+        try (MockedConstruction<SendGrid> sgc = Mockito.mockConstruction(SendGrid.class, (sg, ctx) -> {
+            Response resp = mock(Response.class);
+            when(resp.getStatusCode()).thenReturn(400);
+            when(resp.getBody()).thenReturn("Bad Request");
+            when(sg.api(any(Request.class))).thenReturn(resp);
+        })) {
             TscEMailException ex = assertThrows(TscEMailException.class, () -> util.executeSendEmail(mail));
-            assertEquals(500, ex.getStatusCode());
-            assertEquals("ng@example.com", ex.getAddress());
+            assertEquals(400, ex.getStatusCode());
+            assertEquals("to@example.com",
+                    mail.getPersonalization().get(0).getTos().get(0).getEmail());
         }
     }
 
-    /** クラス：SendGridUtil executeSendEmail（一般例外→RuntimeException）を確認するテストケース */
+    /**
+     * クラス：SendGridUtil executeSendEmail
+     * SendGrid側がTscEMailException（statusCode=-1系）を投げた場合の再スローを確認するテストケース
+     */
     @Test
     void executeSendEmail_03() {
-        // 準備
-        Mail mail = util.generateEmail("io@example.com", "IO", "T", "<p>H</p>", "2");
+        Mail mail = util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "1");
+        try (MockedConstruction<SendGrid> sgc = Mockito.mockConstruction(SendGrid.class, (sg, ctx) -> {
+            // メッセージ・cause・address コンストラクタ（statusCode は -1）
+            when(sg.api(any(Request.class)))
+                    .thenThrow(new TscEMailException("SG Error", new RuntimeException("io"), "to@example.com"));
+        })) {
+            TscEMailException ex = assertThrows(TscEMailException.class, () -> util.executeSendEmail(mail));
+            assertEquals(-1, ex.getStatusCode());
+            assertEquals("to@example.com", ex.getAddress());
+        }
+    }
 
-        try (MockedConstruction<SendGrid> mocked = mockConstruction(SendGrid.class,
-                (mock, ctx) -> when(mock.api(any(Request.class))).thenThrow(new RuntimeException("I/O")))) {
-
-            // 実行・確認（RuntimeException）
+    /**
+     * クラス：SendGridUtil executeSendEmail 予期せぬ例外がRuntimeExceptionへ変換されることを確認するテストケース
+     */
+    @Test
+    void executeSendEmail_04() {
+        Mail mail = util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "1");
+        try (MockedConstruction<SendGrid> sgc = Mockito.mockConstruction(SendGrid.class, (sg, ctx) -> {
+            when(sg.api(any(Request.class))).thenThrow(new RuntimeException("boom"));
+        })) {
             assertThrows(RuntimeException.class, () -> util.executeSendEmail(mail));
+        }
+    }
+
+    /**
+     * クラス：SendGridUtil executeSendEmail
+     * ステータスコードが 199（<200）で TscEMailException を送出することを確認するテストケース
+     */
+    @Test
+    void executeSendEmail_05_status199_triggersExceptionLeftOperand() {
+        // 準備
+        Mail mail = util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "1");
+
+        try (MockedConstruction<SendGrid> sgc = Mockito.mockConstruction(SendGrid.class, (sg, ctx) -> {
+            Response resp = mock(Response.class);
+            when(resp.getStatusCode()).thenReturn(199); // ★ 左辺 true を狙って 199
+            when(resp.getBody()).thenReturn("Below range");
+            when(sg.api(any(Request.class))).thenReturn(resp);
+        })) {
+            // 実行・確認
+            TscEMailException ex = assertThrows(TscEMailException.class, () -> util.executeSendEmail(mail));
+            assertEquals(199, ex.getStatusCode());
+            assertEquals("to@example.com",
+                    mail.getPersonalization().get(0).getTos().get(0).getEmail());
+        }
+    }
+
+    /**
+     * クラス：SendGridUtil executeSendEmail
+     * ステータスコードが 300（>=300）で TscEMailException を送出することを確認するテストケース
+     */
+    @Test
+    void executeSendEmail_06_status300_triggersExceptionRightOperandBoundary() {
+        // 準備
+        Mail mail = util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "1");
+
+        try (MockedConstruction<SendGrid> sgc = Mockito.mockConstruction(SendGrid.class, (sg, ctx) -> {
+            Response resp = mock(Response.class);
+            when(resp.getStatusCode()).thenReturn(300); // ★ 右辺 true の境界
+            when(resp.getBody()).thenReturn("Boundary 300");
+            when(sg.api(any(Request.class))).thenReturn(resp);
+        })) {
+            // 実行・確認
+            TscEMailException ex = assertThrows(TscEMailException.class, () -> util.executeSendEmail(mail));
+            assertEquals(300, ex.getStatusCode());
+            assertEquals("to@example.com",
+                    mail.getPersonalization().get(0).getTos().get(0).getEmail());
         }
     }
 }

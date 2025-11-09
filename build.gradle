@@ -15,6 +15,10 @@ java {
     }
 }
 
+jacoco {
+    toolVersion = '0.8.12'
+}
+
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
@@ -49,19 +53,26 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
+    testImplementation 'org.mockito:mockito-inline:5.2.0'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+    finalizedBy tasks.jacocoTestReport // テスト後にレポート生成
 }
 
 jacocoTestReport {
-    mustRunAfter test
+    dependsOn tasks.test // レポートはテスト後に生成
     reports {
         xml.required = true
         csv.required = false
         html.required = true
         html.outputLocation = layout.buildDirectory.dir('reports/jacoco/test/html')
     }
+
+    // ソースコードとクラスファイルの場所を明示
+    sourceDirectories.setFrom(files('src/main/java'))
+    classDirectories.setFrom(
+        fileTree(dir: "$buildDir/classes/java/main", exclude: ['**/generated/**'])
+    )
 }

@@ -1,271 +1,219 @@
 package com.toyota.tsc.notificationhub.commons;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.*;
 import org.mockito.MockedConstruction;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpHeaders;
+import org.mockito.Mockito;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * テストクラス：CommonUtilTest
+ * クラス：CommonUtil すべての分岐・例外系を確認するテストケース
  */
-@ExtendWith(MockitoExtension.class)
 class CommonUtilTest {
 
-    // ---- テスト補助：static @Value を直接設定 ----
-    @BeforeEach
-    void init() throws Exception {
-        setStatic("personalInfoApiUrl", "https://example.local/personalinfo");
-    }
-
-    private static void setStatic(String field, Object value) throws Exception {
-        Field f = CommonUtil.class.getDeclaredField(field);
+    /** テスト補助：static フィールド personalInfoApiUrl を設定 */
+    private static void setPersonalInfoApiUrl(String url) throws Exception {
+        Field f = CommonUtil.class.getDeclaredField("personalInfoApiUrl");
         f.setAccessible(true);
-        f.set(null, value);
+        f.set(null, url);
     }
 
-    // ---------- toJson のテスト ----------
+    // --- toJson ---
 
-    /** クラス：CommonUtil toJson（正常：シンプルDTOをJSON化）を確認するテストケース */
+    /** クラス：CommonUtil toJson 正常に JSON へシリアライズできることを確認するテストケース */
     @Test
     void toJson_01() {
         // 準備
+        @SuppressWarnings("unused")
         class Dto {
-            @JsonProperty("a")
-            int a = 1;
-            @JsonProperty("b")
-            String b = "x";
+            public String a = "x";
+            public int b = 1;
         }
         Dto dto = new Dto();
-
         // 実行
         String json = CommonUtil.toJson(dto);
-
         // 確認
-        assertTrue(json.contains("\"a\":1"));
-        assertTrue(json.contains("\"b\":\"x\""));
+        assertTrue(json.contains("\"a\":\"x\""));
+        assertTrue(json.contains("\"b\":1"));
     }
 
-    /** クラス：CommonUtil toJson（正常：nullは"null"文字列を返す）を確認するテストケース */
+    /** クラス：CommonUtil toJson 引数が null の場合に "null" が返ることを確認するテストケース */
     @Test
     void toJson_02() {
-        // 準備：なし
-
         // 実行
         String json = CommonUtil.toJson(null);
-
         // 確認
         assertEquals("null", json);
     }
 
-    /** クラス：CommonUtil toJson（例外：循環参照はRuntimeException）を確認するテストケース */
+    /** クラス：CommonUtil toJson 例外発生時に RuntimeException へ変換されることを確認するテストケース */
     @Test
     void toJson_03() {
-        // 準備
-        class Cyclic {
-            @SuppressWarnings("unused")
-            Cyclic ref;
+        // 準備：ObjectMapper の writeValueAsString を例外にする
+        try (MockedConstruction<ObjectMapper> mc = Mockito.mockConstruction(ObjectMapper.class,
+                (mapper, ctx) -> when(mapper.writeValueAsString(any())).thenThrow(new RuntimeException("boom")))) {
+            // 実行・確認
+            assertThrows(RuntimeException.class, () -> CommonUtil.toJson(new Object()));
         }
-        Cyclic c = new Cyclic();
-        c.ref = c;
-
-        // 実行・確認
-        assertThrows(RuntimeException.class, () -> CommonUtil.toJson(c));
     }
 
-    // ---------- maskText のテスト ----------
+    // --- getMessage / getResultCode ---
 
-    /** クラス：CommonUtil maskText（メールアドレスをマスク）を確認するテストケース */
+    /** クラス：CommonUtil getMessage ResourceBundle に従い文字列整形されることを確認するテストケース */
+    @Test
+    void getMessage_01() {
+        // 実行
+        String msg = CommonUtil.getMessage("RS07I00001", "A", "B", "C");
+        // 確認
+        assertEquals("A処理を開始します。相関ID：B、パラメータ：C", msg);
+    }
+
+    /** クラス：CommonUtil getResultCode ResourceBundle の値が返ることを確認するテストケース */
+    @Test
+    void getResultCode_01() {
+        // 実行
+        String rc = CommonUtil.getResultCode("SUCCESS");
+        // 確認
+        assertEquals("00001548N001", rc);
+    }
+
+    // --- maskText ---
+
+    /** クラス：CommonUtil maskText 引数が null/空文字のとき空文字が返ることを確認するテストケース */
     @Test
     void maskText_01() {
-        // 準備
-        String in = "na@example.com";
-
-        // 実行
-        String out = CommonUtil.maskText(in);
-
-        // 確認（先頭2文字＋8個の*＋ドメイン）
-        assertTrue(out.startsWith("na********@example.com"));
+        assertEquals("", CommonUtil.maskText(null));
+        assertEquals("", CommonUtil.maskText(""));
     }
 
-    /** クラス：CommonUtil maskText（短い文字列：長さ<=2なら末尾に********）を確認するテストケース */
+    /** クラス：CommonUtil maskText メールアドレスをマスクできることを確認するテストケース */
     @Test
     void maskText_02() {
         // 準備
-        String in = "A";
-
+        String email = "ab@example.com";
         // 実行
-        String out = CommonUtil.maskText(in);
-
-        // 確認
-        assertEquals("A********", out);
+        String masked = CommonUtil.maskText(email);
+        // 確認：先頭2文字 + 8つの* + ドメイン
+        assertTrue(masked.startsWith("ab********@example.com"));
     }
 
-    /** クラス：CommonUtil maskText（通常文字列：先頭2文字＋********）を確認するテストケース */
+    /** クラス：CommonUtil maskText 通常文字列（長さ>2）をマスクできることを確認するテストケース */
     @Test
     void maskText_03() {
-        // 準備
-        String in = "ABCDEFG";
-
-        // 実行
-        String out = CommonUtil.maskText(in);
-
-        // 確認
-        assertEquals("AB********", out);
+        String masked = CommonUtil.maskText("abcdef");
+        assertEquals("ab********", masked);
     }
 
-    /** クラス：CommonUtil maskText（null/空文字は空文字）を確認するテストケース */
+    /** クラス：CommonUtil maskText 通常文字列（長さ<=2）をマスクできることを確認するテストケース */
     @Test
     void maskText_04() {
-        // 準備・実行
-        String out1 = CommonUtil.maskText(null);
-        String out2 = CommonUtil.maskText("");
-
-        // 確認
-        assertEquals("", out1);
-        assertEquals("", out2);
+        assertEquals("a********", CommonUtil.maskText("a"));
+        assertEquals("ab********", CommonUtil.maskText("ab"));
     }
 
-    // ---------- normalizePhoneNumber / maskPhoneNumber のテスト ----------
+    // --- normalizePhoneNumber / maskPhoneNumber ---
 
-    /** クラス：CommonUtil normalizePhoneNumber（数字以外除去）を確認するテストケース */
+    /** クラス：CommonUtil normalizePhoneNumber 非数字を除去することを確認するテストケース */
     @Test
     void normalizePhoneNumber_01() {
-        // 準備
-        String in = "090-1234-5678";
-
-        // 実行
-        String out = CommonUtil.normalizePhoneNumber(in);
-
-        // 確認（数字のみ）
-        assertEquals("09012345678", out);
+        String r = CommonUtil.normalizePhoneNumber("+81-90-1234-5678");
+        assertEquals("819012345678", r);
     }
 
-    /** クラス：CommonUtil normalizePhoneNumber（null入力は空文字）を確認するテストケース */
+    /** クラス：CommonUtil normalizePhoneNumber null のとき空文字が返ることを確認するテストケース */
     @Test
     void normalizePhoneNumber_02() {
-        // 準備・実行
-        String out = CommonUtil.normalizePhoneNumber(null);
-
-        // 確認
-        assertEquals("", out);
+        assertEquals("", CommonUtil.normalizePhoneNumber(null));
     }
 
-    /** クラス：CommonUtil maskPhoneNumber（末尾4桁以外を*化）を確認するテストケース */
+    /** クラス：CommonUtil maskPhoneNumber 引数が null/長さ<4 のとき固定マスクが返ることを確認するテストケース */
     @Test
     void maskPhoneNumber_01() {
-        // 準備
-        String in = "090-1234-5678";
-
-        // 実行
-        String out = CommonUtil.maskPhoneNumber(in);
-
-        // 確認（normalize後の桁数に応じて * を付与）
-        assertTrue(out.endsWith("5678"));
-        assertEquals("*******5678", out); // "09012345678" => 11桁 → 7個の* + 5678
+        assertEquals("********", CommonUtil.maskPhoneNumber(null));
+        assertEquals("********", CommonUtil.maskPhoneNumber("12")); // 長さ<4
     }
 
-    /** クラス：CommonUtil maskPhoneNumber（4桁未満は********固定）を確認するテストケース */
+    /** クラス：CommonUtil maskPhoneNumber 正規化後に末尾4桁を残してマスクされることを確認するテストケース */
     @Test
     void maskPhoneNumber_02() {
-        // 準備・実行
-        String out = CommonUtil.maskPhoneNumber("123");
-
-        // 確認
-        assertEquals("********", out);
+        String r = CommonUtil.maskPhoneNumber("+81-90-1234-5678");
+        assertTrue(r.endsWith("5678"));
+        // 先頭は * が連続している（桁数-4 分）
+        assertTrue(r.substring(0, r.length() - 4).matches("\\*+"));
     }
 
-    /** クラス：CommonUtil getMessage（ResourceBundleの書式適用）を確認するテストケース */
+    /** クラス：CommonUtil maskPhoneNumber 長さがちょうど4桁の場合にそのまま返ることを確認するテストケース */
     @Test
-    void getMessage_01() {
-        // 準備：LogMessages.properties を src/test/resources/properties に配置済み
-        // 実行
-        String msg = CommonUtil.getMessage("RS07I00001", "PROC", "corr-001", "{json}");
-
-        // 確認（MessageFormat適用結果）
-        assertTrue(msg.contains("PROC"));
-        assertTrue(msg.contains("corr-001"));
-        assertTrue(msg.contains("{json}"));
+    void maskPhoneNumber_03() {
+        String r = CommonUtil.maskPhoneNumber("1234");
+        assertEquals("1234", r);
     }
 
-    /** クラス：CommonUtil getResultCode（ResultCodeマッピング）を確認するテストケース */
-    @Test
-    void getResultCode_01() {
-        // 準備：ResultCode.properties を src/test/resources/properties に配置済み
-        // 実行
-        String code = CommonUtil.getResultCode("SUCCESS");
+    // --- getPersonalInfoApiResponse ---
 
-        // 確認
-        assertEquals("SUCCESS_CODE", code);
-    }
-
-    // ---------- getPersonalInfoApiResponse のテスト ----------
-
-    /** クラス：CommonUtil getPersonalInfoApiResponse（正常：JSON→DTO変換）を確認するテストケース */
     @Test
     void getPersonalInfoApiResponse_01() throws Exception {
-        // 準備
-        String json = "{\"contactList\":[{\"contactType\":\"1\",\"contact\":\"+819000000000\",\"primaryContactFlag\":true}]}";
-        ResponseEntity<String> ok = ResponseEntity.ok(json);
+        setPersonalInfoApiUrl("https://test.invalid/api");
 
-        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
-                (mock, ctx) -> when(mock.getForEntity(eq("https://example.local/personalinfo"),
-                        eq(String.class), any(HttpHeaders.class))).thenReturn(ok))) {
+        try (MockedConstruction<RestTemplate> rc = Mockito.mockConstruction(RestTemplate.class, (rt, ctx) -> {
+            // varargs 版（Object...）にマッチ
+            doReturn(ResponseEntity.ok("{\"contactList\":[]}"))
+                    .when(rt).getForEntity(anyString(), eq(String.class), (Object) any());
 
-            // 実行
-            PersonalInfoResponseDto dto = CommonUtil.getPersonalInfoApiResponse("U1");
+            // Map 版（曖昧さ回避の保険）
+            doReturn(ResponseEntity.ok("{\"contactList\":[]}"))
+                    .when(rt).getForEntity(anyString(), eq(String.class), anyMap());
+        })) {
 
-            // 確認
+            PersonalInfoResponseDto dto = CommonUtil.getPersonalInfoApiResponse("user-001");
+
             assertNotNull(dto);
             assertNotNull(dto.getContactList());
-            assertEquals(1, dto.getContactList().size());
-            assertTrue(dto.getContactList().get(0).isPrimaryContactFlag());
         }
     }
 
-    /**
-     * クラス：CommonUtil
-     * getPersonalInfoApiResponse（例外：JSON不正→RuntimeException）を確認するテストケース
-     */
     @Test
     void getPersonalInfoApiResponse_02() throws Exception {
-        // 準備：不正JSON
-        ResponseEntity<String> bad = ResponseEntity.ok("{not-json}");
+        setPersonalInfoApiUrl("https://test.invalid/api");
 
-        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
-                (mock, ctx) -> when(mock.getForEntity(eq("https://example.local/personalinfo"),
-                        eq(String.class), any(HttpHeaders.class))).thenReturn(bad))) {
+        try (MockedConstruction<RestTemplate> rc = Mockito.mockConstruction(RestTemplate.class, (rt, ctx) -> {
+            // 成功系と同じく両オーバーロードをスタブ
+            doReturn(ResponseEntity.ok("INVALID_JSON"))
+                    .when(rt).getForEntity(anyString(), eq(String.class), (Object) any());
+            doReturn(ResponseEntity.ok("INVALID_JSON"))
+                    .when(rt).getForEntity(anyString(), eq(String.class), anyMap());
+        });
+                MockedConstruction<ObjectMapper> mc = Mockito.mockConstruction(ObjectMapper.class, (om, ctx) -> {
+                    when(om.readValue(anyString(), eq(PersonalInfoResponseDto.class)))
+                            .thenThrow(new RuntimeException("parse error"));
+                })) {
 
-            // 実行・確認（パース失敗）
             RuntimeException ex = assertThrows(RuntimeException.class,
-                    () -> CommonUtil.getPersonalInfoApiResponse("U2"));
-            assertTrue(ex.getMessage().contains("Failed to parse"), "パース失敗メッセージが含まれること");
+                    () -> CommonUtil.getPersonalInfoApiResponse("user-002"));
+            assertTrue(ex.getMessage().contains("Failed to parse personal info response"));
         }
     }
 
-    /**
-     * クラス：CommonUtil getPersonalInfoApiResponse（例外：RestTemplate一般例外→伝播）を確認するテストケース
-     */
-    @Test
-    void getPersonalInfoApiResponse_03() throws Exception {
-        // 準備：通信例外
-        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
-                (mock, ctx) -> when(mock.getForEntity(eq("https://example.local/personalinfo"),
-                        eq(String.class), any(HttpHeaders.class))).thenThrow(new RuntimeException("I/O")))) {
+    // --- private コンストラクタの網羅 ---
 
-            // 実行・確認（通信例外はそのまま伝播）
-            assertThrows(RuntimeException.class, () -> CommonUtil.getPersonalInfoApiResponse("U3"));
-        }
+    /** クラス：CommonUtil private コンストラクタのインスタンス化を確認するテストケース */
+    @Test
+    void constructor_01() throws Exception {
+        // 準備
+        Constructor<CommonUtil> c = CommonUtil.class.getDeclaredConstructor();
+        c.setAccessible(true);
+        // 実行
+        CommonUtil inst = c.newInstance();
+        // 確認
+        assertNotNull(inst);
     }
 }

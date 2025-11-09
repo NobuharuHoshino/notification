@@ -20,8 +20,6 @@ import java.sql.SQLNonTransientException;
 import java.sql.SQLTransientException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,8 +38,6 @@ public class SendPushServiceImpl implements SendPushServiceIF {
 
     private static final String PROCCESS_NAME = "プッシュ通知送信要求";
 
-    private static final Pattern TRACKING_ID_PATTERN = Pattern.compile("Tracking ID:\\s*(\\S+)");
-
     @Override
     public String sendPush(SendPushRequestDto request, RequestHeaderDto header) {
 
@@ -51,10 +47,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                     "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
-            String validateResult = validate(request, header);
-            if (validateResult != null) {
-                return validateResult;
-            }
+            validate(request, header);
 
             // InstallationID取得
             List<NtfInfoEntity> deviceList = getAllDeviceData(request.getInternalUserId());
@@ -72,8 +65,31 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             return resultCode;
 
         } catch (Exception e) {
-            handleException(e, header);
-            throw e;
+            SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
+            if (sqlEx != null) {
+                if (ExtractSqlExceptionUtil.isSqlConnectionError(sqlEx)) {
+                    // 接続エラー
+                    LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                            "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
+                    throw new RuntimeException();
+                } else if (sqlEx instanceof SQLTransientException || sqlEx instanceof SQLNonTransientException) {
+                    // 操作エラー
+                    LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                            "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
+                    throw new CustomSqlException();
+                }
+                LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
+                throw new RuntimeException();
+            } else if (e instanceof TscApplicationException) {
+                throw new TscApplicationException();
+            } else if (e instanceof TscNotificationHubsException) {
+                throw new RuntimeException();
+            } else {
+                LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
+                throw new RuntimeException();
+            }
         }
     }
 
@@ -112,8 +128,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                     if (cnt >= this.retryCount) {
                         LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                                 "RS07E00005", ex.httpStatusCode(), request.getInternalUserId(),
-                                request.getBody(), deviceData.getInstallationId(), extractTrackingId(ex),
-                                header.getCorrelationId()));
+                                request.getBody(), deviceData.getInstallationId(), header.getCorrelationId()));
                         throw new TscNotificationHubsException(ex);
                     }
                     LogUtil.warn(SendPushServiceImpl.class, CommonUtil.getMessage(
@@ -123,19 +138,13 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                 }
                 LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00005", ex.httpStatusCode(), request.getInternalUserId(),
-                        request.getBody(), deviceData.getInstallationId(), extractTrackingId(ex),
-                        header.getCorrelationId()));
+                        request.getBody(), deviceData.getInstallationId(), header.getCorrelationId()));
                 throw new TscNotificationHubsException(ex);
             } catch (Exception e) {
                 throw e;
             }
         }
         return null;
-    }
-
-    private String extractTrackingId(NotificationHubsException ex) {
-        Matcher matcher = TRACKING_ID_PATTERN.matcher(ex.getMessage());
-        return matcher.find() ? matcher.group(1) : null;
     }
 
     private List<NtfInfoEntity> getAllDeviceData(String internalUserId) {
@@ -178,32 +187,6 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             return String.join(",", missingFields);
         }
         return null;
-    }
-    // #endregion
-
-    // #region Exception Handling Methods
-    private void handleException(Exception e, RequestHeaderDto header) {
-        if (e instanceof SQLException || e.getCause() instanceof SQLException) {
-            SQLException sqlEx = e instanceof SQLException ? (SQLException) e : (SQLException) e.getCause();
-            if (ExtractSqlExceptionUtil.isSqlConnectionError(sqlEx)) {
-                LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
-                        "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                throw new RuntimeException();
-
-            } else if (sqlEx instanceof SQLTransientException || sqlEx instanceof SQLNonTransientException) {
-                LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
-                        "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                throw new CustomSqlException();
-            }
-        } else if (e instanceof TscApplicationException) {
-            throw new TscApplicationException();
-        } else if (e instanceof TscNotificationHubsException) {
-            throw new RuntimeException();
-        } else {
-            LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
-                    "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-            throw new RuntimeException();
-        }
     }
     // #endregion
 

@@ -36,10 +36,7 @@ public class SendSmsServiceImpl implements SendSmsServiceIF {
                     "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
-            String validateResult = validate(request, header);
-            if (validateResult != null) {
-                return validateResult;
-            }
+            validate(request, header);
 
             // SMS送信リクエスト作成
             HttpEntity<String> entity = smsCountryUtil.createRequest(

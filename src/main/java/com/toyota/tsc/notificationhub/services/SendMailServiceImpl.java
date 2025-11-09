@@ -43,10 +43,7 @@ public class SendMailServiceImpl implements SendMailServiceIF {
                     "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
-            String validateResult = validate(request, header);
-            if (validateResult != null) {
-                return validateResult;
-            }
+            validate(request, header);
 
             // メール生成
             Mail mail = sendGridUtil.generateEmail(

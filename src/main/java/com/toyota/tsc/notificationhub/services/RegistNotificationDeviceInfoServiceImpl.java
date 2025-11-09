@@ -50,10 +50,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                     "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
-            String validateResult = validate(request, header);
-            if (validateResult != null) {
-                return validateResult;
-            }
+            validate(request, header);
 
             // Installation実行
             List<NtfInfoEntity> deviceList = getAllDeviceData(request.getInternalUserId());
@@ -86,9 +83,37 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
             return resultCode;
 
         } catch (Exception e) {
-            handleException(e, header);
-            throw e;
+            SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
+            if (sqlEx != null) {
+                if (ExtractSqlExceptionUtil.isSqlConnectionError(sqlEx)) {
+                    // 接続エラー
+                    LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                            "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
+                    throw new RuntimeException();
+                } else if (sqlEx instanceof SQLTransientException || sqlEx instanceof SQLNonTransientException) {
+                    // 操作エラー
+                    LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                            "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
+                    throw new CustomSqlException();
+                }
+                LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
+                throw new RuntimeException();
+            }
+            if (e instanceof TscApplicationException) {
+                // 業務エラー（必須チェック違反/ブランドコードなどの不正）
+                throw new TscApplicationException();
+            } else if (e instanceof TscNotificationHubsException) {
+                // AzureNotificationHub関連エラー
+                throw new RuntimeException();
+            } else {
+                // その他予期せぬエラー
+                LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
+                throw new RuntimeException();
+            }
         }
+
     }
 
     // #region NotificationHub Methods
@@ -299,39 +324,6 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
 
     private boolean isValidBrdCd(String brdCd) {
         return brdCd.equals("1") || brdCd.equals("2");
-    }
-    // #endregion
-
-    // #region Exception Handling Methods
-    private void handleException(Exception e, RequestHeaderDto header) {
-
-        if (e instanceof SQLException || e.getCause() instanceof SQLException) {
-            // SQL関連エラーハンドリング
-            SQLException sqlEx = e instanceof SQLException ? (SQLException) e : (SQLException) e.getCause();
-            if (ExtractSqlExceptionUtil.isSqlConnectionError(sqlEx)) {
-                // 接続エラー
-                LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                        "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                throw new RuntimeException();
-            } else if (sqlEx instanceof SQLTransientException || sqlEx instanceof SQLNonTransientException) {
-                // 操作エラー
-                LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                        "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                throw new CustomSqlException();
-            }
-
-        } else if (e instanceof TscApplicationException) {
-            // 業務エラー（必須チェック違反/ブランドコードなどの不正）
-            throw new TscApplicationException();
-        } else if (e instanceof TscNotificationHubsException) {
-            // AzureNotificationHub関連エラー
-            throw new RuntimeException();
-        } else {
-            // その他予期せぬエラー
-            LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                    "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-            throw new RuntimeException();
-        }
     }
     // #endregion
 }

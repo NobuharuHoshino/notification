@@ -143,4 +143,26 @@ class SmsCountryUtilTest {
             assertThrows(RuntimeException.class, () -> util.sendSmsCountry(entity, "+819000000004"));
         }
     }
+
+    /**
+     * クラス：SmsCountryUtil createRequest 例外をRuntimeExceptionにラップして再送出することを確認するテストケース
+     */
+    @Test
+    void createRequest_04() throws Exception {
+        // 準備：URLEncoder.encode(...) で NPE を発生させるためユーザ名を null に
+        setField(util, SmsCountryUtil.class, "smsCountryUser", null);
+
+        // 実行・確認：RuntimeException にラップされて送出される
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> util.createRequest("+819012345678", "日本語もOK", "1")); // BRD_TOYOTA
+        assertNotNull(ex.getCause()); // 原因例外が内包される
+        assertTrue(ex.getCause() instanceof NullPointerException); // NPE が原因であること
+    }
+
+    private static void setField(Object target, Class<?> declaring, String name, Object value) throws Exception {
+        var f = declaring.getDeclaredField(name);
+        f.setAccessible(true);
+        f.set(target, value);
+    }
+
 }

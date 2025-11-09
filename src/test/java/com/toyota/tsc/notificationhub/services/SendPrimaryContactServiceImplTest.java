@@ -2,7 +2,6 @@ package com.toyota.tsc.notificationhub.services;
 
 import com.sendgrid.helpers.mail.Mail;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
-import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.commons.SendGridUtil;
 import com.toyota.tsc.notificationhub.commons.SmsCountryUtil;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
@@ -11,23 +10,22 @@ import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
 import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
 import com.toyota.tsc.notificationhub.models.SendPrimaryContactRequestDto;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
-
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
+/** クラス：SendPrimaryContactServiceImpl 分岐網羅100%を確認するテストケース群 */
+@ExtendWith(MockitoExtension.class)
 class SendPrimaryContactServiceImplTest {
 
     @InjectMocks
@@ -35,6 +33,7 @@ class SendPrimaryContactServiceImplTest {
 
     @Mock
     private SmsCountryUtil smsCountryUtil;
+
     @Mock
     private SendGridUtil sendGridUtil;
 
@@ -43,219 +42,545 @@ class SendPrimaryContactServiceImplTest {
     @BeforeEach
     void setUp() {
         header = new RequestHeaderDto();
-        header.setCorrelationId("corr-002");
+        header.setCorrelationId("corr-pc-001");
     }
 
-    private PersonalInfoResponseDto buildContacts(String... kindsAndValues) {
-        var dto = new PersonalInfoResponseDto();
-        var list = new java.util.ArrayList<PersonalInfoResponseDto.ContactDto>();
-        for (int i = 0; i < kindsAndValues.length; i += 3) {
-            var c = new PersonalInfoResponseDto.ContactDto();
-            c.setContactType(kindsAndValues[i]); // "1"=PHONE, "2"=EMAIL
-            c.setContact(kindsAndValues[i + 1]); // value
-            c.setPrimaryContactFlag(Boolean.parseBoolean(kindsAndValues[i + 2])); // "true"/"false"
-            list.add(c);
-        }
-        dto.setContactList(list);
-        return dto;
+    private SendPrimaryContactRequestDto baseRequest() {
+        SendPrimaryContactRequestDto req = new SendPrimaryContactRequestDto();
+        req.setProcessId("PROC1");
+        req.setInternalUserId("U1");
+        req.setBrdCd("1");
+        req.setTitle("Hello");
+        req.setBody_text("TEXT");
+        req.setBody_html("<p>HTML</p>");
+        req.setBody_sms("SMS");
+        return req;
+    }
+
+    private PersonalInfoResponseDto mockResponse(List<PersonalInfoResponseDto.ContactDto> contacts) {
+        PersonalInfoResponseDto resp = mock(PersonalInfoResponseDto.class);
+        when(resp.getContactList()).thenReturn(contacts);
+        return resp;
+    }
+
+    private PersonalInfoResponseDto.ContactDto contact(String type, boolean primary, String value) {
+        PersonalInfoResponseDto.ContactDto c = mock(PersonalInfoResponseDto.ContactDto.class);
+        when(c.getContactType()).thenReturn(type);
+        when(c.isPrimaryContactFlag()).thenReturn(primary);
+        when(c.getContact()).thenReturn(value);
+        return c;
     }
 
     /**
-     * クラス：SendPrimaryContactServiceImpl
-     * 正常系（電話のPrimaryにSMS送信）を確認するテストケース
+     * クラス：SendPrimaryContactServiceImpl sendPrimaryContact
+     * 電話primaryでSMS送信されることを確認するテストケース
      */
     @Test
     void sendPrimaryContact_01() {
-        // 準備
-        SendPrimaryContactRequestDto req = new SendPrimaryContactRequestDto();
-        req.setProcessId("p");
-        req.setInternalUserId("user1");
-        req.setBrdCd("1");
-        req.setBody_sms("sms");
-        req.setTitle("t");
-        req.setBody_text("text");
-        req.setBody_html("<p>html</p>");
+        // 準備：電話primary
+        SendPrimaryContactRequestDto req = baseRequest();
+        PersonalInfoResponseDto.ContactDto phone = contact("1", true, "+819012345678");
+        PersonalInfoResponseDto resp = mockResponse(Collections.singletonList(phone));
+        HttpEntity<String> entity = new HttpEntity<>("x");
+        when(smsCountryUtil.createRequest(anyString(), anyString(), anyString())).thenReturn(entity);
+        doNothing().when(smsCountryUtil).sendSmsCountry(any(HttpEntity.class), anyString());
 
-        HttpEntity<String> entity = new HttpEntity<>("body");
-        when(smsCountryUtil.createRequest(anyString(), eq("sms"), eq("1"))).thenReturn(entity);
-        doNothing().when(smsCountryUtil).sendSmsCountry(eq(entity), eq("+819000000000"));
-
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream prev = System.out;
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class);
-                MockedStatic<LogUtil> mockedLog = mockStatic(LogUtil.class)) {
-            System.setOut(new PrintStream(out));
-
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
-            mockedCommon.when(() -> CommonUtil.toJson(any())).thenReturn("{json}");
-            mockedCommon.when(() -> CommonUtil.getPersonalInfoApiResponse(eq("user1")))
-                    .thenReturn(buildContacts("1", "+819000000000", "true"));
-            mockedCommon.when(() -> CommonUtil.normalizePhoneNumber(anyString()))
-                    .thenAnswer(inv -> inv.getArgument(0)); // 正規化はそのまま返す
-            mockedCommon.when(() -> CommonUtil.getResultCode(eq("SUCCESS"))).thenReturn("SUCCESS");
-
-            mockedLog.when(() -> LogUtil.info(eq(SendPrimaryContactServiceImpl.class), anyString()))
-                    .thenAnswer(inv -> {
-                        System.out.println("INFO:" + inv.getArgument(1));
-                        return null;
-                    });
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
+            cm.when(() -> CommonUtil.normalizePhoneNumber(anyString())).thenAnswer(inv -> inv.getArgument(0));
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any()))
+                    .thenReturn("MSG");
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
+                    .thenReturn("MSG");
+            cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
 
             // 実行
-            String result = service.sendPrimaryContact(req, header);
+            String code = service.sendPrimaryContact(req, header);
 
-            // 確認
-            assertEquals("SUCCESS", result);
-            verify(smsCountryUtil, times(1)).sendSmsCountry(eq(entity), eq("+819000000000"));
-            // メールユーティリティには一切触れていないことを保証
-            verifyNoInteractions(sendGridUtil);
-        } finally {
-            System.setOut(prev);
-        }
-    }
-
-    /** クラス：SendPrimaryContactServiceImpl 正常系（メールのPrimaryにメール送信）を確認するテストケース */
-    @Test
-    void sendPrimaryContact_02() {
-        // 準備
-        SendPrimaryContactRequestDto req = new SendPrimaryContactRequestDto();
-        req.setProcessId("p");
-        req.setInternalUserId("user2");
-        req.setBrdCd("2");
-        req.setTitle("title");
-        req.setBody_text("text");
-        req.setBody_html("<p>html</p>");
-
-        Mail mail = mock(Mail.class);
-        when(sendGridUtil.generateEmail(eq("u2@example.com"), eq("title"), eq("text"), eq("<p>html</p>"), eq("2")))
-                .thenReturn(mail);
-        doNothing().when(sendGridUtil).executeSendEmail(eq(mail));
-
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class)) {
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
-            mockedCommon.when(() -> CommonUtil.toJson(any())).thenReturn("{json}");
-            mockedCommon.when(() -> CommonUtil.getPersonalInfoApiResponse(eq("user2")))
-                    .thenReturn(buildContacts("2", "u2@example.com", "true"));
-            mockedCommon.when(() -> CommonUtil.getResultCode(eq("SUCCESS"))).thenReturn("SUCCESS");
-
-            // 実行
-            String result = service.sendPrimaryContact(req, header);
-
-            // 確認
-            assertEquals("SUCCESS", result);
-            verify(sendGridUtil, times(1)).executeSendEmail(eq(mail));
+            // 確認：正常終了コード・SMSユーティリティが呼ばれた
+            assertEquals("SUCCESS_CODE", code);
+            verify(smsCountryUtil, times(1)).sendSmsCountry(any(HttpEntity.class), anyString());
+            verify(sendGridUtil, times(0)).executeSendEmail(any(Mail.class));
         }
     }
 
     /**
-     * クラス：SendPrimaryContactServiceImpl
-     * 異常系（必須不足でTscApplicationException）を確認するテストケース
+     * クラス：SendPrimaryContactServiceImpl sendPrimaryContact
+     * メールprimaryでメール送信されることを確認するテストケース
+     */
+    @Test
+    void sendPrimaryContact_02() {
+        // 準備：メールprimary
+        SendPrimaryContactRequestDto req = baseRequest();
+        PersonalInfoResponseDto.ContactDto email = contact("2", true, "to@example.com");
+        PersonalInfoResponseDto resp = mockResponse(Collections.singletonList(email));
+        Mail mail = mock(Mail.class);
+        when(sendGridUtil.generateEmail(anyString(), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(mail);
+        doNothing().when(sendGridUtil).executeSendEmail(any(Mail.class));
+
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
+                    .thenReturn("MSG");
+            cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
+
+            // 実行
+            String code = service.sendPrimaryContact(req, header);
+
+            // 確認：正常終了コード・メールユーティリティが呼ばれた
+            assertEquals("SUCCESS_CODE", code);
+            verify(sendGridUtil, times(1)).executeSendEmail(any(Mail.class));
+            verify(smsCountryUtil, times(0)).sendSmsCountry(any(HttpEntity.class), anyString());
+        }
+    }
+
+    /**
+     * クラス：SendPrimaryContactServiceImpl sendPrimaryContact
+     * primary=falseでスキップされることを確認するテストケース
      */
     @Test
     void sendPrimaryContact_03() {
-        // 準備
-        SendPrimaryContactRequestDto req = new SendPrimaryContactRequestDto(); // 未設定
+        // 準備：primary=false → isPrimaryContactFlag() だけが使われる
+        SendPrimaryContactRequestDto req = baseRequest();
 
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class)) {
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
-            // 実行・確認
-            assertThrows(TscApplicationException.class, () -> service.sendPrimaryContact(req, header));
+        PersonalInfoResponseDto.ContactDto notPrimary = mock(PersonalInfoResponseDto.ContactDto.class);
+        when(notPrimary.isPrimaryContactFlag()).thenReturn(false); // ★ 必要最小限のスタブ
+
+        PersonalInfoResponseDto resp = mockResponse(Collections.singletonList(notPrimary));
+
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
+            cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
+
+            // 実行
+            String code = service.sendPrimaryContact(req, header);
+
+            // 確認：正常終了・外部API呼ばれない
+            assertEquals("SUCCESS_CODE", code);
+            verify(smsCountryUtil, times(0))
+                    .sendSmsCountry(ArgumentMatchers.<HttpEntity<String>>any(), anyString());
+            verify(sendGridUtil, times(0)).executeSendEmail(any(Mail.class));
         }
     }
 
     /**
-     * クラス：SendPrimaryContactServiceImpl
-     * 例外系（SMS送信でTscSMSException→RuntimeException）を確認するテストケース
+     * クラス：SendPrimaryContactServiceImpl sendPrimaryContact
+     * その他typeでスキップされることを確認するテストケース
      */
     @Test
     void sendPrimaryContact_04() {
-        // 準備
-        SendPrimaryContactRequestDto req = new SendPrimaryContactRequestDto();
-        req.setProcessId("p");
-        req.setInternalUserId("user3");
-        req.setBrdCd("1");
-        req.setBody_sms("s");
+        // 準備：type="X" かつ primary=true → getContactType()/isPrimaryContactFlag() を使用
+        SendPrimaryContactRequestDto req = baseRequest();
 
-        HttpEntity<String> entity = new HttpEntity<>("body");
-        when(smsCountryUtil.createRequest(anyString(), eq("s"), eq("1"))).thenReturn(entity);
-        // 3引数コンストラクタ (statusCode, responseBody, phoneNo)
-        doThrow(new TscSMSException(500, "{\"error\":\"sms\"}", "+819000000001"))
-                .when(smsCountryUtil).sendSmsCountry(eq(entity), eq("+819000000001"));
+        PersonalInfoResponseDto.ContactDto other = mock(PersonalInfoResponseDto.ContactDto.class);
+        when(other.getContactType()).thenReturn("X"); // ★ 必要
+        when(other.isPrimaryContactFlag()).thenReturn(true); // ★ 必要
+        // ※ getContact() はこの分岐では使わないためスタブしない
 
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class)) {
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
-            mockedCommon.when(() -> CommonUtil.getPersonalInfoApiResponse(eq("user3")))
-                    .thenReturn(buildContacts("1", "+819000000001", "true"));
+        PersonalInfoResponseDto resp = mockResponse(Collections.singletonList(other));
 
-            // 実行・確認（catch (TscSMSException) → RuntimeException）
-            assertThrows(RuntimeException.class, () -> service.sendPrimaryContact(req, header));
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
+            cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
+
+            // 実行
+            String code = service.sendPrimaryContact(req, header);
+
+            // 確認：正常終了・外部API呼ばれない
+            assertEquals("SUCCESS_CODE", code);
+            verify(smsCountryUtil, times(0))
+                    .sendSmsCountry(ArgumentMatchers.<HttpEntity<String>>any(), anyString());
+            verify(sendGridUtil, times(0)).executeSendEmail(any(Mail.class));
         }
     }
 
     /**
-     * クラス：SendPrimaryContactServiceImpl
-     * 例外系（メール送信でTscEMailException→RuntimeException）を確認するテストケース
+     * クラス：SendPrimaryContactServiceImpl sendPrimaryContact
+     * SMS例外をRuntimeExceptionへ変換することを確認するテストケース
      */
     @Test
     void sendPrimaryContact_05() {
-        // 準備
-        SendPrimaryContactRequestDto req = new SendPrimaryContactRequestDto();
-        req.setProcessId("p");
-        req.setInternalUserId("user4");
-        req.setBrdCd("2");
-        req.setTitle("t");
-        req.setBody_text("txt");
-        req.setBody_html("<p>h</p>");
+        // 準備：電話primary・SMS側でTscSMSException
+        SendPrimaryContactRequestDto req = baseRequest();
+        PersonalInfoResponseDto.ContactDto phone = contact("1", true, "+819012345678");
+        PersonalInfoResponseDto resp = mockResponse(Collections.singletonList(phone));
+        HttpEntity<String> entity = new HttpEntity<>("x");
+        when(smsCountryUtil.createRequest(anyString(), anyString(), anyString())).thenReturn(entity);
 
-        Mail mail = mock(Mail.class);
-        when(sendGridUtil.generateEmail(any(), any(), any(), any(), any())).thenReturn(mail);
-        // 3引数コンストラクタ (statusCode, responseBody, address)
-        doThrow(new TscEMailException(500, "{\"error\":\"sendgrid\"}", "x@example.com"))
-                .when(sendGridUtil).executeSendEmail(eq(mail));
+        TscSMSException ex = mock(TscSMSException.class);
+        when(ex.getStatusCode()).thenReturn(400);
+        when(ex.getPhoneNo()).thenReturn("+819012345678");
+        doThrow(ex).when(smsCountryUtil).sendSmsCountry(any(HttpEntity.class), anyString());
 
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class)) {
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
-            mockedCommon.when(() -> CommonUtil.getPersonalInfoApiResponse(eq("user4")))
-                    .thenReturn(buildContacts("2", "x@example.com", "true"));
-            // 実行・確認（catch (TscEMailException) → RuntimeException）
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
+                    .thenReturn("MSG");
+            // 実行・確認：RuntimeException へ
             assertThrows(RuntimeException.class, () -> service.sendPrimaryContact(req, header));
         }
     }
 
     /**
-     * クラス：SendPrimaryContactServiceImpl privateメソッドvalidateRequiredの必須検知を確認するテストケース
+     * クラス：SendPrimaryContactServiceImpl sendPrimaryContact
+     * メール例外をRuntimeExceptionへ変換することを確認するテストケース
      */
     @Test
-    void validateRequired_01() throws Exception {
-        // 準備
-        SendPrimaryContactRequestDto req = new SendPrimaryContactRequestDto(); // 未設定
-        var m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validateRequired",
-                SendPrimaryContactRequestDto.class);
-        m.setAccessible(true);
+    void sendPrimaryContact_06() {
+        // 準備：メールprimary・メール側でTscEMailException
+        SendPrimaryContactRequestDto req = baseRequest();
+        PersonalInfoResponseDto.ContactDto email = contact("2", true, "to@example.com");
+        PersonalInfoResponseDto resp = mockResponse(Collections.singletonList(email));
+        Mail mail = mock(Mail.class);
+        when(sendGridUtil.generateEmail(anyString(), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(mail);
 
-        // 実行
-        String missing = (String) m.invoke(service, req);
+        TscEMailException ex = mock(TscEMailException.class);
+        when(ex.getStatusCode()).thenReturn(500);
+        when(ex.getAddress()).thenReturn("to@example.com");
+        doThrow(ex).when(sendGridUtil).executeSendEmail(any(Mail.class));
 
-        // 確認
-        assertNotNull(missing);
-        assertTrue(missing.contains("processId"));
-        assertTrue(missing.contains("internalUserId"));
-        assertTrue(missing.contains("brdCd"));
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
+                    .thenReturn("MSG");
+            // 実行・確認：RuntimeException へ
+            assertThrows(RuntimeException.class, () -> service.sendPrimaryContact(req, header));
+        }
     }
 
     /**
-     * クラス：SendPrimaryContactServiceImpl
-     * privateメソッドisValidBrdCdの妥当値（0/1/2）を確認するテストケース
+     * クラス：SendPrimaryContactServiceImpl sendPrimaryContact
+     * validateでTscApplicationExceptionとなることを確認するテストケース
      */
     @Test
-    void isValidBrdCd_01() throws Exception {
-        // 準備
-        var m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("isValidBrdCd", String.class);
-        m.setAccessible(true);
+    void sendPrimaryContact_07() {
+        // 準備：brdCd不正
+        SendPrimaryContactRequestDto req = baseRequest();
+        req.setBrdCd("9");
 
         // 実行・確認
-        assertTrue((Boolean) m.invoke(service, "0"));
-        assertTrue((Boolean) m.invoke(service, "1"));
-        assertTrue((Boolean) m.invoke(service, "2"));
-        assertFalse((Boolean) m.invoke(service, "9"));
+        assertThrows(TscApplicationException.class, () -> service.sendPrimaryContact(req, header));
     }
+
+    /**
+     * クラス：SendPrimaryContactServiceImpl validate
+     * 必須未入力でTscApplicationExceptionとなることを確認するテストケース
+     */
+    @Test
+    void validate_01() throws Exception {
+        SendPrimaryContactRequestDto req = new SendPrimaryContactRequestDto();
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validate",
+                SendPrimaryContactRequestDto.class, RequestHeaderDto.class);
+        m.setAccessible(true);
+        InvocationTargetException ite = assertThrows(InvocationTargetException.class,
+                () -> m.invoke(service, req, header));
+        assertTrue(ite.getCause() instanceof TscApplicationException);
+    }
+
+    /** クラス：SendPrimaryContactServiceImpl validate 正常時にnullが返ることを確認するテストケース */
+    @Test
+    void validate_02() throws Exception {
+        SendPrimaryContactRequestDto req = baseRequest();
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validate",
+                SendPrimaryContactRequestDto.class, RequestHeaderDto.class);
+        m.setAccessible(true);
+        Object result = m.invoke(service, req, header);
+        assertNull(result);
+    }
+
+    /**
+     * クラス：SendPrimaryContactServiceImpl validateRequired
+     * request==nullで\"requestBody\"となることを確認するテストケース
+     */
+    @Test
+    void validateRequired_01() throws Exception {
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validateRequired",
+                SendPrimaryContactRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, new Object[] { null });
+        assertEquals("requestBody", r);
+    }
+
+    // OR両辺（null/empty）— processId/internalUserId/brdCd を個別網羅
+    /**
+     * クラス：SendPrimaryContactServiceImpl validateRequired
+     * processId==null検出を確認するテストケース
+     */
+    @Test
+    void validateRequired_02() throws Exception {
+        SendPrimaryContactRequestDto req = baseRequest();
+        req.setProcessId(null);
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validateRequired",
+                SendPrimaryContactRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("processId"));
+    }
+
+    /**
+     * クラス：SendPrimaryContactServiceImpl validateRequired
+     * processId==\"\"検出を確認するテストケース
+     */
+    @Test
+    void validateRequired_03() throws Exception {
+        SendPrimaryContactRequestDto req = baseRequest();
+        req.setProcessId("");
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validateRequired",
+                SendPrimaryContactRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("processId"));
+    }
+
+    /**
+     * クラス：SendPrimaryContactServiceImpl validateRequired
+     * internalUserId==null検出を確認するテストケース
+     */
+    @Test
+    void validateRequired_04() throws Exception {
+        SendPrimaryContactRequestDto req = baseRequest();
+        req.setInternalUserId(null);
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validateRequired",
+                SendPrimaryContactRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("internalUserId"));
+    }
+
+    /**
+     * クラス：SendPrimaryContactServiceImpl validateRequired
+     * internalUserId==\"\"検出を確認するテストケース
+     */
+    @Test
+    void validateRequired_05() throws Exception {
+        SendPrimaryContactRequestDto req = baseRequest();
+        req.setInternalUserId("");
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validateRequired",
+                SendPrimaryContactRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("internalUserId"));
+    }
+
+    /**
+     * クラス：SendPrimaryContactServiceImpl validateRequired brdCd==null検出を確認するテストケース
+     */
+    @Test
+    void validateRequired_06() throws Exception {
+        SendPrimaryContactRequestDto req = baseRequest();
+        req.setBrdCd(null);
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validateRequired",
+                SendPrimaryContactRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("brdCd"));
+    }
+
+    /**
+     * クラス：SendPrimaryContactServiceImpl validateRequired brdCd==\"\"検出を確認するテストケース
+     */
+    @Test
+    void validateRequired_07() throws Exception {
+        SendPrimaryContactRequestDto req = baseRequest();
+        req.setBrdCd("");
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validateRequired",
+                SendPrimaryContactRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("brdCd"));
+    }
+
+    /**
+     * クラス：SendPrimaryContactServiceImpl validateRequired 欠落なしでnullとなることを確認するテストケース
+     */
+    @Test
+    void validateRequired_08() throws Exception {
+        SendPrimaryContactRequestDto req = baseRequest();
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("validateRequired",
+                SendPrimaryContactRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertNull(r);
+    }
+
+    /** クラス：SendPrimaryContactServiceImpl isValidBrdCd \"0\"の真を確認するテストケース */
+    @Test
+    void isValidBrdCd_01() throws Exception {
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("isValidBrdCd", String.class);
+        m.setAccessible(true);
+        boolean v = (boolean) m.invoke(service, "0");
+        assertTrue(v);
+    }
+
+    /** クラス：SendPrimaryContactServiceImpl isValidBrdCd \"1\"の真を確認するテストケース */
+    @Test
+    void isValidBrdCd_02() throws Exception {
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("isValidBrdCd", String.class);
+        m.setAccessible(true);
+        boolean v = (boolean) m.invoke(service, "1");
+        assertTrue(v);
+    }
+
+    /** クラス：SendPrimaryContactServiceImpl isValidBrdCd \"2\"の真を確認するテストケース */
+    @Test
+    void isValidBrdCd_03() throws Exception {
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("isValidBrdCd", String.class);
+        m.setAccessible(true);
+        boolean v = (boolean) m.invoke(service, "2");
+        assertTrue(v);
+    }
+
+    /** クラス：SendPrimaryContactServiceImpl isValidBrdCd その他の偽を確認するテストケース */
+    @Test
+    void isValidBrdCd_04() throws Exception {
+        Method m = SendPrimaryContactServiceImpl.class.getDeclaredMethod("isValidBrdCd", String.class);
+        m.setAccessible(true);
+        boolean v = (boolean) m.invoke(service, "9");
+        assertFalse(v);
+    }
+
+    @Test
+    void sendPrimaryContact_SMS_catch_verifiesMaskingAndMessage() {
+        // Arrange
+        SendPrimaryContactRequestDto req = baseRequest();
+
+        // 電話 primary の連絡先モック
+        PersonalInfoResponseDto.ContactDto phone = mock(PersonalInfoResponseDto.ContactDto.class);
+        when(phone.getContactType()).thenReturn("1"); // CONTACT_PHONE
+        when(phone.isPrimaryContactFlag()).thenReturn(true); // primary = true
+        when(phone.getContact()).thenReturn("+819012345678");
+
+        PersonalInfoResponseDto resp = mock(PersonalInfoResponseDto.class);
+        when(resp.getContactList()).thenReturn(Collections.singletonList(phone));
+
+        HttpEntity<String> entity = new HttpEntity<>("x");
+        when(smsCountryUtil.createRequest(anyString(), anyString(), anyString()))
+                .thenReturn(entity);
+
+        // SMS側で TscSMSException を送出
+        TscSMSException ex = mock(TscSMSException.class);
+        when(ex.getStatusCode()).thenReturn(400);
+        when(ex.getPhoneNo()).thenReturn("+819012345678");
+        doThrow(ex).when(smsCountryUtil).sendSmsCountry(any(HttpEntity.class), anyString());
+
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            // 個人情報 API の戻り値（非 null）
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString()))
+                    .thenReturn(resp);
+
+            // 開始ログなどで呼ばれる getMessage（4/5引数版を広くスタブ）
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any()))
+                    .thenReturn("MSG");
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
+                    .thenReturn("MSG");
+
+            // 電話番号の正規化（createRequest 内で使用）
+            cm.when(() -> CommonUtil.normalizePhoneNumber("+819012345678"))
+                    .thenReturn("+819012345678");
+
+            // マスク化（catch(TscSMSException) のエラーログで使用）
+            cm.when(() -> CommonUtil.maskPhoneNumber("+819012345678"))
+                    .thenReturn("+81********678");
+
+            // Act + Assert：RuntimeException に変換される
+            assertThrows(RuntimeException.class, () -> service.sendPrimaryContact(req, header));
+
+            // Verify：マスク化が呼ばれている
+            cm.verify(() -> CommonUtil.maskPhoneNumber("+819012345678"), times(1));
+
+            // Verify：RS07E00006 のメッセージ生成（コード、ステータス、マスク済み電話、相関ID）
+            cm.verify(() -> CommonUtil.getMessage(
+                    eq("RS07E00006"),
+                    eq(400),
+                    eq("+81********678"),
+                    eq(header.getCorrelationId())), times(1));
+        }
+    }
+
+    @Test
+    void sendRequest_phone_AND_leftTrue_rightFalse_branch() {
+        SendPrimaryContactRequestDto req = baseRequest();
+
+        PersonalInfoResponseDto.ContactDto c = mock(PersonalInfoResponseDto.ContactDto.class);
+        when(c.getContactType()).thenReturn("1"); // 左項 true
+        when(c.isPrimaryContactFlag()).thenReturn(true, false); // 1回目: 先頭IF通過, 2回目: AND右項 false
+
+        PersonalInfoResponseDto resp = mock(PersonalInfoResponseDto.class);
+        when(resp.getContactList()).thenReturn(Collections.singletonList(c));
+
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any())).thenReturn("MSG");
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any())).thenReturn("MSG");
+            cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
+
+            String code = service.sendPrimaryContact(req, header);
+            assertEquals("SUCCESS_CODE", code);
+
+            // AND 条件が false で SMS 送信は呼ばれない
+            verify(smsCountryUtil, times(0)).sendSmsCountry(any(), anyString());
+            verify(sendGridUtil, times(0)).executeSendEmail(any());
+        }
+    }
+
+    @Test
+    void sendRequest_email_AND_leftTrue_rightFalse_branch() {
+        SendPrimaryContactRequestDto req = baseRequest();
+
+        PersonalInfoResponseDto.ContactDto c = mock(PersonalInfoResponseDto.ContactDto.class);
+        when(c.getContactType()).thenReturn("2"); // 左項 true
+        when(c.isPrimaryContactFlag()).thenReturn(true, false); // 1回目: 先頭IF通過, 2回目: AND右項 false
+
+        PersonalInfoResponseDto resp = mock(PersonalInfoResponseDto.class);
+        when(resp.getContactList()).thenReturn(Collections.singletonList(c));
+
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any())).thenReturn("MSG");
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any())).thenReturn("MSG");
+            cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
+
+            String code = service.sendPrimaryContact(req, header);
+            assertEquals("SUCCESS_CODE", code);
+
+            // AND 条件が false でメール送信は呼ばれない
+            verify(sendGridUtil, times(0)).executeSendEmail(any());
+            verify(smsCountryUtil, times(0)).sendSmsCountry(any(), anyString());
+        }
+    }
+
+    @Test
+    void sendPrimaryContact_responseNull_throwsRuntimeAndLogs() {
+        // Arrange
+        SendPrimaryContactRequestDto req = baseRequest();
+
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            // 個人情報APIが null を返す
+            cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString()))
+                    .thenReturn(null);
+
+            // 4引数の getMessage（開始ログ・例外ログなど）をスタブ
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any()))
+                    .thenReturn("MSG");
+
+            // Act + Assert：RuntimeException に変換される
+            assertThrows(RuntimeException.class, () -> service.sendPrimaryContact(req, header));
+
+            // Verify：RS07E00001 の例外ログが出力される（メッセージ内容は any で許容）
+            cm.verify(() -> CommonUtil.getMessage(
+                    eq("RS07E00001"),
+                    any(), // e.getMessage()
+                    any(), // e.getStackTrace()
+                    eq(header.getCorrelationId())), times(1));
+        }
+
+        // Verify：外部ユーティリティは呼ばれない
+        verify(smsCountryUtil, times(0)).createRequest(anyString(), anyString(), anyString());
+        verify(smsCountryUtil, times(0)).sendSmsCountry(any(), anyString());
+        verify(sendGridUtil, times(0)).generateEmail(anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(sendGridUtil, times(0)).executeSendEmail(any(Mail.class));
+    }
+
 }

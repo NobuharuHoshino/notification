@@ -39,13 +39,13 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
                     "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
-            String validateResult = validate(request, header);
-            if (validateResult != null) {
-                return validateResult;
-            }
+            validate(request, header);
 
             // 個人情報取得
             PersonalInfoResponseDto response = CommonUtil.getPersonalInfoApiResponse(request.getInternalUserId());
+            if (response == null) {
+                throw new RuntimeException();
+            }
             List<PersonalInfoResponseDto.ContactDto> contactList = response.getContactList();
 
             // 送信要求
@@ -125,21 +125,13 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
     private String validate(SendPrimaryContactRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
-            LogUtil.error(
-                    SendPrimaryContactServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00012",
-                            missingField,
-                            header.getCorrelationId()));
+            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00012", missingField, header.getCorrelationId()));
             throw new TscApplicationException("Missing required field: " + missingField);
         }
         if (!isValidBrdCd(request.getBrdCd())) {
-            LogUtil.error(
-                    SendPrimaryContactServiceImpl.class,
-                    CommonUtil.getMessage(
-                            "RS07E00008",
-                            request.getBrdCd(),
-                            header.getCorrelationId()));
+            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
             throw new TscApplicationException("Invalid brdCd: " + request.getBrdCd());
         }
         return null;

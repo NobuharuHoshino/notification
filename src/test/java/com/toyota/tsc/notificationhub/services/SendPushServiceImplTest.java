@@ -2,7 +2,6 @@ package com.toyota.tsc.notificationhub.services;
 
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
-import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.commons.NotificationHubUtil;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
@@ -13,32 +12,35 @@ import com.toyota.tsc.notificationhub.repositories.NtfInfoEntity;
 import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
 import com.windowsazure.messaging.NotificationHubsException;
 import com.windowsazure.messaging.NotificationOutcome;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientException;
 import java.sql.SQLTransientException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * テストクラス：SendPushServiceImplTest
+ * クラス：SendPushServiceImpl 分岐網羅100%を目指すテストクラス
+ * 対象の主な分岐は以下（実装に基づく）：
+ * - sendPush の
+ * catch：SQLException系（接続/Transient/NonTransient/その他）、TscApplication、TscNotificationHubs、その他
+ * - executePostMessage：whileリトライ（成功、リトライ成功、上限到達、非Transient、一般例外、0回転）
+ * - バリデーション：validate / validateRequired（null/空文字）
+ * - 補助：extractTrackingId（一致/不一致）、getAllDeviceData、getLastData
  */
 @ExtendWith(MockitoExtension.class)
 class SendPushServiceImplTest {
@@ -48,6 +50,7 @@ class SendPushServiceImplTest {
 
     @Mock
     private NtfInfoRepositoryIF ntfInfoRepository;
+
     @Mock
     private NotificationHubUtil notificationHubUtil;
 
@@ -56,219 +59,481 @@ class SendPushServiceImplTest {
     @BeforeEach
     void setUp() throws Exception {
         header = new RequestHeaderDto();
-        header.setCorrelationId("corr-push-001");
-        // リトライ回数を2に設定（一部テストで使用）
-        var f = SendPushServiceImpl.class.getDeclaredField("retryCount");
+        header.setCorrelationId("corr-sp-001");
+
+        // デフォルトのリトライ回数（必要なテストで上書き）
+        Field f = SendPushServiceImpl.class.getDeclaredField("retryCount");
         f.setAccessible(true);
         f.setInt(service, 2);
     }
 
-    // --------- ヘルパー ---------
-
-    private NtfInfoEntity entity(String user, String inst, String token, String dvc, String brd, String platform,
-            LocalDateTime updated) {
-        return new NtfInfoEntity(user, inst, token, dvc, brd, platform, updated, updated);
+    private SendPushRequestDto baseRequest() {
+        SendPushRequestDto req = new SendPushRequestDto();
+        req.setInternalUserId("U1");
+        req.setBody("Hello");
+        return req;
     }
 
-    /** handleExceptionのInvocationTargetExceptionラップ解除ヘルパー */
-    private void invokeHandleException(Exception ex) throws Throwable {
-        var m = SendPushServiceImpl.class.getDeclaredMethod("handleException", Exception.class, RequestHeaderDto.class);
-        m.setAccessible(true);
-        try {
-            m.invoke(service, ex, header);
-        } catch (InvocationTargetException ite) {
-            throw ite.getTargetException();
-        }
+    private NtfInfoEntity entity(String user, String inst, String token, String dvc, String brd, String pf,
+            LocalDateTime ts) {
+        return new NtfInfoEntity(user, inst, token, dvc, brd, pf, ts, ts);
     }
 
-    // --------- sendPush のテスト ---------
+    // ========== sendPush ==========
 
-    /** クラス：SendPushServiceImpl 正常系（最新端末へPush成功）を確認するテストケース */
+    /** クラス：SendPushServiceImpl sendPush 正常完了を確認するテストケース */
     @Test
     void sendPush_01() throws Exception {
         // 準備
-        var list = new ArrayList<NtfInfoEntity>();
-        list.add(entity("U1", "inst-1", "t1", "d1", "1", "1", LocalDateTime.now().minusHours(2)));
-        list.add(entity("U1", "inst-2", "t2", "d2", "1", "1", LocalDateTime.now().minusHours(1))); // 最新
-
-        when(ntfInfoRepository.selectAllByInternalUserId(eq("U1"))).thenReturn(list);
-
-        NotificationOutcome outcome = mock(NotificationOutcome.class);
-        when(outcome.getNotificationId()).thenReturn("noti-123");
-        when(notificationHubUtil.postMessage(eq("inst-2"), eq("Hello"), eq("1"), eq("1"))).thenReturn(outcome);
-
-        SendPushRequestDto req = new SendPushRequestDto();
-        req.setInternalUserId("U1");
-        req.setBody("Hello");
-
+        SendPushRequestDto req = baseRequest();
+        List<NtfInfoEntity> list = Arrays.asList(
+                entity("U1", "i-1", "tok-old", "d-old", "1", "1", LocalDateTime.now().minusDays(1)),
+                entity("U1", "i-2", "tok-new", "d-new", "1", "1", LocalDateTime.now()));
+        when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(list);
+        when(notificationHubUtil.postMessage(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(mock(NotificationOutcome.class));
+        // ログ検証用
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream prev = System.out;
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class);
-                MockedStatic<LogUtil> mockedLog = mockStatic(LogUtil.class)) {
-            System.setOut(new PrintStream(out));
-
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
-            mockedCommon.when(() -> CommonUtil.toJson(any())).thenReturn("{json}");
-            mockedCommon.when(() -> CommonUtil.getResultCode(eq("SUCCESS"))).thenReturn("SUCCESS");
-
-            mockedLog.when(() -> LogUtil.info(eq(SendPushServiceImpl.class), anyString()))
-                    .thenAnswer(inv -> {
-                        System.out.println("INFO:" + inv.getArgument(1));
-                        return null;
-                    });
+        PrintStream orig = System.out;
+        System.setOut(new PrintStream(out));
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any()))
+                    .thenAnswer(inv -> "MSG:" + inv.getArgument(0));
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
+                    .thenAnswer(inv -> "MSG:" + inv.getArgument(0));
+            cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
 
             // 実行
-            String result = service.sendPush(req, header);
+            String code = service.sendPush(req, header);
 
             // 確認
-            assertEquals("SUCCESS", result);
-            verify(notificationHubUtil, times(1)).postMessage(eq("inst-2"), eq("Hello"), eq("1"), eq("1"));
+            assertEquals("SUCCESS_CODE", code);
+            assertTrue(out.toString().contains("RS07I00002")); // 正常終了ログ
         } finally {
-            System.setOut(prev);
+            System.setOut(orig);
         }
     }
 
-    /** クラス：SendPushServiceImpl 異常系（必須不足でTscApplicationException）を確認するテストケース */
+    /**
+     * クラス：SendPushServiceImpl sendPush SQL接続エラーでRuntimeExceptionとなることを確認するテストケース
+     */
     @Test
     void sendPush_02() {
         // 準備
-        SendPushRequestDto req = new SendPushRequestDto(); // 未設定
+        SendPushRequestDto req = baseRequest();
+        when(ntfInfoRepository.selectAllByInternalUserId("U1"))
+                .thenThrow(new RuntimeException(new SQLException("conn")));
+        try (MockedStatic<ExtractSqlExceptionUtil> st = Mockito.mockStatic(ExtractSqlExceptionUtil.class);
+                MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
 
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class)) {
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
-            // 実行・確認
-            assertThrows(TscApplicationException.class, () -> service.sendPush(req, header));
-        }
-    }
-
-    @Test
-    void sendPush_03() throws Exception {
-        // 準備
-        var list = List.of(entity("U1", "inst-2", "t2", "d2", "1", "1", LocalDateTime.now()));
-        when(ntfInfoRepository.selectAllByInternalUserId(eq("U1"))).thenReturn(list);
-
-        // 1回目は一時的例外、2回目成功
-        NotificationHubsException nhEx = mock(NotificationHubsException.class);
-        when(nhEx.isTransient()).thenReturn(true);
-        when(nhEx.httpStatusCode()).thenReturn(503);
-
-        NotificationOutcome outcome = mock(NotificationOutcome.class);
-        when(outcome.getNotificationId()).thenReturn("noti-456");
-
-        when(notificationHubUtil.postMessage(eq("inst-2"), eq("Hello"), eq("1"), eq("1")))
-                .thenThrow(nhEx) // 1回目
-                .thenReturn(outcome); // 2回目
-
-        SendPushRequestDto req = new SendPushRequestDto();
-        req.setInternalUserId("U1");
-        req.setBody("Hello");
-
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        PrintStream prev = System.out;
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class);
-                MockedStatic<LogUtil> mockedLog = mockStatic(LogUtil.class)) {
-            System.setOut(new PrintStream(out));
-
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
-            mockedCommon.when(() -> CommonUtil.toJson(any())).thenReturn("{json}");
-            mockedCommon.when(() -> CommonUtil.getResultCode(eq("SUCCESS"))).thenReturn("SUCCESS");
-
-            mockedLog.when(() -> LogUtil.warn(eq(SendPushServiceImpl.class), anyString()))
+            st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
                     .thenAnswer(inv -> {
-                        System.out.println("WARN:" + inv.getArgument(1));
+                        Throwable t = inv.getArgument(0);
+                        while (t != null) {
+                            if (t instanceof SQLException)
+                                return (SQLException) t;
+                            t = t.getCause();
+                        }
                         return null;
                     });
+            st.when(() -> ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
+                    .thenReturn(true);
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
+                    .thenReturn("MSG");
 
-            // 実行
-            String result = service.sendPush(req, header);
-
-            // 確認
-            assertEquals("SUCCESS", result);
-            verify(notificationHubUtil, times(2)).postMessage(eq("inst-2"), eq("Hello"), eq("1"), eq("1"));
-        } finally {
-            System.setOut(prev);
-        }
-    }
-
-    /** クラス：SendPushServiceImpl 例外系（非一時的例外→RuntimeException）を確認するテストケース */
-    @Test
-    void sendPush_04() throws Exception {
-        // 準備
-        var list = List.of(entity("U1", "inst-2", "t2", "d2", "1", "1", LocalDateTime.now()));
-        when(ntfInfoRepository.selectAllByInternalUserId(eq("U1"))).thenReturn(list);
-
-        NotificationHubsException nhEx = mock(NotificationHubsException.class);
-        when(nhEx.isTransient()).thenReturn(false);
-        when(nhEx.httpStatusCode()).thenReturn(500);
-        when(nhEx.getMessage()).thenReturn("Permanent failure");
-
-        when(notificationHubUtil.postMessage(eq("inst-2"), eq("Hello"), eq("1"), eq("1"))).thenThrow(nhEx);
-
-        SendPushRequestDto req = new SendPushRequestDto();
-        req.setInternalUserId("U1");
-        req.setBody("Hello");
-
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class)) {
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
-            // 実行・確認（内部TscNotificationHubsException→handleExceptionでRuntimeException）
-            assertThrows(RuntimeException.class, () -> service.sendPush(req, header));
-        }
-    }
-
-    /** クラス：SendPushServiceImpl 例外系（一時的例外がリトライ上限→RuntimeException）を確認するテストケース */
-    @Test
-    void sendPush_05() throws Exception {
-        // 準備
-        var list = List.of(entity("U1", "inst-2", "t2", "d2", "1", "1", LocalDateTime.now()));
-        when(ntfInfoRepository.selectAllByInternalUserId(eq("U1"))).thenReturn(list);
-
-        NotificationHubsException nhEx = mock(NotificationHubsException.class);
-        when(nhEx.isTransient()).thenReturn(true);
-        when(nhEx.httpStatusCode()).thenReturn(503);
-        when(nhEx.getMessage()).thenReturn("Temporary failure");
-
-        // 常に一時的例外を投げる（retryCount=2で上限到達）
-        when(notificationHubUtil.postMessage(eq("inst-2"), eq("Hello"), eq("1"), eq("1"))).thenThrow(nhEx);
-
-        SendPushRequestDto req = new SendPushRequestDto();
-        req.setInternalUserId("U1");
-        req.setBody("Hello");
-
-        try (MockedStatic<CommonUtil> mockedCommon = mockStatic(CommonUtil.class)) {
-            mockedCommon.when(() -> CommonUtil.getMessage(anyString(), any())).thenReturn("MSG");
             // 実行・確認
             assertThrows(RuntimeException.class, () -> service.sendPush(req, header));
         }
     }
 
-    // --------- privateメソッドのテスト ---------
-
-    /** クラス：SendPushServiceImpl privateメソッドextractTrackingIdの抽出を確認するテストケース */
+    /**
+     * クラス：SendPushServiceImpl sendPush
+     * SQLTransientExceptionでCustomSqlExceptionとなることを確認するテストケース
+     */
     @Test
-    void extractTrackingId_01() throws Exception {
+    void sendPush_03() {
         // 準備
-        NotificationHubsException ex = mock(NotificationHubsException.class);
-        when(ex.getMessage()).thenReturn("Azure error... Tracking ID: track-123   end");
+        SendPushRequestDto req = baseRequest();
+        when(ntfInfoRepository.selectAllByInternalUserId("U1"))
+                .thenThrow(new RuntimeException(new SQLTransientException("trans")));
+        try (MockedStatic<ExtractSqlExceptionUtil> st = Mockito.mockStatic(ExtractSqlExceptionUtil.class)) {
+            st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
+                    .thenAnswer(inv -> {
+                        Throwable t = inv.getArgument(0);
+                        while (t != null) {
+                            if (t instanceof SQLException)
+                                return (SQLException) t;
+                            t = t.getCause();
+                        }
+                        return null;
+                    });
+            st.when(() -> ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
+                    .thenReturn(false);
 
-        var m = SendPushServiceImpl.class.getDeclaredMethod("extractTrackingId", NotificationHubsException.class);
+            // 実行・確認
+            assertThrows(CustomSqlException.class, () -> service.sendPush(req, header));
+        }
+    }
+
+    /**
+     * クラス：SendPushServiceImpl sendPush
+     * SQLNonTransientExceptionでCustomSqlExceptionとなることを確認するテストケース
+     */
+    @Test
+    void sendPush_04() {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        when(ntfInfoRepository.selectAllByInternalUserId("U1"))
+                .thenThrow(new RuntimeException(new SQLNonTransientException("nontrans")));
+        try (MockedStatic<ExtractSqlExceptionUtil> st = Mockito.mockStatic(ExtractSqlExceptionUtil.class)) {
+            st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
+                    .thenAnswer(inv -> {
+                        Throwable t = inv.getArgument(0);
+                        while (t != null) {
+                            if (t instanceof SQLException)
+                                return (SQLException) t;
+                            t = t.getCause();
+                        }
+                        return null;
+                    });
+            st.when(() -> ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
+                    .thenReturn(false);
+
+            // 実行・確認
+            assertThrows(CustomSqlException.class, () -> service.sendPush(req, header));
+        }
+    }
+
+    /**
+     * クラス：SendPushServiceImpl sendPush
+     * その他SQLExceptionでRuntimeExceptionとなることを確認するテストケース
+     */
+    @Test
+    void sendPush_05() {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        when(ntfInfoRepository.selectAllByInternalUserId("U1"))
+                .thenThrow(new RuntimeException(new SQLException("other")));
+        try (MockedStatic<ExtractSqlExceptionUtil> st = Mockito.mockStatic(ExtractSqlExceptionUtil.class)) {
+            st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
+                    .thenAnswer(inv -> {
+                        Throwable t = inv.getArgument(0);
+                        while (t != null) {
+                            if (t instanceof SQLException)
+                                return (SQLException) t;
+                            t = t.getCause();
+                        }
+                        return null;
+                    });
+            st.when(() -> ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
+                    .thenReturn(false);
+
+            // 実行・確認
+            assertThrows(RuntimeException.class, () -> service.sendPush(req, header));
+        }
+    }
+
+    /**
+     * クラス：SendPushServiceImpl sendPush
+     * バリデーションエラー(TscApplicationException)を確認するテストケース
+     */
+    @Test
+    void sendPush_06() {
+        // 準備（internalUserId 欠落）
+        SendPushRequestDto req = new SendPushRequestDto();
+        req.setInternalUserId("");
+        req.setBody("Hello");
+
+        // 実行・確認
+        assertThrows(TscApplicationException.class, () -> service.sendPush(req, header));
+    }
+
+    /**
+     * クラス：SendPushServiceImpl sendPush
+     * TscNotificationHubsExceptionがRuntimeExceptionに変換されることを確認するテストケース
+     */
+    @Test
+    void sendPush_07() throws NotificationHubsException {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        List<NtfInfoEntity> list = Collections.singletonList(
+                entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now()));
+        when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(list);
+
+        NotificationHubsException ex = mock(NotificationHubsException.class);
+        when(ex.isTransient()).thenReturn(false);
+        when(ex.httpStatusCode()).thenReturn(500);
+        when(notificationHubUtil.postMessage(anyString(), anyString(), anyString(), anyString()))
+                .thenThrow(ex);
+
+        // 実行・確認（sendPush 側 catch で RuntimeException に変換）
+        assertThrows(RuntimeException.class, () -> service.sendPush(req, header));
+    }
+
+    /**
+     * クラス：SendPushServiceImpl sendPush 予期せぬ例外がRuntimeExceptionに変換されることを確認するテストケース
+     */
+    @Test
+    void sendPush_08() throws NotificationHubsException {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        List<NtfInfoEntity> list = Collections.singletonList(
+                entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now()));
+        when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(list);
+        when(notificationHubUtil.postMessage(anyString(), anyString(), anyString(), anyString()))
+                .thenAnswer(inv -> {
+                    throw new RuntimeException("unexpected");
+                });
+
+        // 実行・確認（sendPush 側 catch の最終枝）
+        assertThrows(RuntimeException.class, () -> service.sendPush(req, header));
+    }
+
+    // ========== operationPostMessage（private） ==========
+
+    /**
+     * クラス：SendPushServiceImpl operationPostMessage 正常にpostMessageされることを確認するテストケース
+     */
+    @Test
+    void operationPostMessage_01() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        NtfInfoEntity d = entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now());
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "operationPostMessage", SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
+        m.setAccessible(true);
+        when(notificationHubUtil.postMessage(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(mock(NotificationOutcome.class));
+
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
+                    .thenAnswer(inv -> "MSG:" + inv.getArgument(0));
+
+            // 実行
+            m.invoke(service, req, header, d);
+
+            // 確認（postMessage が 1 回呼ばれる）
+            verify(notificationHubUtil, times(1))
+                    .postMessage(anyString(), anyString(), anyString(), anyString());
+        }
+    }
+
+    // ========== executePostMessage（private） ==========
+
+    /** クラス：SendPushServiceImpl executePostMessage 1回で成功することを確認するテストケース */
+    @Test
+    void executePostMessage_01() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        NtfInfoEntity d = entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now());
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "executePostMessage", SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
+        m.setAccessible(true);
+        when(notificationHubUtil.postMessage(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(mock(NotificationOutcome.class));
+
+        // 実行
+        Object outcome = m.invoke(service, req, header, d);
+
+        // 確認
+        assertNotNull(outcome);
+        verify(notificationHubUtil, times(1))
+                .postMessage(anyString(), anyString(), anyString(), anyString());
+    }
+
+    /** クラス：SendPushServiceImpl executePostMessage 一時エラー後に成功することを確認するテストケース */
+    @Test
+    void executePostMessage_02() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        NtfInfoEntity d = entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now());
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "executePostMessage", SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
+        m.setAccessible(true);
+
+        NotificationHubsException ex = mock(NotificationHubsException.class);
+        when(ex.isTransient()).thenReturn(true);
+        when(ex.httpStatusCode()).thenReturn(500);
+
+        when(notificationHubUtil.postMessage(anyString(), anyString(), anyString(), anyString()))
+                .thenThrow(ex).thenReturn(mock(NotificationOutcome.class));
+
+        // 実行
+        Object outcome = m.invoke(service, req, header, d);
+
+        // 確認
+        assertNotNull(outcome);
+        verify(notificationHubUtil, times(2))
+                .postMessage(anyString(), anyString(), anyString(), anyString());
+    }
+
+    /**
+     * クラス：SendPushServiceImpl executePostMessage
+     * 一時エラーが上限到達しTscNotificationHubsExceptionとなることを確認するテストケース
+     */
+    /**
+     * クラス：SendPushServiceImpl executePostMessage
+     * 一時エラーが上限到達しTscNotificationHubsExceptionとなることを確認するテストケース（堅牢版）
+     */
+    @Test
+    void executePostMessage_03() throws Exception {
+        // 準備：retryCount を 2（または実装既定値）に設定
+        Field f = SendPushServiceImpl.class.getDeclaredField("retryCount");
+        f.setAccessible(true);
+        int raw = f.getInt(service);
+        if (raw <= 0) {
+            f.setInt(service, 2);
+            raw = 2;
+        }
+        final int attempts = raw;
+
+        SendPushRequestDto req = baseRequest();
+        NtfInfoEntity d = entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now());
+
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "executePostMessage", SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
+        m.setAccessible(true);
+
+        // Transient 例外のモック
+        final NotificationHubsException ex = mock(NotificationHubsException.class);
+        when(ex.isTransient()).thenReturn(true);
+        when(ex.httpStatusCode()).thenReturn(503);
+
+        // attempts 回だけ例外を投げる（その後は成功にしない：上限到達で必ず throw）
+        final int[] counter = { 0 };
+        doAnswer(inv -> {
+            if (counter[0]++ < attempts)
+                throw ex;
+            // 実装は上限に達した時点で throw 済みなのでここに来ない想定だが、安全のため：
+            return mock(NotificationOutcome.class);
+        }).when(notificationHubUtil).postMessage(anyString(), anyString(), anyString(), anyString());
+
+        // CommonUtil の複数オーバーロードをスタブ（4/6/7/9引数）
+        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any()))
+                    .thenReturn("MSG");
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any(), any()))
+                    .thenReturn("MSG");
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn("MSG");
+            cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn("MSG");
+
+            // 実行＆確認：InvocationTargetException 経由で TscNotificationHubsException が原因
+            InvocationTargetException ite = assertThrows(InvocationTargetException.class,
+                    () -> m.invoke(service, req, header, d));
+            assertInstanceOf(TscNotificationHubsException.class, ite.getCause());
+
+            // 呼び出し回数確認：上限 attempts 回
+            verify(notificationHubUtil, times(attempts)).postMessage(anyString(), anyString(), anyString(),
+                    anyString());
+        }
+    }
+
+    /**
+     * クラス：SendPushServiceImpl executePostMessage
+     * 非一時エラーで即TscNotificationHubsExceptionとなることを確認するテストケース
+     */
+    @Test
+    void executePostMessage_04() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        NtfInfoEntity d = entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now());
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "executePostMessage", SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
+        m.setAccessible(true);
+
+        NotificationHubsException ex = mock(NotificationHubsException.class);
+        when(ex.isTransient()).thenReturn(false);
+        when(ex.httpStatusCode()).thenReturn(500);
+
+        when(notificationHubUtil.postMessage(anyString(), anyString(), anyString(), anyString()))
+                .thenThrow(ex);
+
+        // 実行・確認
+        InvocationTargetException ite = assertThrows(InvocationTargetException.class,
+                () -> m.invoke(service, req, header, d));
+        assertTrue(ite.getCause() instanceof TscNotificationHubsException);
+    }
+
+    /** クラス：SendPushServiceImpl executePostMessage 一般例外が再throwされることを確認するテストケース */
+    @Test
+    void executePostMessage_05() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        NtfInfoEntity d = entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now());
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "executePostMessage", SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
+        m.setAccessible(true);
+
+        when(notificationHubUtil.postMessage(anyString(), anyString(), anyString(), anyString()))
+                .thenAnswer(inv -> {
+                    throw new RuntimeException("unexpected");
+                });
+
+        // 実行・確認
+        InvocationTargetException ite = assertThrows(InvocationTargetException.class,
+                () -> m.invoke(service, req, header, d));
+        assertTrue(ite.getCause() instanceof RuntimeException);
+    }
+
+    /**
+     * クラス：SendPushServiceImpl executePostMessage
+     * retryCount=0でwhile不成立（0回転）となることを確認するテストケース
+     */
+    @Test
+    void executePostMessage_06() throws Exception {
+        // 準備（retryCount=0）
+        Field f = SendPushServiceImpl.class.getDeclaredField("retryCount");
+        f.setAccessible(true);
+        f.setInt(service, 0);
+
+        SendPushRequestDto req = baseRequest();
+        NtfInfoEntity d = entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now());
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "executePostMessage", SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
         m.setAccessible(true);
 
         // 実行
-        String tid = (String) m.invoke(service, ex);
+        Object outcome = m.invoke(service, req, header, d);
 
-        // 確認
-        assertEquals("track-123", tid);
+        // 確認（ループに入らず null で終了、APIは呼ばれない）
+        assertNull(outcome);
+        verify(notificationHubUtil, times(0))
+                .postMessage(anyString(), anyString(), anyString(), anyString());
     }
 
-    /** クラス：SendPushServiceImpl privateメソッドgetLastDataの選択を確認するテストケース */
+    // ========== getAllDeviceData / getLastData（private） ==========
+
+    /** クラス：SendPushServiceImpl getAllDeviceData Repository呼出結果が返ることを確認するテストケース */
+    @Test
+    void getAllDeviceData_01() throws Exception {
+        // 準備
+        List<NtfInfoEntity> list = Collections.singletonList(
+                entity("U1", "i-1", "tok", "d", "1", "1", LocalDateTime.now()));
+        when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(list);
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "getAllDeviceData", String.class);
+        m.setAccessible(true);
+
+        // 実行
+        @SuppressWarnings("unchecked")
+        List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(service, "U1");
+
+        // 確認
+        assertEquals(1, result.size());
+    }
+
+    /** クラス：SendPushServiceImpl getLastData 最新データが取得されることを確認するテストケース */
     @Test
     void getLastData_01() throws Exception {
         // 準備
-        var list = new ArrayList<NtfInfoEntity>();
-        list.add(entity("U1", "i1", "t1", "d1", "1", "1", LocalDateTime.now().minusDays(1)));
-        list.add(entity("U1", "i2", "t2", "d2", "1", "1", LocalDateTime.now())); // 最新
-
-        var m = SendPushServiceImpl.class.getDeclaredMethod("getLastData", List.class);
+        List<NtfInfoEntity> list = Arrays.asList(
+                entity("U1", "i-1", "tok1", "d1", "1", "1", LocalDateTime.now().minusDays(2)),
+                entity("U1", "i-2", "tok2", "d2", "1", "1", LocalDateTime.now().minusDays(1)),
+                entity("U1", "i-3", "tok3", "d3", "1", "1", LocalDateTime.now()));
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "getLastData", List.class);
         m.setAccessible(true);
 
         // 実行
@@ -276,104 +541,169 @@ class SendPushServiceImplTest {
 
         // 確認
         assertNotNull(last);
-        assertEquals("i2", last.getInstallationId());
+        assertEquals("i-3", last.getInstallationId());
     }
 
-    /** クラス：SendPushServiceImpl privateメソッドgetAllDeviceDataの取得を確認するテストケース */
+    /** クラス：SendPushServiceImpl getLastData 空リストでnullが返ることを確認するテストケース */
     @Test
-    void getAllDeviceData_01() throws Exception {
+    void getLastData_02() throws Exception {
         // 準備
-        var list = List.of(entity("U1", "i1", "t1", "d1", "1", "1", LocalDateTime.now()));
-        when(ntfInfoRepository.selectAllByInternalUserId(eq("U1"))).thenReturn(list);
-
-        var m = SendPushServiceImpl.class.getDeclaredMethod("getAllDeviceData", String.class);
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "getLastData", List.class);
         m.setAccessible(true);
 
         // 実行
-        @SuppressWarnings("unchecked")
-        var result = (List<NtfInfoEntity>) m.invoke(service, "U1");
+        NtfInfoEntity last = (NtfInfoEntity) m.invoke(service, Collections.emptyList());
 
         // 確認
-        assertEquals(1, result.size());
-        assertEquals("i1", result.get(0).getInstallationId());
+        assertNull(last);
     }
 
-    /** クラス：SendPushServiceImpl privateメソッドvalidateRequiredの必須検知を確認するテストケース */
+    // ========== validate / validateRequired（private） ==========
+
+    /**
+     * クラス：SendPushServiceImpl validate
+     * 必須未入力でTscApplicationExceptionとなることを確認するテストケース
+     */
+    @Test
+    void validate_01() throws Exception {
+        // 準備
+        SendPushRequestDto req = new SendPushRequestDto(); // 全部null
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "validate", SendPushRequestDto.class, RequestHeaderDto.class);
+        m.setAccessible(true);
+
+        // 実行・確認
+        InvocationTargetException ite = assertThrows(InvocationTargetException.class,
+                () -> m.invoke(service, req, header));
+        assertTrue(ite.getCause() instanceof TscApplicationException);
+    }
+
+    /** クラス：SendPushServiceImpl validate 正常時にnullが返ることを確認するテストケース */
+    @Test
+    void validate_02() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "validate", SendPushRequestDto.class, RequestHeaderDto.class);
+        m.setAccessible(true);
+
+        // 実行
+        Object result = m.invoke(service, req, header);
+
+        // 確認
+        assertNull(result);
+    }
+
+    /**
+     * クラス：SendPushServiceImpl validateRequired
+     * request==nullで"requestBody"が返ることを確認するテストケース
+     */
     @Test
     void validateRequired_01() throws Exception {
         // 準備
-        SendPushRequestDto req = new SendPushRequestDto(); // 未設定
-        var m = SendPushServiceImpl.class.getDeclaredMethod("validateRequired", SendPushRequestDto.class);
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "validateRequired", SendPushRequestDto.class);
         m.setAccessible(true);
 
         // 実行
-        String missing = (String) m.invoke(service, req);
+        String result = (String) m.invoke(service, new Object[] { null });
 
         // 確認
-        assertNotNull(missing);
-        assertTrue(missing.contains("internalUserId"));
-        assertTrue(missing.contains("body"));
+        assertEquals("requestBody", result);
     }
 
-    // --------- handleException のテスト ---------
-
-    /** クラス：SendPushServiceImpl privateメソッドhandleException（SQL接続エラー）を確認するテストケース */
+    /** クラス：SendPushServiceImpl validateRequired 複数項目欠落時に両方検出されることを確認するテストケース */
     @Test
-    void handleException_01() throws Exception {
-        var e = new SQLException("conn");
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.isSqlConnectionError(eq(e))).thenReturn(true);
-            assertThrows(RuntimeException.class, () -> invokeHandleException(e));
-        }
+    void validateRequired_02() throws Exception {
+        // 準備
+        SendPushRequestDto req = new SendPushRequestDto();
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "validateRequired", SendPushRequestDto.class);
+        m.setAccessible(true);
+
+        // 実行
+        String result = (String) m.invoke(service, req);
+
+        // 確認
+        assertTrue(result.contains("internalUserId"));
+        assertTrue(result.contains("body"));
     }
 
     /**
-     * クラス：SendPushServiceImpl
-     * privateメソッドhandleException（一時SQL→CustomSqlException）を確認するテストケース
+     * クラス：SendPushServiceImpl validateRequired internalUserId==null の検出を確認するテストケース
      */
     @Test
-    void handleException_02_transient() throws Exception {
-        var e = new SQLTransientException("transient");
-        assertThrows(CustomSqlException.class, () -> invokeHandleException(e));
+    void validateRequired_03() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        req.setInternalUserId(null);
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "validateRequired", SendPushRequestDto.class);
+        m.setAccessible(true);
+
+        // 実行
+        String result = (String) m.invoke(service, req);
+
+        // 確認
+        assertNotNull(result);
+        assertTrue(result.contains("internalUserId"));
+    }
+
+    /** クラス：SendPushServiceImpl validateRequired body==null の検出を確認するテストケース */
+    @Test
+    void validateRequired_04() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        req.setBody(null);
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "validateRequired", SendPushRequestDto.class);
+        m.setAccessible(true);
+
+        // 実行
+        String result = (String) m.invoke(service, req);
+
+        // 確認
+        assertNotNull(result);
+        assertTrue(result.contains("body"));
+    }
+
+    /** クラス：SendPushServiceImpl validateRequired 正常（欠落なし）でnullが返ることを確認するテストケース */
+    @Test
+    void validateRequired_05() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "validateRequired", SendPushRequestDto.class);
+        m.setAccessible(true);
+
+        // 実行
+        String result = (String) m.invoke(service, req);
+
+        // 確認
+        assertNull(result);
     }
 
     /**
-     * クラス：SendPushServiceImpl
-     * privateメソッドhandleException（非一時SQL→CustomSqlException）を確認するテストケース
+     * クラス：SendPushServiceImpl validateRequired
+     * bodyが空文字の場合に欠落項目として検知されることを確認するテストケース
      */
     @Test
-    void handleException_03_nonTransient() throws Exception {
-        var e = new SQLNonTransientException("non-transient");
-        assertThrows(CustomSqlException.class, () -> invokeHandleException(e));
+    void validateRequired_06() throws Exception {
+        // 準備
+        SendPushRequestDto req = baseRequest();
+        req.setBody(""); // ★ isEmpty() 側の分岐到達
+
+        Method m = SendPushServiceImpl.class.getDeclaredMethod(
+                "validateRequired", SendPushRequestDto.class);
+        m.setAccessible(true);
+
+        // 実行
+        String result = (String) m.invoke(service, req);
+
+        // 確認
+        assertNotNull(result);
+        assertTrue(result.contains("body"));
     }
 
-    /**
-     * クラス：SendPushServiceImpl
-     * privateメソッドhandleException（TscApplicationException透過）を確認するテストケース
-     */
-    @Test
-    void handleException_04_application() throws Exception {
-        var e = new TscApplicationException();
-        assertThrows(TscApplicationException.class, () -> invokeHandleException(e));
-    }
-
-    /**
-     * クラス：SendPushServiceImpl
-     * privateメソッドhandleException（TscNotificationHubsException→RuntimeException）を確認するテストケース
-     */
-    @Test
-    void handleException_05_hubs() throws Exception {
-        var e = new TscNotificationHubsException(new RuntimeException("cause"));
-        assertThrows(RuntimeException.class, () -> invokeHandleException(e));
-    }
-
-    /**
-     * クラス：SendPushServiceImpl
-     * privateメソッドhandleException（その他例外→RuntimeException）を確認するテストケース
-     */
-    @Test
-    void handleException_06_other() throws Exception {
-        var e = new Exception("other");
-        assertThrows(RuntimeException.class, () -> invokeHandleException(e));
-    }
 }

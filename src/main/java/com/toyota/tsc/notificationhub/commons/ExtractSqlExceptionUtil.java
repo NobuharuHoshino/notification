@@ -6,29 +6,44 @@ import java.sql.SQLNonTransientConnectionException;
 
 public class ExtractSqlExceptionUtil {
 
+    private ExtractSqlExceptionUtil() {
+        // Utility class; no instances
+    }
+
+    public static SQLException findSqlException(Throwable t) {
+        while (t != null) {
+            if (t instanceof SQLException) {
+                return (SQLException) t;
+            }
+            t = t.getCause();
+        }
+        return null;
+    }
+
     public static boolean isSqlConnectionError(SQLException e) {
         // 型による判定
-        if (e instanceof SQLTransientConnectionException || e instanceof SQLNonTransientConnectionException) {
+        if (e instanceof SQLTransientConnectionException
+                || e instanceof SQLNonTransientConnectionException) {
             return true;
         }
 
-        // SQLStateによる判定
+        // SQLStateによる判定（特定値を先に評価して到達不能分岐を解消）
         String state = e.getSQLState();
         if (state != null && !state.isEmpty()) {
             state = state.toUpperCase();
             String cls2 = state.substring(0, Math.min(2, state.length()));
 
-            // 接続例外クラス（PostgreSQL / SQL標準）
-            if ("08".equals(cls2)) {
-                // 08001/08003/08006/08P01 等。08004（接続拒否）も含む
-                return true;
-            }
-            // ODBC/一部プロキシ経由で出る可能性（稀）
+            // ODBC/一部プロキシ経由（稀）
             if ("08S01".equals(state)) {
                 return true; // 通信リンク障害
             }
             // 接続拒否（認可拒否）
             if (state.startsWith("08004")) {
+                return true;
+            }
+            // 接続例外クラス（PostgreSQL / SQL標準）
+            if ("08".equals(cls2)) {
+                // 08001/08003/08006/08P01 等、08004（接続拒否）も含む
                 return true;
             }
             // 認証関連（接続フェーズの致命）：28000/28P01 等
@@ -39,8 +54,10 @@ public class ExtractSqlExceptionUtil {
             if ("3D000".equals(state)) {
                 return true;
             }
-            // 代表的に「接続が確立できない／維持できない」運用系
-            if ("53300".equals(state) || "57P01".equals(state) || "57P03".equals(state)) {
+            // 代表的に「接続が確立できない/維持できない」運用系
+            if ("53300".equals(state)
+                    || "57P01".equals(state)
+                    || "57P03".equals(state)) {
                 return true; // too many connections / admin shutdown / cannot_connect_now
             }
         }
@@ -54,7 +71,6 @@ public class ExtractSqlExceptionUtil {
         if (cause instanceof SQLException && cause != e && isSqlConnectionError((SQLException) cause)) {
             return true;
         }
-
         return false;
     }
 }
