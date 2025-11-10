@@ -517,7 +517,6 @@ class SendPushServiceImplTest {
         m.setAccessible(true);
 
         // 実行
-        @SuppressWarnings("unchecked")
         List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(service, "U1");
 
         // 確認

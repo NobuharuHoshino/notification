@@ -558,7 +558,6 @@ class RegistNotificationDeviceInfoServiceImplTest {
         Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                 "extractByDeviceToken", List.class, String.class);
         m.setAccessible(true);
-        @SuppressWarnings("unchecked")
         List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(service, list, "tokX");
         assertEquals(0, result.size());
     }
@@ -571,7 +570,6 @@ class RegistNotificationDeviceInfoServiceImplTest {
         Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                 "extractByDeviceToken", List.class, String.class);
         m.setAccessible(true);
-        @SuppressWarnings("unchecked")
         List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(service, list, "tok1");
         assertEquals(1, result.size());
         assertEquals("tok1", result.get(0).getDeviceToken());
@@ -585,7 +583,6 @@ class RegistNotificationDeviceInfoServiceImplTest {
         Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                 "extractToDeviceTokenList", List.class);
         m.setAccessible(true);
-        @SuppressWarnings("unchecked")
         List<String> tokens = (List<String>) m.invoke(service, list);
         assertEquals(Arrays.asList("tok1", "tok2"), tokens);
     }
@@ -599,7 +596,6 @@ class RegistNotificationDeviceInfoServiceImplTest {
         Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                 "getAllDeviceData", String.class);
         m.setAccessible(true);
-        @SuppressWarnings("unchecked")
         List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(service, "U1");
         assertEquals(1, result.size());
     }
