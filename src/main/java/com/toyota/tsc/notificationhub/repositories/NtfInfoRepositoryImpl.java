@@ -9,9 +9,9 @@ import java.util.concurrent.Callable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
-import org.springframework.context.annotation.Profile;
 
-@Profile("prod")
+import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
+
 @Repository
 public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
     private final NtfInfoMapper ntfInfoMapper;
@@ -39,13 +39,13 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
     }
 
     @Override
-    public int delete(String internalUserId, String installationId) {
-        return executeWithRetry(() -> ntfInfoMapper.delete(internalUserId, installationId), upsertRetryCount);
+    public NtfInfoEntity select(String internalUserId, String installationId) {
+        return ntfInfoMapper.select(internalUserId, installationId);
     }
 
     @Override
-    public NtfInfoEntity select(String internalUserId, String installationId) {
-        return ntfInfoMapper.select(internalUserId, installationId);
+    public int delete(String internalUserId, String installationId) {
+        return executeWithRetry(() -> ntfInfoMapper.delete(internalUserId, installationId), upsertRetryCount);
     }
 
     @Override
@@ -67,12 +67,7 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
 
             } catch (Exception e) {
                 // Handle SQLException for retry logic
-                SQLException sqlEx = null;
-                if (e instanceof SQLException) {
-                    sqlEx = (SQLException) e;
-                } else if (e.getCause() instanceof SQLException) {
-                    sqlEx = (SQLException) e.getCause();
-                }
+                SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
                 // Determine if we should retry or not
                 if (!(sqlEx instanceof SQLTransientException)) {
                     if (sqlEx instanceof SQLNonTransientException) {

@@ -5,6 +5,9 @@ import org.springframework.stereotype.Repository;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * ローカル端末からAzureDBへの接続ができないため、デバッグ時はこちらのモックを利用してください。
+ */
 @Profile("dev")
 @Repository
 public class NtfInfoRepositoryMock implements NtfInfoRepositoryIF {
