@@ -13,6 +13,9 @@ import com.sendgrid.helpers.mail.objects.Email;
 import com.sendgrid.helpers.mail.objects.Personalization;
 import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
 
+/**
+ * SendGridメール送信ユーティリティクラス
+ */
 @Component
 public class SendGridUtil {
 
@@ -30,6 +33,16 @@ public class SendGridUtil {
     private static final String BRD_TOYOTA = "1";
     private static final String BRD_LEXUS = "2";
 
+    /**
+     * メール送信用Mailオブジェクトを生成します。
+     * 
+     * @param toAddress 送信先メールアドレス
+     * @param title     メールタイトル
+     * @param body_text テキスト本文
+     * @param body_html HTML本文
+     * @param brdCd     ブランドコード
+     * @return Mailオブジェクト（失敗時はnull）
+     */
     public Mail generateEmail(
             String toAddress, String title, String body_text, String body_html, String brdCd) {
         String mailFrom;
@@ -61,6 +74,12 @@ public class SendGridUtil {
         return mail;
     }
 
+    /**
+     * メール送信処理を実行します。
+     * 
+     * @param mail 送信対象Mailオブジェクト
+     * @return なし
+     */
     public void executeSendEmail(Mail mail) {
         SendGrid sg = new SendGrid(sendGridApiKey);
         Request sgRequest = new Request();

@@ -15,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * メール送信サービス実装クラス
+ */
 @Service
 public class SendMailServiceImpl implements SendMailServiceIF {
 
@@ -35,6 +38,13 @@ public class SendMailServiceImpl implements SendMailServiceIF {
     private SendGridUtil sendGridUtil;
 
     @Override
+    /**
+     * メール送信処理を実行します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @return 結果コード
+     */
     public String sendMail(SendMailRequestDto request, RequestHeaderDto header) {
 
         try {
@@ -89,9 +99,9 @@ public class SendMailServiceImpl implements SendMailServiceIF {
     /**
      * リクエスト内容の検証処理を呼び出します。
      * 
-     * @param request
-     * @param header
-     * @return
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @return 不足項目名（問題なければnull）
      */
     private String validate(SendMailRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
@@ -109,9 +119,10 @@ public class SendMailServiceImpl implements SendMailServiceIF {
     }
 
     /**
-     * リクエスト内容の必須項目検証を行います。
+     * リクエストDTOの必須項目検証を行います。
      * 
-     * @return 必須エラーの項目名（Swagger定義の項目名）、またはnull（エラーなし）
+     * @param request リクエストDTO
+     * @return 不足項目名（問題なければnull）
      */
     private String validateRequired(SendMailRequestDto request) {
         if (request == null) {
@@ -141,9 +152,10 @@ public class SendMailServiceImpl implements SendMailServiceIF {
     }
 
     /**
-     * brdCdの妥当性検証を行います。
+     * ブランドコード値が有効か判定します。
      * 
-     * @return true: トヨタ(1)またはレクサス(2)、false: その他の非対応ブランド
+     * @param brdCd ブランドコード
+     * @return 有効ならtrue
      */
     private boolean isValidBrdCd(String brdCd) {
         return brdCd.equals("1") || brdCd.equals("2");

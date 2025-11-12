@@ -14,6 +14,9 @@ import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
 
 import org.springframework.beans.factory.annotation.Value;
 
+/**
+ * SMS送信（SmsCountry）ユーティリティクラス
+ */
 @Component
 public class SmsCountryUtil {
 
@@ -31,6 +34,14 @@ public class SmsCountryUtil {
     private final String BRD_TOYOTA = "1";
     private final String BRD_LEXUS = "2";
 
+    /**
+     * SMS送信リクエストを生成します。
+     * 
+     * @param to      送信先電話番号
+     * @param message メッセージ本文
+     * @param brdCd   ブランドコード
+     * @return HttpEntity（送信リクエスト）
+     */
     public HttpEntity<String> createRequest(String to, String message, String brdCd) {
 
         String senderId;
@@ -63,6 +74,13 @@ public class SmsCountryUtil {
         }
     }
 
+    /**
+     * SmsCountry APIでSMS送信を実行します。
+     * 
+     * @param entity  送信リクエスト
+     * @param phoneNo 送信先電話番号
+     * @return なし
+     */
     public void sendSmsCountry(HttpEntity<String> entity, String phoneNo) {
         try {
             RestTemplate restTemplate = new RestTemplate();
@@ -77,6 +95,12 @@ public class SmsCountryUtil {
         }
     }
 
+    /**
+     * UTF-16BEでエンコードし16進文字列へ変換します。
+     * 
+     * @param text 変換対象文字列
+     * @return 16進数文字列
+     */
     private static String toHexUtf16BE(String text) {
         byte[] utf16 = text.getBytes(StandardCharsets.UTF_16BE);
         StringBuilder sb = new StringBuilder(utf16.length * 2);

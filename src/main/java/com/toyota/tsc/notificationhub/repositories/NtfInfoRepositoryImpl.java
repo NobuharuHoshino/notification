@@ -12,6 +12,9 @@ import org.springframework.stereotype.Repository;
 
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
 
+/**
+ * 通知情報リポジトリ実装クラス
+ */
 @Repository
 public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
     private final NtfInfoMapper ntfInfoMapper;
@@ -29,46 +32,88 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
     }
 
     @Override
+    /**
+     * 通知情報を新規登録します。
+     * 
+     * @param entity 通知情報エンティティ
+     * @return 登録件数
+     */
     public int insert(NtfInfoEntity entity) {
         return ntfInfoMapper.insert(entity);
     }
 
     @Override
+    /**
+     * 通知情報を更新します。
+     * 
+     * @param entity 通知情報エンティティ
+     * @return 更新件数
+     */
     public int update(NtfInfoEntity entity) {
         return ntfInfoMapper.update(entity);
     }
 
     @Override
+    /**
+     * ユーザーID・インストールIDで通知情報を取得します。
+     * 
+     * @param internalUserId ユーザーID
+     * @param installationId インストールID
+     * @return 通知情報エンティティ
+     */
     public NtfInfoEntity select(String internalUserId, String installationId) {
         return ntfInfoMapper.select(internalUserId, installationId);
     }
 
     @Override
+    /**
+     * ユーザーID・インストールIDで通知情報を削除します。
+     * 
+     * @param internalUserId ユーザーID
+     * @param installationId インストールID
+     * @return 削除件数
+     */
     public int delete(String internalUserId, String installationId) {
         return executeWithRetry(() -> ntfInfoMapper.delete(internalUserId, installationId), upsertRetryCount);
     }
 
     @Override
+    /**
+     * 通知情報をUpsert（登録または更新）します。
+     * 
+     * @param entity 通知情報エンティティ
+     * @return Upsert件数
+     */
     public int upsert(NtfInfoEntity entity) {
         return executeWithRetry(() -> ntfInfoMapper.upsert(entity), upsertRetryCount);
     }
 
     @Override
+    /**
+     * ユーザーIDで全通知情報を取得します。
+     * 
+     * @param internalUserId ユーザーID
+     * @return 通知情報エンティティリスト
+     */
     public List<NtfInfoEntity> selectAllByInternalUserId(String internalUserId) {
         return ntfInfoMapper.selectAllByInternalUserId(internalUserId);
     }
 
+    /**
+     * SQLTransientException発生時にリトライ処理を行います。
+     * 
+     * @param action     実行アクション
+     * @param retryCount リトライ回数
+     * @return アクション実行結果
+     */
     private <T> T executeWithRetry(Callable<T> action, int retryCount) {
         int retry = 0;
         while (true) {
             try {
-                // Excecute Database Action
                 return action.call();
 
             } catch (Exception e) {
-                // Handle SQLException for retry logic
                 SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
-                // Determine if we should retry or not
                 if (!(sqlEx instanceof SQLTransientException)) {
                     if (sqlEx instanceof SQLNonTransientException) {
                         throw new RuntimeException(sqlEx);
@@ -79,11 +124,9 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
                     }
                 }
                 retry++;
-                // Check if retry limit exceeded
                 if (retry > retryCount) {
                     throw new RuntimeException(e);
                 }
-                // Exponential backoff before next retry
                 long wait = Math.min((long) (upsertRetryBaseInterval * Math.pow(2, retry - 1)), upsertRetryMaxInterval);
                 try {
                     Thread.sleep(wait);

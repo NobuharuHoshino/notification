@@ -19,6 +19,9 @@ import com.windowsazure.messaging.Notification;
 import com.windowsazure.messaging.AppleInstallation;
 import com.windowsazure.messaging.AppleNotification;
 
+/**
+ * Azure Notification Hub連携ユーティリティクラス
+ */
 @Component
 public class NotificationHubUtil {
 
@@ -61,10 +64,10 @@ public class NotificationHubUtil {
     private String sdkConnectionStringTemplate;
 
     /**
-     * SASトークン生成
+     * SASトークンを生成します。
      * 
-     * @param brdCd
-     * @return 指定ブランドのNotificationHub向けSASトークンを生成します。
+     * @param brdCd ブランドコード
+     * @return SASトークン文字列（失敗時はnull）
      */
     public String generateSasToken(String brdCd) {
         final String namespace;
@@ -100,14 +103,14 @@ public class NotificationHubUtil {
     }
 
     /**
-     * Installation登録/更新APIリクエストを実行
+     * Installation情報を新規登録または更新します。
      * 
-     * @param installationId
-     * @param brdCd
-     * @param internalUserId
-     * @param platformCode
-     * @param deviceToken
-     * @return
+     * @param installationId Installation ID
+     * @param brdCd          ブランドコード
+     * @param internalUserId ユーザーID
+     * @param platformCode   プラットフォームコード
+     * @param deviceToken    デバイストークン
+     * @return なし
      */
     public void upsertInstallation(
             String installationId, String brdCd, String internalUserId,
@@ -156,11 +159,11 @@ public class NotificationHubUtil {
     }
 
     /**
-     * Installation削除APIリクエストを実行
+     * Installation情報を削除します。
      * 
-     * @param installationId
-     * @param brdCd
-     * @throws NotificationHubsException
+     * @param installationId Installation ID
+     * @param brdCd          ブランドコード
+     * @return なし
      */
     public void deleteInstallation(String installationId, String brdCd) throws NotificationHubsException {
         final String namespace;
@@ -186,6 +189,15 @@ public class NotificationHubUtil {
         hub.deleteInstallation(installationId);
     }
 
+    /**
+     * メッセージを端末へ送信します。
+     * 
+     * @param installationId Installation ID
+     * @param payload        メッセージペイロード
+     * @param brdCd          ブランドコード
+     * @param platform       プラットフォームコード
+     * @return NotificationOutcome（送信結果）
+     */
     public NotificationOutcome postMessage(
             String installationId, String payload, String brdCd, String platform) throws NotificationHubsException {
         // ブランドでHub接続情報を切り替え

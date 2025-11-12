@@ -1,4 +1,3 @@
-
 package com.toyota.tsc.notificationhub.commons;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +10,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+/**
+ * 共通ユーティリティクラス
+ */
 public class CommonUtil {
 
     @Value("${personalinfo.api.url}")
@@ -24,9 +26,13 @@ public class CommonUtil {
     private CommonUtil() {
     }
 
+    /**
+     * オブジェクトをJSON文字列に変換します。
+     * 
+     * @param dto 変換対象オブジェクト
+     * @return JSON文字列
+     */
     public static String toJson(Object dto) {
-        if (dto == null)
-            return "null";
         ObjectMapper mapper = new ObjectMapper();
         try {
             return mapper.writeValueAsString(dto);
@@ -35,15 +41,34 @@ public class CommonUtil {
         }
     }
 
+    /**
+     * ログメッセージを取得します。
+     * 
+     * @param id     メッセージID
+     * @param params パラメータ
+     * @return フォーマット済みメッセージ
+     */
     public static String getMessage(String id, Object... params) {
         String pattern = bundleLog.getString(id);
         return MessageFormat.format(pattern, params);
     }
 
+    /**
+     * 結果コードを取得します。
+     * 
+     * @param code 結果コードキー
+     * @return 結果コード値
+     */
     public static String getResultCode(String code) {
         return bundleResult.getString(code);
     }
 
+    /**
+     * テキスト（メール等）をマスクします。
+     * 
+     * @param text マスク対象テキスト
+     * @return マスク済みテキスト
+     */
     public static String maskText(String text) {
         if (text == null || text.isEmpty())
             return "";
@@ -54,11 +79,16 @@ public class CommonUtil {
             String domain = text.substring(atIdx);
             return head + masked + domain;
         } else {
-            // 通常文字列は先頭2文字＋********
             return text.length() <= 2 ? text + "********" : text.substring(0, 2) + "********";
         }
     }
 
+    /**
+     * 電話番号をマスクします。
+     * 
+     * @param phoneNumber マスク対象電話番号
+     * @return マスク済み電話番号
+     */
     public static String maskPhoneNumber(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.length() < 4)
             return "********";
@@ -71,12 +101,24 @@ public class CommonUtil {
         return masked + last4;
     }
 
+    /**
+     * 電話番号を正規化します。
+     * 
+     * @param phoneNumber 正規化対象電話番号
+     * @return 数字のみの電話番号文字列
+     */
     public static String normalizePhoneNumber(String phoneNumber) {
         if (phoneNumber == null)
             return "";
         return phoneNumber.replaceAll("[^0-9]", "");
     }
 
+    /**
+     * 個人情報APIからレスポンスを取得します。
+     * 
+     * @param internalUserId ユーザーID
+     * @return 個人情報レスポンスDTO
+     */
     public static PersonalInfoResponseDto getPersonalInfoApiResponse(String internalUserId) {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();

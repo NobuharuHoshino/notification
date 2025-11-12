@@ -25,6 +25,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * プッシュ通知送信サービス実装クラス
+ */
 @Service
 public class SendPushServiceImpl implements SendPushServiceIF {
 
@@ -39,6 +42,13 @@ public class SendPushServiceImpl implements SendPushServiceIF {
     private static final String PROCCESS_NAME = "プッシュ通知送信要求";
 
     @Override
+    /**
+     * プッシュ通知送信処理を実行します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @return 結果コード
+     */
     public String sendPush(SendPushRequestDto request, RequestHeaderDto header) {
 
         try {
@@ -95,6 +105,11 @@ public class SendPushServiceImpl implements SendPushServiceIF {
 
     /**
      * NotificationHubのInstallation登録/更新APIを呼び出します。
+     * 
+     * @param request    リクエストDTO
+     * @param header     ヘッダーDTO
+     * @param deviceData 端末情報エンティティ
+     * @return なし
      */
     private void operationPostMessage(
             SendPushRequestDto request, RequestHeaderDto header, NtfInfoEntity deviceData) {
@@ -112,6 +127,11 @@ public class SendPushServiceImpl implements SendPushServiceIF {
 
     /**
      * InstallationAPI実行部
+     * 
+     * @param request    リクエストDTO
+     * @param header     ヘッダーDTO
+     * @param deviceData 端末情報エンティティ
+     * @return NotificationOutcome（送信結果）
      */
     private NotificationOutcome executePostMessage(
             SendPushRequestDto request, RequestHeaderDto header, NtfInfoEntity deviceData) {
@@ -147,12 +167,24 @@ public class SendPushServiceImpl implements SendPushServiceIF {
         return null;
     }
 
+    /**
+     * ユーザーIDで全端末情報を取得します。
+     * 
+     * @param internalUserId ユーザーID
+     * @return 端末情報リスト
+     */
     private List<NtfInfoEntity> getAllDeviceData(String internalUserId) {
         List<NtfInfoEntity> deviceList = new ArrayList<>();
         deviceList.addAll(ntfInfoRepository.selectAllByInternalUserId(internalUserId));
         return deviceList;
     }
 
+    /**
+     * 端末情報リストから最新データを取得します。
+     * 
+     * @param deviceList 端末情報リスト
+     * @return 最新の端末情報エンティティ
+     */
     private NtfInfoEntity getLastData(List<NtfInfoEntity> deviceList) {
         return deviceList.stream()
                 .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
@@ -161,6 +193,13 @@ public class SendPushServiceImpl implements SendPushServiceIF {
     }
 
     // #region Validation Methods
+    /**
+     * リクエストの必須項目・値を検証します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @return 不足項目名（問題なければnull）
+     */
     private String validate(SendPushRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
@@ -171,6 +210,12 @@ public class SendPushServiceImpl implements SendPushServiceIF {
         return null;
     }
 
+    /**
+     * リクエストDTOの必須項目を検証します。
+     * 
+     * @param request リクエストDTO
+     * @return 不足項目名（問題なければnull）
+     */
     private String validateRequired(SendPushRequestDto request) {
         if (request == null) {
             return "requestBody";

@@ -16,6 +16,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 通知サービスAPIコントローラー
+ */
 @RestController
 @RequestMapping("/v1/dcm/service-list")
 @RequiredArgsConstructor
@@ -26,6 +29,19 @@ public class NotificationController {
         private final SendMailServiceIF mailService;
         private final SendSmsServiceIF smsService;
 
+        /**
+         * デバイス情報登録API
+         * 
+         * @param apiKey         APIキー
+         * @param contentType    Content-Type
+         * @param connection     Connection
+         * @param acceptEncoding Accept-Encoding
+         * @param correlationId  コリレーションID
+         * @param userAccessKey  ユーザーアクセスキー
+         * @param xSmartgbook    x-smartgbook
+         * @param body           リクエストボディ
+         * @return 登録結果コード
+         */
         @PostMapping("/registNotificationDeviceInfo")
         public ResponseEntity<String> registNotificationDeviceInfo(
                         @RequestHeader(value = "x-api-key", required = true) String apiKey,
@@ -43,6 +59,19 @@ public class NotificationController {
                 return ResponseEntity.ok(resultCode);
         }
 
+        /**
+         * プッシュ通知送信API
+         * 
+         * @param apiKey         APIキー
+         * @param contentType    Content-Type
+         * @param connection     Connection
+         * @param acceptEncoding Accept-Encoding
+         * @param correlationId  コリレーションID
+         * @param userAccessKey  ユーザーアクセスキー
+         * @param xSmartgbook    x-smartgbook
+         * @param body           リクエストボディ
+         * @return 送信結果コード
+         */
         @PostMapping("/sendPush")
         public ResponseEntity<String> sendPush(
                         @RequestHeader(value = "x-api-key", required = true) String apiKey,
@@ -60,6 +89,19 @@ public class NotificationController {
                 return ResponseEntity.ok(resultCode);
         }
 
+        /**
+         * プライマリ連絡先通知送信API
+         * 
+         * @param apiKey         APIキー
+         * @param contentType    Content-Type
+         * @param connection     Connection
+         * @param acceptEncoding Accept-Encoding
+         * @param correlationId  コリレーションID
+         * @param userAccessKey  ユーザーアクセスキー
+         * @param xSmartgbook    x-smartgbook
+         * @param body           リクエストボディ
+         * @return 送信結果コード
+         */
         @PostMapping("/sendPrimaryContact")
         public ResponseEntity<String> sendPrimaryContact(
                         @RequestHeader(value = "x-api-key", required = true) String apiKey,
@@ -77,6 +119,19 @@ public class NotificationController {
                 return ResponseEntity.ok(resultCode);
         }
 
+        /**
+         * メール送信API
+         * 
+         * @param apiKey         APIキー
+         * @param contentType    Content-Type
+         * @param connection     Connection
+         * @param acceptEncoding Accept-Encoding
+         * @param correlationId  コリレーションID
+         * @param userAccessKey  ユーザーアクセスキー
+         * @param xSmartgbook    x-smartgbook
+         * @param body           リクエストボディ
+         * @return 送信結果コード
+         */
         @PostMapping("/sendMail")
         public ResponseEntity<String> sendMail(
                         @RequestHeader(value = "x-api-key", required = true) String apiKey,
@@ -94,6 +149,19 @@ public class NotificationController {
                 return ResponseEntity.ok(resultCode);
         }
 
+        /**
+         * SMS送信API
+         * 
+         * @param apiKey         APIキー
+         * @param contentType    Content-Type
+         * @param connection     Connection
+         * @param acceptEncoding Accept-Encoding
+         * @param correlationId  コリレーションID
+         * @param userAccessKey  ユーザーアクセスキー
+         * @param xSmartgbook    x-smartgbook
+         * @param body           リクエストボディ
+         * @return 送信結果コード
+         */
         @PostMapping("/sendSms")
         public ResponseEntity<String> sendSms(
                         @RequestHeader(value = "x-api-key", required = true) String apiKey,

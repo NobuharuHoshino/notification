@@ -18,6 +18,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.stereotype.Service;
 
+/**
+ * プライマリ連絡先送信サービス実装クラス
+ */
 @Service
 public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceIF {
 
@@ -31,6 +34,13 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
     private SendGridUtil sendGridUtil;
 
     @Override
+    /**
+     * プライマリ連絡先へメッセージ送信を実行します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @return 結果コード
+     */
     public String sendPrimaryContact(SendPrimaryContactRequestDto request, RequestHeaderDto header) {
         try {
 
@@ -83,6 +93,14 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         }
     }
 
+    /**
+     * 連絡先リストへ送信要求を実行します。
+     * 
+     * @param contactList 連絡先リスト
+     * @param request     リクエストDTO
+     * @param header      ヘッダーDTO
+     * @return なし
+     */
     private void sendRequest(List<PersonalInfoResponseDto.ContactDto> contactList,
             SendPrimaryContactRequestDto request, RequestHeaderDto header) {
         contactList.stream().forEach(contact -> {
@@ -107,6 +125,14 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         });
     }
 
+    /**
+     * SMS送信処理を実行します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @param phoneNo 送信先電話番号
+     * @return なし
+     */
     private void executeSendSms(SendPrimaryContactRequestDto request, RequestHeaderDto header, String phoneNo) {
         HttpEntity<String> entity = smsCountryUtil.createRequest(
                 CommonUtil.normalizePhoneNumber(phoneNo), request.getBody_sms(),
@@ -114,6 +140,14 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         smsCountryUtil.sendSmsCountry(entity, phoneNo);
     }
 
+    /**
+     * メール送信処理を実行します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @param email   送信先メールアドレス
+     * @return なし
+     */
     private void executeSendEmail(SendPrimaryContactRequestDto request, RequestHeaderDto header, String email) {
         Mail mail = sendGridUtil.generateEmail(
                 email, request.getTitle(), request.getBody_text(),
@@ -122,21 +156,34 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
     }
 
     // #region Validation Methods
+    /**
+     * リクエストの必須項目・値を検証します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @return 不足項目名（問題なければnull）
+     */
     private String validate(SendPrimaryContactRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00012", missingField, header.getCorrelationId()));
-            throw new TscApplicationException("Missing required field: " + missingField);
+            throw new TscApplicationException();
         }
         if (!isValidBrdCd(request.getBrdCd())) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
-            throw new TscApplicationException("Invalid brdCd: " + request.getBrdCd());
+            throw new TscApplicationException();
         }
         return null;
     }
 
+    /**
+     * リクエストDTOの必須項目を検証します。
+     * 
+     * @param request リクエストDTO
+     * @return 不足項目名（問題なければnull）
+     */
     private String validateRequired(SendPrimaryContactRequestDto request) {
         if (request == null) {
             return "requestBody";
@@ -158,6 +205,12 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         return null;
     }
 
+    /**
+     * ブランドコード値が有効か判定します。
+     * 
+     * @param brdCd ブランドコード
+     * @return 有効ならtrue
+     */
     private boolean isValidBrdCd(String brdCd) {
         return brdCd.equals("0") || brdCd.equals("1") || brdCd.equals("2");
     }

@@ -15,6 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.stereotype.Service;
 
+/**
+ * SMS送信サービス実装クラス
+ */
 @Service
 public class SendSmsServiceImpl implements SendSmsServiceIF {
 
@@ -27,6 +30,13 @@ public class SendSmsServiceImpl implements SendSmsServiceIF {
     SmsCountryUtil smsCountryUtil;
 
     @Override
+    /**
+     * SMS送信処理を実行します。
+     * 
+     * @param request SMS送信リクエストDTO
+     * @param header  リクエストヘッダDTO
+     * @return 処理結果コード
+     */
     public String sendSms(SendSmsRequestDto request, RequestHeaderDto header) {
 
         try {
@@ -79,11 +89,11 @@ public class SendSmsServiceImpl implements SendSmsServiceIF {
 
     // #region Validation Methods
     /**
-     * リクエスト内容の検証処理を呼び出します。
+     * リクエストの必須項目・ブランドコードを検証します。
      * 
-     * @param request
-     * @param header
-     * @return
+     * @param request SMS送信リクエストDTO
+     * @param header  リクエストヘッダDTO
+     * @return 不足項目名（問題なければnull）
      */
     private String validate(SendSmsRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
@@ -101,9 +111,10 @@ public class SendSmsServiceImpl implements SendSmsServiceIF {
     }
 
     /**
-     * リクエスト内容の必須項目検証を行います。
+     * リクエストDTOの必須項目を検証します。
      * 
-     * @return 必須エラーの項目名（Swagger定義の項目名）、またはnull（エラーなし）
+     * @param request SMS送信リクエストDTO
+     * @return 不足項目名（問題なければnull）
      */
     private String validateRequired(SendSmsRequestDto request) {
         if (request == null) {
@@ -127,9 +138,10 @@ public class SendSmsServiceImpl implements SendSmsServiceIF {
     }
 
     /**
-     * brdCdの妥当性検証を行います。
+     * ブランドコード値が有効か判定します。
      * 
-     * @return true: トヨタ(1)またはレクサス(2)、false: その他の非対応ブランド
+     * @param brdCd ブランドコード
+     * @return 有効ならtrue
      */
     private boolean isValidBrdCd(String brdCd) {
         return brdCd.equals("1") || brdCd.equals("2");

@@ -4,12 +4,20 @@ import java.sql.SQLException;
 import java.sql.SQLTransientConnectionException;
 import java.sql.SQLNonTransientConnectionException;
 
+/**
+ * SQL例外抽出ユーティリティクラス
+ */
 public class ExtractSqlExceptionUtil {
 
     private ExtractSqlExceptionUtil() {
-        // Utility class; no instances
     }
 
+    /**
+     * ThrowableからSQLExceptionを抽出します。
+     * 
+     * @param t 対象Throwable
+     * @return 抽出したSQLException（存在しない場合はnull）
+     */
     public static SQLException findSqlException(Throwable t) {
         while (t != null) {
             if (t instanceof SQLException) {
@@ -20,6 +28,12 @@ public class ExtractSqlExceptionUtil {
         return null;
     }
 
+    /**
+     * SQLExceptionが接続系エラーか判定します。
+     * 
+     * @param e 判定対象SQLException
+     * @return 接続系エラーの場合true
+     */
     public static boolean isSqlConnectionError(SQLException e) {
         // 型による判定
         if (e instanceof SQLTransientConnectionException
@@ -58,7 +72,7 @@ public class ExtractSqlExceptionUtil {
             if ("53300".equals(state)
                     || "57P01".equals(state)
                     || "57P03".equals(state)) {
-                return true; // too many connections / admin shutdown / cannot_connect_now
+                return true;
             }
         }
 

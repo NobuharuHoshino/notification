@@ -27,6 +27,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+/**
+ * 端末情報登録サービス実装クラス
+ */
 @Service
 public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificationDeviceInfoServiceIF {
 
@@ -41,6 +44,13 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     private static final String PROCCESS_NAME = "通知端末情報登録";
 
     @Override
+    /**
+     * 端末情報を登録します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @return 結果コード
+     */
     public String registDeviceInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
 
         try {
@@ -117,6 +127,13 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     }
 
     // #region NotificationHub Methods
+    /**
+     * Installation IDを生成します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @return 生成したInstallation ID
+     */
     private String generateInstallationId(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
         String installationId = UUID.randomUUID().toString();
         LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
@@ -124,6 +141,14 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         return installationId;
     }
 
+    /**
+     * 既存Installation情報の削除処理を行います。
+     * 
+     * @param request    リクエストDTO
+     * @param header     ヘッダーDTO
+     * @param deviceList 端末情報リスト
+     * @return なし
+     */
     private void operationDeleteInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, List<NtfInfoEntity> deviceList) {
 
@@ -136,11 +161,19 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
             executeDeleteInstallation(request, header, entity);
             // 削除完了ログ
             LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                    "RS07I00004", "削除はVoid仕様なのでステータスが取れない", request.getBrdCd(), request.getInternalUserId(),
+                    "RS07I00004", request.getBrdCd(), request.getInternalUserId(),
                     header.getCorrelationId()));
         });
     }
 
+    /**
+     * Installation削除APIを実行します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @param entity  端末情報エンティティ
+     * @return なし
+     */
     private void executeDeleteInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, NtfInfoEntity entity) {
         int cnt = 0;
@@ -174,6 +207,14 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         }
     }
 
+    /**
+     * Installation情報のUpsert処理を行います。
+     * 
+     * @param request        リクエストDTO
+     * @param header         ヘッダーDTO
+     * @param installationId Installation ID
+     * @return なし
+     */
     private void operationUpsertInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, String installationId) {
         // installation開始ログ
@@ -184,10 +225,18 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         executeUpsertInstallation(request, header, installationId);
         // installation完了ログ
         LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                "RS07I00006", "削除はVoid仕様なのでステータスが取れない", request.getBrdCd(), request.getInternalUserId(),
+                "RS07I00006", request.getBrdCd(), request.getInternalUserId(),
                 header.getCorrelationId()));
     }
 
+    /**
+     * Installation Upsert APIを実行します。
+     * 
+     * @param request        リクエストDTO
+     * @param header         ヘッダーDTO
+     * @param installationId Installation ID
+     * @return なし
+     */
     private void executeUpsertInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, String installationId) {
         int cnt = 0;
@@ -223,23 +272,50 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     // #endregion
 
     // #region Action DB/DO Methods
+    /**
+     * デバイストークンで端末情報を抽出します。
+     * 
+     * @param deviceList  端末情報リスト
+     * @param deviceToken デバイストークン
+     * @return 抽出した端末情報リスト
+     */
     private List<NtfInfoEntity> extractByDeviceToken(List<NtfInfoEntity> deviceList, String deviceToken) {
         return deviceList.stream()
                 .filter(entity -> entity.getDeviceToken().equals(deviceToken)).collect(Collectors.toList());
     }
 
+    /**
+     * 端末情報リストからデバイストークンリストを抽出します。
+     * 
+     * @param deviceList 端末情報リスト
+     * @return デバイストークンリスト
+     */
     private List<String> extractToDeviceTokenList(List<NtfInfoEntity> deviceList) {
         return deviceList.stream()
                 .map(NtfInfoEntity::getDeviceToken)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * ユーザーIDで全端末情報を取得します。
+     * 
+     * @param internalUserId ユーザーID
+     * @return 端末情報リスト
+     */
     private List<NtfInfoEntity> getAllDeviceData(String internalUserId) {
         List<NtfInfoEntity> deviceList = new ArrayList<>();
         deviceList.addAll(ntfInfoRepository.selectAllByInternalUserId(internalUserId));
         return deviceList;
     }
 
+    /**
+     * 端末情報をUpsert（登録または更新）します。
+     * 
+     * @param request        リクエストDTO
+     * @param header         ヘッダーDTO
+     * @param installationId Installation ID
+     * @return Upsert件数
+     */
     private int upsertDeviceInfo(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, String installationId) {
         NtfInfoEntity entity = new NtfInfoEntity(
@@ -252,6 +328,14 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         return upsertCount;
     }
 
+    /**
+     * 端末情報を削除します（2件を残して古いものを削除）。
+     * 
+     * @param request    リクエストDTO
+     * @param header     ヘッダーDTO
+     * @param deviceList 端末情報リスト
+     * @return 削除件数
+     */
     private int deleteDeviceData(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, List<NtfInfoEntity> deviceList) {
         List<NtfInfoEntity> deleteTarget = deviceList.stream()
@@ -271,6 +355,13 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     // #endregion
 
     // #region Validation Methods
+    /**
+     * リクエストの必須項目・値を検証します。
+     * 
+     * @param request リクエストDTO
+     * @param header  ヘッダーDTO
+     * @return 不足項目名（問題なければnull）
+     */
     private String validate(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
@@ -291,6 +382,12 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         return null;
     }
 
+    /**
+     * リクエストDTOの必須項目を検証します。
+     * 
+     * @param request リクエストDTO
+     * @return 不足項目名（問題なければnull）
+     */
     private String validateRequired(RegistNotificationDeviceInfoRequestDto request) {
         if (request == null) {
             return "requestBody";
@@ -318,10 +415,22 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         return null;
     }
 
+    /**
+     * プラットフォーム値が有効か判定します。
+     * 
+     * @param platform プラットフォーム値
+     * @return 有効ならtrue
+     */
     private boolean isValidPlatform(String platform) {
         return platform.equals("1") || platform.equals("2");
     }
 
+    /**
+     * ブランドコード値が有効か判定します。
+     * 
+     * @param brdCd ブランドコード
+     * @return 有効ならtrue
+     */
     private boolean isValidBrdCd(String brdCd) {
         return brdCd.equals("1") || brdCd.equals("2");
     }

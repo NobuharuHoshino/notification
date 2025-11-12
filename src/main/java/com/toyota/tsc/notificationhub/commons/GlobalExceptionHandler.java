@@ -7,32 +7,55 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 
+/**
+ * グローバル例外ハンドラー
+ */
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final String resultCode = CommonUtil.getResultCode("SUCCESS");
 
-    /** SQL操作系エラー（400） */
     @ExceptionHandler(CustomSqlException.class)
+    /**
+     * CustomSqlException発生時のハンドリング
+     * 
+     * @param ex CustomSqlException例外
+     * @return 400 Bad Requestレスポンス
+     */
     public ResponseEntity<String> handleCustomSqlException(CustomSqlException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(CommonUtil.getResultCode(resultCode));
     }
 
-    /** 業務エラー（400） */
     @ExceptionHandler(TscApplicationException.class)
+    /**
+     * TscApplicationException発生時のハンドリング
+     * 
+     * @param ex TscApplicationException例外
+     * @return 400 Bad Requestレスポンス
+     */
     public ResponseEntity<String> handleTscApplicationException(TscApplicationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(CommonUtil.getResultCode(resultCode));
     }
 
-    /** ランタイムエラー（500）※基本的に400を返すエラー以外はここに丸めてレスポンス */
     @ExceptionHandler(RuntimeException.class)
+    /**
+     * RuntimeException発生時のハンドリング
+     * 
+     * @param ex RuntimeException例外
+     * @return 500 Internal Server Errorレスポンス
+     */
     public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
         // 共通のランタイム例外は500 Internal Server Errorで返却
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(CommonUtil.getResultCode(resultCode));
     }
 
-    /** その他例外（500）※基本的に各サービスでRuntimeに丸められているため、ここに来る想定はない */
     @ExceptionHandler(Exception.class)
+    /**
+     * その他Exception発生時のハンドリング
+     * 
+     * @param ex Exception例外
+     * @return 500 Internal Server Errorレスポンス
+     */
     public ResponseEntity<Object> handleException(Exception ex) {
         // その他例外は500 Internal Server Errorで返却
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
