@@ -138,13 +138,10 @@ public class SendMailServiceImpl implements SendMailServiceIF {
         if (request.getTitle() == null || request.getTitle().isEmpty()) {
             missingFields.add("title");
         }
-        if (request.getBody_text() == null || request.getBody_text().isEmpty()) {
-            missingFields.add("body_text");
+        if ((request.getBody_text() == null || request.getBody_text().isEmpty()) &&
+                (request.getBody_html() == null || request.getBody_html().isEmpty())) {
+            missingFields.add("body");
         }
-        if (request.getBody_html() == null || request.getBody_html().isEmpty()) {
-            missingFields.add("body_html");
-        }
-
         if (!missingFields.isEmpty()) {
             return String.join(",", missingFields);
         }

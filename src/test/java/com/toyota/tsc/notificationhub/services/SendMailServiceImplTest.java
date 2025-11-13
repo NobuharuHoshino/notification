@@ -259,7 +259,7 @@ class SendMailServiceImplTest {
         Method m = SendMailServiceImpl.class.getDeclaredMethod("validateRequired", SendMailRequestDto.class);
         m.setAccessible(true);
         String r = (String) m.invoke(service, req);
-        assertTrue(r.contains("body_text"));
+        assertTrue(r == null);
     }
 
     /** クラス：SendMailServiceImpl validateRequired body_text==\"\"検出を確認するテストケース */
@@ -270,7 +270,7 @@ class SendMailServiceImplTest {
         Method m = SendMailServiceImpl.class.getDeclaredMethod("validateRequired", SendMailRequestDto.class);
         m.setAccessible(true);
         String r = (String) m.invoke(service, req);
-        assertTrue(r.contains("body_text"));
+        assertTrue(r == null);
     }
 
     /** クラス：SendMailServiceImpl validateRequired body_html==null検出を確認するテストケース */
@@ -281,7 +281,7 @@ class SendMailServiceImplTest {
         Method m = SendMailServiceImpl.class.getDeclaredMethod("validateRequired", SendMailRequestDto.class);
         m.setAccessible(true);
         String r = (String) m.invoke(service, req);
-        assertTrue(r.contains("body_html"));
+        assertTrue(r == null);
     }
 
     /** クラス：SendMailServiceImpl validateRequired body_html==\"\"検出を確認するテストケース */
@@ -292,7 +292,55 @@ class SendMailServiceImplTest {
         Method m = SendMailServiceImpl.class.getDeclaredMethod("validateRequired", SendMailRequestDto.class);
         m.setAccessible(true);
         String r = (String) m.invoke(service, req);
-        assertTrue(r.contains("body_html"));
+        assertTrue(r == null);
+    }
+
+    /** クラス：SendMailServiceImpl validateRequired body_html==\"\"検出を確認するテストケース */
+    @Test
+    void validateRequired_11_1() throws Exception {
+        SendMailRequestDto req = baseRequest();
+        req.setBody_html("");
+        req.setBody_text("");
+        Method m = SendMailServiceImpl.class.getDeclaredMethod("validateRequired", SendMailRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("body"));
+    }
+
+    /** クラス：SendMailServiceImpl validateRequired body_html==\"\"検出を確認するテストケース */
+    @Test
+    void validateRequired_11_2() throws Exception {
+        SendMailRequestDto req = baseRequest();
+        req.setBody_html("");
+        req.setBody_text(null);
+        Method m = SendMailServiceImpl.class.getDeclaredMethod("validateRequired", SendMailRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("body"));
+    }
+
+    /** クラス：SendMailServiceImpl validateRequired body_html==\"\"検出を確認するテストケース */
+    @Test
+    void validateRequired_11_3() throws Exception {
+        SendMailRequestDto req = baseRequest();
+        req.setBody_html(null);
+        req.setBody_text("");
+        Method m = SendMailServiceImpl.class.getDeclaredMethod("validateRequired", SendMailRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("body"));
+    }
+
+    /** クラス：SendMailServiceImpl validateRequired body_html==\"\"検出を確認するテストケース */
+    @Test
+    void validateRequired_11_4() throws Exception {
+        SendMailRequestDto req = baseRequest();
+        req.setBody_html(null);
+        req.setBody_text(null);
+        Method m = SendMailServiceImpl.class.getDeclaredMethod("validateRequired", SendMailRequestDto.class);
+        m.setAccessible(true);
+        String r = (String) m.invoke(service, req);
+        assertTrue(r.contains("body"));
     }
 
     /** クラス：SendMailServiceImpl validateRequired 欠落なしでnullとなることを確認するテストケース */
