@@ -57,7 +57,8 @@ public class SendSmsServiceImpl implements SendSmsServiceIF {
             LogUtil.info(SendSmsServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00009", request.getBrdCd(), CommonUtil.maskPhoneNumber(request.getMobileNumber()),
                     header.getCorrelationId()));
-            smsCountryUtil.sendSmsCountry(entity, request.getMobileNumber());
+            // TODO Test For IT1
+            // smsCountryUtil.sendSmsCountry(entity, request.getMobileNumber());
             LogUtil.info(SendSmsServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00010", request.getBrdCd(), CommonUtil.maskPhoneNumber(request.getMobileNumber()),
                     header.getCorrelationId()));
