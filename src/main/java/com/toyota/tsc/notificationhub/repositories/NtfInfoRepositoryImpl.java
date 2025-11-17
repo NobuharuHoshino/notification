@@ -16,8 +16,8 @@ import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
 /**
  * 通知情報リポジトリ実装クラス
  */
-@Repository
 @Primary
+@Repository
 public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
     private final NtfInfoMapper ntfInfoMapper;
 

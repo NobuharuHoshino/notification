@@ -13,8 +13,6 @@ import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final String resultCode = CommonUtil.getResultCode("SUCCESS");
-
     @ExceptionHandler(CustomSqlException.class)
     /**
      * CustomSqlException発生時のハンドリング
@@ -23,7 +21,7 @@ public class GlobalExceptionHandler {
      * @return 400 Bad Requestレスポンス
      */
     public ResponseEntity<String> handleCustomSqlException(CustomSqlException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(CommonUtil.getResultCode(resultCode));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(CommonUtil.getResultCode("EXCEPTION"));
     }
 
     @ExceptionHandler(TscApplicationException.class)
@@ -34,7 +32,7 @@ public class GlobalExceptionHandler {
      * @return 400 Bad Requestレスポンス
      */
     public ResponseEntity<String> handleTscApplicationException(TscApplicationException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(CommonUtil.getResultCode(resultCode));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(CommonUtil.getResultCode("EXCEPTION"));
     }
 
     @ExceptionHandler(RuntimeException.class)
@@ -46,7 +44,7 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
         // 共通のランタイム例外は500 Internal Server Errorで返却
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(CommonUtil.getResultCode(resultCode));
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(CommonUtil.getResultCode("EXCEPTION"));
     }
 
     @ExceptionHandler(Exception.class)
@@ -59,6 +57,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Object> handleException(Exception ex) {
         // その他例外は500 Internal Server Errorで返却
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(CommonUtil.getResultCode(resultCode));
+                .body(CommonUtil.getResultCode("EXCEPTION"));
     }
 }
