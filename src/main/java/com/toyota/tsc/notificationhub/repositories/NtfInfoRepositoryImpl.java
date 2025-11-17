@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
@@ -16,6 +17,7 @@ import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
  * 通知情報リポジトリ実装クラス
  */
 @Repository
+@Primary
 public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
     private final NtfInfoMapper ntfInfoMapper;
 

@@ -44,13 +44,13 @@ public class NotificationController {
          */
         @PostMapping("/registNotificationDeviceInfo")
         public ResponseEntity<String> registNotificationDeviceInfo(
-                        @RequestHeader(value = "x-api-key", required = true) String apiKey,
-                        @RequestHeader(value = "content-type", required = true) String contentType,
-                        @RequestHeader(value = "connection", required = true) String connection,
-                        @RequestHeader(value = "accept-encoding", required = true) String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id", required = true) String correlationId,
-                        @RequestHeader(value = "user-access-key", required = true) String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook", required = true) String xSmartgbook,
+                        @RequestHeader(value = "x-api-key") String apiKey,
+                        @RequestHeader(value = "content-type") String contentType,
+                        @RequestHeader(value = "connection") String connection,
+                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
+                        @RequestHeader(value = "x-correlation-id") String correlationId,
+                        @RequestHeader(value = "user-access-key") String userAccessKey,
+                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
                         @RequestBody RegistNotificationDeviceInfoRequestDto body) {
                 RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
                                 correlationId,
@@ -74,13 +74,13 @@ public class NotificationController {
          */
         @PostMapping("/sendPush")
         public ResponseEntity<String> sendPush(
-                        @RequestHeader(value = "x-api-key", required = true) String apiKey,
-                        @RequestHeader(value = "content-type", required = true) String contentType,
-                        @RequestHeader(value = "connection", required = true) String connection,
-                        @RequestHeader(value = "accept-encoding", required = true) String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id", required = true) String correlationId,
-                        @RequestHeader(value = "user-access-key", required = true) String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook", required = true) String xSmartgbook,
+                        @RequestHeader(value = "x-api-key") String apiKey,
+                        @RequestHeader(value = "content-type") String contentType,
+                        @RequestHeader(value = "connection") String connection,
+                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
+                        @RequestHeader(value = "x-correlation-id") String correlationId,
+                        @RequestHeader(value = "user-access-key") String userAccessKey,
+                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
                         @RequestBody SendPushRequestDto body) {
                 RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
                                 correlationId,
@@ -104,13 +104,13 @@ public class NotificationController {
          */
         @PostMapping("/sendPrimaryContact")
         public ResponseEntity<String> sendPrimaryContact(
-                        @RequestHeader(value = "x-api-key", required = true) String apiKey,
-                        @RequestHeader(value = "content-type", required = true) String contentType,
-                        @RequestHeader(value = "connection", required = true) String connection,
-                        @RequestHeader(value = "accept-encoding", required = true) String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id", required = true) String correlationId,
-                        @RequestHeader(value = "user-access-key", required = true) String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook", required = true) String xSmartgbook,
+                        @RequestHeader(value = "x-api-key") String apiKey,
+                        @RequestHeader(value = "content-type") String contentType,
+                        @RequestHeader(value = "connection") String connection,
+                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
+                        @RequestHeader(value = "x-correlation-id") String correlationId,
+                        @RequestHeader(value = "user-access-key") String userAccessKey,
+                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
                         @RequestBody SendPrimaryContactRequestDto body) {
                 RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
                                 correlationId,
@@ -134,13 +134,13 @@ public class NotificationController {
          */
         @PostMapping("/sendMail")
         public ResponseEntity<String> sendMail(
-                        @RequestHeader(value = "x-api-key", required = true) String apiKey,
-                        @RequestHeader(value = "content-type", required = true) String contentType,
-                        @RequestHeader(value = "connection", required = true) String connection,
-                        @RequestHeader(value = "accept-encoding", required = true) String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id", required = true) String correlationId,
-                        @RequestHeader(value = "user-access-key", required = true) String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook", required = true) String xSmartgbook,
+                        @RequestHeader(value = "x-api-key") String apiKey,
+                        @RequestHeader(value = "content-type") String contentType,
+                        @RequestHeader(value = "connection") String connection,
+                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
+                        @RequestHeader(value = "x-correlation-id") String correlationId,
+                        @RequestHeader(value = "user-access-key") String userAccessKey,
+                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
                         @RequestBody SendMailRequestDto body) {
                 RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
                                 correlationId,
@@ -164,13 +164,13 @@ public class NotificationController {
          */
         @PostMapping("/sendSms")
         public ResponseEntity<String> sendSms(
-                        @RequestHeader(value = "x-api-key", required = true) String apiKey,
-                        @RequestHeader(value = "content-type", required = true) String contentType,
-                        @RequestHeader(value = "connection", required = true) String connection,
-                        @RequestHeader(value = "accept-encoding", required = true) String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id", required = true) String correlationId,
-                        @RequestHeader(value = "user-access-key", required = true) String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook", required = true) String xSmartgbook,
+                        @RequestHeader(value = "x-api-key") String apiKey,
+                        @RequestHeader(value = "content-type") String contentType,
+                        @RequestHeader(value = "connection") String connection,
+                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
+                        @RequestHeader(value = "x-correlation-id") String correlationId,
+                        @RequestHeader(value = "user-access-key") String userAccessKey,
+                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
                         @RequestBody SendSmsRequestDto body) {
                 RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
                                 correlationId,
