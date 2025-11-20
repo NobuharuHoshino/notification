@@ -2,6 +2,7 @@ package com.toyota.tsc.notificationhub.services;
 
 import com.toyota.tsc.notificationhub.models.SendPushRequestDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
+import com.toyota.tsc.notificationhub.models.ResponseDto;
 
 public interface SendPushServiceIF {
     /**
@@ -9,5 +10,5 @@ public interface SendPushServiceIF {
      * 
      * @param request Push通知要求リクエストDTO
      */
-    String sendPush(SendPushRequestDto request, RequestHeaderDto header);
+    ResponseDto sendPush(SendPushRequestDto request, RequestHeaderDto header);
 }

@@ -45,9 +45,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-json'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.postgresql:postgresql:42.7.4'
     implementation platform("com.azure.spring:spring-cloud-azure-dependencies:6.0.0")
     implementation "com.azure.spring:spring-cloud-azure-starter-keyvault-secrets"
-    runtimeOnly 'org.postgresql:postgresql'
     testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.5'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
@@ -55,7 +55,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-inline:5.2.0'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-logging'
-
+    implementation 'io.projectreactor:reactor-core:3.5.11'
 }
 
 tasks.named('test') {

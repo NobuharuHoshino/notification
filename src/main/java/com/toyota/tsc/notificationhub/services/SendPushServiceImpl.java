@@ -9,6 +9,7 @@ import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
+import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.models.SendPushRequestDto;
 import com.toyota.tsc.notificationhub.repositories.NtfInfoEntity;
 import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
@@ -49,7 +50,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
      * @param header  ヘッダーDTO
      * @return 結果コード
      */
-    public String sendPush(SendPushRequestDto request, RequestHeaderDto header) {
+    public ResponseDto sendPush(SendPushRequestDto request, RequestHeaderDto header) {
 
         try {
             // 開始ログ
@@ -72,7 +73,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
 
-            return resultCode;
+            return new ResponseDto(resultCode);
 
         } catch (Exception e) {
             SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);

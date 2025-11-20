@@ -1,17 +1,13 @@
 package com.toyota.tsc.notificationhub.controllers;
 
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
+import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.models.RegistNotificationDeviceInfoRequestDto;
-import com.toyota.tsc.notificationhub.models.SendMailRequestDto;
 import com.toyota.tsc.notificationhub.models.SendPrimaryContactRequestDto;
 import com.toyota.tsc.notificationhub.models.SendPushRequestDto;
-import com.toyota.tsc.notificationhub.models.SendSmsRequestDto;
 import com.toyota.tsc.notificationhub.services.RegistNotificationDeviceInfoServiceIF;
-import com.toyota.tsc.notificationhub.services.SendMailServiceIF;
 import com.toyota.tsc.notificationhub.services.SendPrimaryContactServiceIF;
 import com.toyota.tsc.notificationhub.services.SendPushServiceIF;
-import com.toyota.tsc.notificationhub.services.SendSmsServiceIF;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,8 +22,6 @@ public class NotificationController {
         private final RegistNotificationDeviceInfoServiceIF registService;
         private final SendPushServiceIF pushService;
         private final SendPrimaryContactServiceIF primaryContactService;
-        private final SendMailServiceIF mailService;
-        private final SendSmsServiceIF smsService;
 
         /**
          * デバイス情報登録API
@@ -43,19 +37,18 @@ public class NotificationController {
          * @return 登録結果コード
          */
         @PostMapping("/registNotificationDeviceInfo")
-        public ResponseEntity<String> registNotificationDeviceInfo(
-                        @RequestHeader(value = "x-api-key") String apiKey,
-                        @RequestHeader(value = "content-type") String contentType,
-                        @RequestHeader(value = "connection") String connection,
-                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id") String correlationId,
-                        @RequestHeader(value = "user-access-key") String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
+        public ResponseEntity<ResponseDto> registNotificationDeviceInfo(
+                        @RequestHeader(value = "x-api-key", required = false) String apiKey,
+                        @RequestHeader(value = "content-type", required = true) String contentType,
+                        @RequestHeader(value = "connection", required = false) String connection,
+                        @RequestHeader(value = "accept-encoding", required = false) String acceptEncoding,
+                        @RequestHeader(value = "x-correlation-id", required = true) String correlationId,
+                        @RequestHeader(value = "user-access-key", required = false) String userAccessKey,
+                        @RequestHeader(value = "x-smartgbook", required = false) String xSmartgbook,
                         @RequestBody RegistNotificationDeviceInfoRequestDto body) {
                 RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
-                                correlationId,
-                                userAccessKey, xSmartgbook);
-                String resultCode = registService.registDeviceInfo(body, header);
+                                correlationId, userAccessKey, xSmartgbook);
+                ResponseDto resultCode = registService.registDeviceInfo(body, header);
                 return ResponseEntity.ok(resultCode);
         }
 
@@ -73,19 +66,18 @@ public class NotificationController {
          * @return 送信結果コード
          */
         @PostMapping("/sendPush")
-        public ResponseEntity<String> sendPush(
-                        @RequestHeader(value = "x-api-key") String apiKey,
-                        @RequestHeader(value = "content-type") String contentType,
-                        @RequestHeader(value = "connection") String connection,
-                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id") String correlationId,
-                        @RequestHeader(value = "user-access-key") String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
+        public ResponseEntity<ResponseDto> sendPush(
+                        @RequestHeader(value = "x-api-key", required = false) String apiKey,
+                        @RequestHeader(value = "content-type", required = true) String contentType,
+                        @RequestHeader(value = "connection", required = false) String connection,
+                        @RequestHeader(value = "accept-encoding", required = false) String acceptEncoding,
+                        @RequestHeader(value = "x-correlation-id", required = true) String correlationId,
+                        @RequestHeader(value = "user-access-key", required = false) String userAccessKey,
+                        @RequestHeader(value = "x-smartgbook", required = false) String xSmartgbook,
                         @RequestBody SendPushRequestDto body) {
                 RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
-                                correlationId,
-                                userAccessKey, xSmartgbook);
-                String resultCode = pushService.sendPush(body, header);
+                                correlationId, userAccessKey, xSmartgbook);
+                ResponseDto resultCode = pushService.sendPush(body, header);
                 return ResponseEntity.ok(resultCode);
         }
 
@@ -103,79 +95,18 @@ public class NotificationController {
          * @return 送信結果コード
          */
         @PostMapping("/sendPrimaryContact")
-        public ResponseEntity<String> sendPrimaryContact(
-                        @RequestHeader(value = "x-api-key") String apiKey,
-                        @RequestHeader(value = "content-type") String contentType,
-                        @RequestHeader(value = "connection") String connection,
-                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id") String correlationId,
-                        @RequestHeader(value = "user-access-key") String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
+        public ResponseEntity<ResponseDto> sendPrimaryContact(
+                        @RequestHeader(value = "x-api-key", required = false) String apiKey,
+                        @RequestHeader(value = "content-type", required = true) String contentType,
+                        @RequestHeader(value = "connection", required = false) String connection,
+                        @RequestHeader(value = "accept-encoding", required = false) String acceptEncoding,
+                        @RequestHeader(value = "x-correlation-id", required = true) String correlationId,
+                        @RequestHeader(value = "user-access-key", required = false) String userAccessKey,
+                        @RequestHeader(value = "x-smartgbook", required = false) String xSmartgbook,
                         @RequestBody SendPrimaryContactRequestDto body) {
                 RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
-                                correlationId,
-                                userAccessKey, xSmartgbook);
-                String resultCode = primaryContactService.sendPrimaryContact(body, header);
-                return ResponseEntity.ok(resultCode);
-        }
-
-        /**
-         * メール送信API
-         * 
-         * @param apiKey         APIキー
-         * @param contentType    Content-Type
-         * @param connection     Connection
-         * @param acceptEncoding Accept-Encoding
-         * @param correlationId  コリレーションID
-         * @param userAccessKey  ユーザーアクセスキー
-         * @param xSmartgbook    x-smartgbook
-         * @param body           リクエストボディ
-         * @return 送信結果コード
-         */
-        @PostMapping("/sendMail")
-        public ResponseEntity<String> sendMail(
-                        @RequestHeader(value = "x-api-key") String apiKey,
-                        @RequestHeader(value = "content-type") String contentType,
-                        @RequestHeader(value = "connection") String connection,
-                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id") String correlationId,
-                        @RequestHeader(value = "user-access-key") String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
-                        @RequestBody SendMailRequestDto body) {
-                RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
-                                correlationId,
-                                userAccessKey, xSmartgbook);
-                String resultCode = mailService.sendMail(body, header);
-                return ResponseEntity.ok(resultCode);
-        }
-
-        /**
-         * SMS送信API
-         * 
-         * @param apiKey         APIキー
-         * @param contentType    Content-Type
-         * @param connection     Connection
-         * @param acceptEncoding Accept-Encoding
-         * @param correlationId  コリレーションID
-         * @param userAccessKey  ユーザーアクセスキー
-         * @param xSmartgbook    x-smartgbook
-         * @param body           リクエストボディ
-         * @return 送信結果コード
-         */
-        @PostMapping("/sendSms")
-        public ResponseEntity<String> sendSms(
-                        @RequestHeader(value = "x-api-key") String apiKey,
-                        @RequestHeader(value = "content-type") String contentType,
-                        @RequestHeader(value = "connection") String connection,
-                        @RequestHeader(value = "accept-encoding") String acceptEncoding,
-                        @RequestHeader(value = "x-correlation-id") String correlationId,
-                        @RequestHeader(value = "user-access-key") String userAccessKey,
-                        @RequestHeader(value = "x-smartgbook") String xSmartgbook,
-                        @RequestBody SendSmsRequestDto body) {
-                RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
-                                correlationId,
-                                userAccessKey, xSmartgbook);
-                String resultCode = smsService.sendSms(body, header);
+                                correlationId, userAccessKey, xSmartgbook);
+                ResponseDto resultCode = primaryContactService.sendPrimaryContact(body, header);
                 return ResponseEntity.ok(resultCode);
         }
 }

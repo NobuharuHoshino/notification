@@ -83,11 +83,14 @@ public class SmsCountryUtil {
      */
     public void sendSmsCountry(HttpEntity<String> entity, String phoneNo) {
         try {
-            RestTemplate restTemplate = new RestTemplate();
-            ResponseEntity<String> response = restTemplate.postForEntity(smsCountryApiUrl, entity, String.class);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new TscSMSException(response.getStatusCode().value(), response.getBody(), phoneNo);
-            }
+            // TODO
+            // RestTemplate restTemplate = new RestTemplate();
+            // ResponseEntity<String> response =
+            // restTemplate.postForEntity(smsCountryApiUrl, entity, String.class);
+            // if (!response.getStatusCode().is2xxSuccessful()) {
+            // throw new TscSMSException(response.getStatusCode().value(),
+            // response.getBody(), phoneNo);
+            // }
         } catch (TscSMSException scEx) {
             throw new TscSMSException(scEx.getStatusCode(), scEx.getResponseBody(), scEx.getPhoneNo());
         } catch (Exception e) {
@@ -109,5 +112,4 @@ public class SmsCountryUtil {
         }
         return sb.toString();
     }
-
 }

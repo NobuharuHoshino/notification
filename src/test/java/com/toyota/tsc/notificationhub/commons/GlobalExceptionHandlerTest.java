@@ -2,6 +2,8 @@ package com.toyota.tsc.notificationhub.commons;
 
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
+import com.toyota.tsc.notificationhub.models.ResponseDto;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -26,11 +28,11 @@ class GlobalExceptionHandlerTest {
             cm.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("RC");
 
             // 実行
-            ResponseEntity<String> r = handler.handleCustomSqlException(ex);
+            ResponseEntity<ResponseDto> r = handler.handleCustomSqlException(ex);
 
             // 確認
             assertEquals(400, r.getStatusCode().value());
-            assertEquals("RC", r.getBody());
+            assertEquals("RC", r.getBody().getResultCode());
         }
     }
 
@@ -44,9 +46,9 @@ class GlobalExceptionHandlerTest {
 
         try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
             cm.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("RC");
-            ResponseEntity<String> r = handler.handleTscApplicationException(ex);
+            ResponseEntity<ResponseDto> r = handler.handleTscApplicationException(ex);
             assertEquals(400, r.getStatusCode().value());
-            assertEquals("RC", r.getBody());
+            assertEquals("RC", r.getBody().getResultCode());
         }
     }
 
@@ -58,9 +60,9 @@ class GlobalExceptionHandlerTest {
 
         try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
             cm.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("RC");
-            ResponseEntity<String> r = handler.handleRuntimeException(ex);
+            ResponseEntity<ResponseDto> r = handler.handleRuntimeException(ex);
             assertEquals(500, r.getStatusCode().value());
-            assertEquals("RC", r.getBody());
+            assertEquals("RC", r.getBody().getResultCode());
         }
     }
 
@@ -72,9 +74,9 @@ class GlobalExceptionHandlerTest {
 
         try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
             cm.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("RC");
-            ResponseEntity<Object> r = handler.handleException(ex);
+            ResponseEntity<ResponseDto> r = handler.handleException(ex);
             assertEquals(500, r.getStatusCode().value());
-            assertEquals("RC", r.getBody());
+            assertEquals("RC", r.getBody().getResultCode());
         }
     }
 }

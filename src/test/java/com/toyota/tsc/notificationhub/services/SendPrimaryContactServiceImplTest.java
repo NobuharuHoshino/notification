@@ -95,7 +95,7 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
 
             // 実行
-            String code = service.sendPrimaryContact(req, header);
+            String code = service.sendPrimaryContact(req, header).getResultCode();
 
             // 確認：正常終了コード・SMSユーティリティが呼ばれた
             assertEquals("SUCCESS_CODE", code);
@@ -126,7 +126,7 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
 
             // 実行
-            String code = service.sendPrimaryContact(req, header);
+            String code = service.sendPrimaryContact(req, header).getResultCode();
 
             // 確認：正常終了コード・メールユーティリティが呼ばれた
             assertEquals("SUCCESS_CODE", code);
@@ -154,7 +154,7 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
 
             // 実行
-            String code = service.sendPrimaryContact(req, header);
+            String code = service.sendPrimaryContact(req, header).getResultCode();
 
             // 確認：正常終了・外部API呼ばれない
             assertEquals("SUCCESS_CODE", code);
@@ -185,7 +185,7 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
 
             // 実行
-            String code = service.sendPrimaryContact(req, header);
+            String code = service.sendPrimaryContact(req, header).getResultCode();
 
             // 確認：正常終了・外部API呼ばれない
             assertEquals("SUCCESS_CODE", code);
@@ -516,7 +516,7 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any())).thenReturn("MSG");
             cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
 
-            String code = service.sendPrimaryContact(req, header);
+            String code = service.sendPrimaryContact(req, header).getResultCode();
             assertEquals("SUCCESS_CODE", code);
 
             // AND 条件が false で SMS 送信は呼ばれない
@@ -542,7 +542,7 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any())).thenReturn("MSG");
             cm.when(() -> CommonUtil.getResultCode("SUCCESS")).thenReturn("SUCCESS_CODE");
 
-            String code = service.sendPrimaryContact(req, header);
+            String code = service.sendPrimaryContact(req, header).getResultCode();
             assertEquals("SUCCESS_CODE", code);
 
             // AND 条件が false でメール送信は呼ばれない

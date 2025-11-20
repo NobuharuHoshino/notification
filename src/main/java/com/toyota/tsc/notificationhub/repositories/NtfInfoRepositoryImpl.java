@@ -98,7 +98,12 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
      * @return 通知情報エンティティリスト
      */
     public List<NtfInfoEntity> selectAllByInternalUserId(String internalUserId) {
-        return ntfInfoMapper.selectAllByInternalUserId(internalUserId);
+        try {
+            return ntfInfoMapper.selectAllByInternalUserId(internalUserId);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     /**

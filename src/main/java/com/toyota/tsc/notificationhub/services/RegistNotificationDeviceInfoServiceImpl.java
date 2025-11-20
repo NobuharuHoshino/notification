@@ -9,6 +9,7 @@ import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
 import com.toyota.tsc.notificationhub.models.RegistNotificationDeviceInfoRequestDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
+import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.repositories.NtfInfoEntity;
 import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
 import com.windowsazure.messaging.NotificationHubsException;
@@ -51,7 +52,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
      * @param header  ヘッダーDTO
      * @return 結果コード
      */
-    public String registDeviceInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
+    public ResponseDto registDeviceInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
 
         try {
 
@@ -90,7 +91,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
             LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
 
-            return resultCode;
+            return new ResponseDto(resultCode);
 
         } catch (Exception e) {
             SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);

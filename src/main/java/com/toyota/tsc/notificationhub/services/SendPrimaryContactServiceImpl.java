@@ -11,6 +11,7 @@ import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
 import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
 import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
+import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.models.SendPrimaryContactRequestDto;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +42,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
      * @param header  ヘッダーDTO
      * @return 結果コード
      */
-    public String sendPrimaryContact(SendPrimaryContactRequestDto request, RequestHeaderDto header) {
+    public ResponseDto sendPrimaryContact(SendPrimaryContactRequestDto request, RequestHeaderDto header) {
         try {
 
             // 開始ログ
@@ -66,16 +67,16 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             // 正常終了ログ
             LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
-            return resultCode;
+            return new ResponseDto(resultCode);
 
         } catch (TscEMailException e) {
-            LogUtil.error(SendMailServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00007", e.getStatusCode(), CommonUtil.maskText(e.getAddress()),
                     request.getTitle(), header.getCorrelationId()));
             throw new RuntimeException();
 
         } catch (TscSMSException e) {
-            LogUtil.error(SendSmsServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00006", e.getStatusCode(), CommonUtil.maskPhoneNumber(e.getPhoneNo()),
                     header.getCorrelationId()));
             throw new RuntimeException();

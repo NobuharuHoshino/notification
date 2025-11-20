@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
+import com.toyota.tsc.notificationhub.models.ResponseDto;
 
 /**
  * グローバル例外ハンドラー
@@ -20,8 +21,9 @@ public class GlobalExceptionHandler {
      * @param ex CustomSqlException例外
      * @return 400 Bad Requestレスポンス
      */
-    public ResponseEntity<String> handleCustomSqlException(CustomSqlException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(CommonUtil.getResultCode("EXCEPTION"));
+    public ResponseEntity<ResponseDto> handleCustomSqlException(CustomSqlException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ResponseDto(CommonUtil.getResultCode("EXCEPTION")));
     }
 
     @ExceptionHandler(TscApplicationException.class)
@@ -31,8 +33,9 @@ public class GlobalExceptionHandler {
      * @param ex TscApplicationException例外
      * @return 400 Bad Requestレスポンス
      */
-    public ResponseEntity<String> handleTscApplicationException(TscApplicationException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(CommonUtil.getResultCode("EXCEPTION"));
+    public ResponseEntity<ResponseDto> handleTscApplicationException(TscApplicationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ResponseDto(CommonUtil.getResultCode("EXCEPTION")));
     }
 
     @ExceptionHandler(RuntimeException.class)
@@ -42,9 +45,9 @@ public class GlobalExceptionHandler {
      * @param ex RuntimeException例外
      * @return 500 Internal Server Errorレスポンス
      */
-    public ResponseEntity<String> handleRuntimeException(RuntimeException ex) {
-        // 共通のランタイム例外は500 Internal Server Errorで返却
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(CommonUtil.getResultCode("EXCEPTION"));
+    public ResponseEntity<ResponseDto> handleRuntimeException(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ResponseDto(CommonUtil.getResultCode("EXCEPTION")));
     }
 
     @ExceptionHandler(Exception.class)
@@ -54,9 +57,8 @@ public class GlobalExceptionHandler {
      * @param ex Exception例外
      * @return 500 Internal Server Errorレスポンス
      */
-    public ResponseEntity<Object> handleException(Exception ex) {
-        // その他例外は500 Internal Server Errorで返却
+    public ResponseEntity<ResponseDto> handleException(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(CommonUtil.getResultCode("EXCEPTION"));
+                .body(new ResponseDto(CommonUtil.getResultCode("EXCEPTION")));
     }
 }
