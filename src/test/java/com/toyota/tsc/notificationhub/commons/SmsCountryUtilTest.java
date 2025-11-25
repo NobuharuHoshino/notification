@@ -1,21 +1,21 @@
 package com.toyota.tsc.notificationhub.commons;
 
-import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
+// import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedConstruction;
+// import org.mockito.MockedConstruction;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
+// import org.springframework.http.ResponseEntity;
+// import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+// import static org.mockito.ArgumentMatchers.eq;
+// import static org.mockito.Mockito.*;
 
 /**
  * テストクラス：SmsCountryUtilTest

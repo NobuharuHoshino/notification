@@ -2,7 +2,9 @@ package com.toyota.tsc.notificationhub.commons;
 
 import java.sql.SQLException;
 import java.sql.SQLTransientConnectionException;
+import java.sql.SQLTransientException;
 import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLNonTransientException;
 
 /**
  * SQL例外抽出ユーティリティクラス
@@ -87,4 +89,75 @@ public class ExtractSqlExceptionUtil {
         }
         return false;
     }
+
+    /**
+     * SQLExceptionが操作系エラーか判定します。
+     * 
+     * @param e 判定対象SQLException
+     * @return 操作系エラーの場合true
+     */
+    public static boolean isSqlOperationError(SQLException e) {
+        if (e instanceof SQLTransientException || e instanceof SQLNonTransientException) {
+            return true;
+        }
+
+        String state = e.getSQLState();
+        if (state != null && !state.isEmpty()) {
+            state = state.toUpperCase();
+
+            // --- トランザクション／並行制御 ---
+            if ("40001".equals(state)) { // Serialization failure
+                return true;
+            }
+            if ("40P01".equals(state)) { // Deadlock detected
+                return true;
+            }
+            // --- ロック／キャンセル／タイムアウト ---
+            if ("55P03".equals(state)) { // Lock not available
+                return true;
+            }
+            if ("57014".equals(state)) { // Query canceled
+                return true;
+            }
+            // --- 整合性制約違反 ---
+            if ("23502".equals(state) // NOT NULL violation
+                    || "23503".equals(state) // Foreign key violation
+                    || "23505".equals(state) // Unique violation
+                    || "23514".equals(state) // Check violation
+            ) {
+                return true;
+            }
+            // --- データ型／値の不整合 ---
+            if ("22001".equals(state) // String data right truncation
+                    || "22003".equals(state) // Numeric value out of range
+                    || "22P02".equals(state) // Invalid text representation
+            ) {
+                return true;
+            }
+            // --- 構文／オブジェクト未定義 ---
+            if ("42601".equals(state) // Syntax error
+                    || "42703".equals(state) // Undefined column
+                    || "42P01".equals(state) // Undefined table
+                    || "42883".equals(state) // Undefined function
+            ) {
+                return true;
+            }
+            // --- 機能未サポート ---
+            if ("0A000".equals(state)) { // Feature not supported
+                return true;
+            }
+        }
+        // 例外チェインによる判定（Next / Cause）
+        SQLException next = e.getNextException();
+        if (next != null && next != e && isSqlOperationError(next)) {
+            return true;
+        }
+        Throwable cause = e.getCause();
+        if (cause instanceof SQLException && cause != e && isSqlOperationError((SQLException) cause)) {
+            return true;
+        }
+
+        return false;
+    }
+
 }

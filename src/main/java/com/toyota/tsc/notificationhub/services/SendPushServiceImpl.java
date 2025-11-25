@@ -17,8 +17,6 @@ import com.windowsazure.messaging.NotificationHubsException;
 import com.windowsazure.messaging.NotificationOutcome;
 
 import java.sql.SQLException;
-import java.sql.SQLNonTransientException;
-import java.sql.SQLTransientException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -83,7 +81,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                     LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
                     throw new RuntimeException();
-                } else if (sqlEx instanceof SQLTransientException || sqlEx instanceof SQLNonTransientException) {
+                } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
                     LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));

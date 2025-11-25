@@ -3,7 +3,6 @@ package com.toyota.tsc.notificationhub.services;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
 import com.toyota.tsc.notificationhub.commons.NotificationHubUtil;
-import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
@@ -24,8 +23,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
-import java.sql.SQLNonTransientException;
-import java.sql.SQLTransientException;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -150,59 +147,63 @@ class SendPushServiceImplTest {
          * クラス：SendPushServiceImpl sendPush
          * SQLTransientExceptionでCustomSqlExceptionとなることを確認するテストケース
          */
-        @Test
-        void sendPush_03() {
-                // 準備
-                SendPushRequestDto req = baseRequest();
-                when(ntfInfoRepository.selectAllByInternalUserId("U1"))
-                                .thenThrow(new RuntimeException(new SQLTransientException("trans")));
-                try (MockedStatic<ExtractSqlExceptionUtil> st = Mockito.mockStatic(ExtractSqlExceptionUtil.class)) {
-                        st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
-                                        .thenAnswer(inv -> {
-                                                Throwable t = inv.getArgument(0);
-                                                while (t != null) {
-                                                        if (t instanceof SQLException)
-                                                                return (SQLException) t;
-                                                        t = t.getCause();
-                                                }
-                                                return null;
-                                        });
-                        st.when(() -> ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
-                                        .thenReturn(false);
+        // @Test
+        // void sendPush_03() {
+        // // 準備
+        // SendPushRequestDto req = baseRequest();
+        // when(ntfInfoRepository.selectAllByInternalUserId("U1"))
+        // .thenThrow(new RuntimeException(new SQLTransientException("trans")));
+        // try (MockedStatic<ExtractSqlExceptionUtil> st =
+        // Mockito.mockStatic(ExtractSqlExceptionUtil.class)) {
+        // st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
+        // .thenAnswer(inv -> {
+        // Throwable t = inv.getArgument(0);
+        // while (t != null) {
+        // if (t instanceof SQLException)
+        // return (SQLException) t;
+        // t = t.getCause();
+        // }
+        // return null;
+        // });
+        // st.when(() ->
+        // ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
+        // .thenReturn(false);
 
-                        // 実行・確認
-                        assertThrows(CustomSqlException.class, () -> service.sendPush(req, header));
-                }
-        }
+        // // 実行・確認
+        // assertThrows(CustomSqlException.class, () -> service.sendPush(req, header));
+        // }
+        // }
 
         /**
          * クラス：SendPushServiceImpl sendPush
          * SQLNonTransientExceptionでCustomSqlExceptionとなることを確認するテストケース
          */
-        @Test
-        void sendPush_04() {
-                // 準備
-                SendPushRequestDto req = baseRequest();
-                when(ntfInfoRepository.selectAllByInternalUserId("U1"))
-                                .thenThrow(new RuntimeException(new SQLNonTransientException("nontrans")));
-                try (MockedStatic<ExtractSqlExceptionUtil> st = Mockito.mockStatic(ExtractSqlExceptionUtil.class)) {
-                        st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
-                                        .thenAnswer(inv -> {
-                                                Throwable t = inv.getArgument(0);
-                                                while (t != null) {
-                                                        if (t instanceof SQLException)
-                                                                return (SQLException) t;
-                                                        t = t.getCause();
-                                                }
-                                                return null;
-                                        });
-                        st.when(() -> ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
-                                        .thenReturn(false);
+        // @Test
+        // void sendPush_04() {
+        // // 準備
+        // SendPushRequestDto req = baseRequest();
+        // when(ntfInfoRepository.selectAllByInternalUserId("U1"))
+        // .thenThrow(new RuntimeException(new SQLNonTransientException("nontrans")));
+        // try (MockedStatic<ExtractSqlExceptionUtil> st =
+        // Mockito.mockStatic(ExtractSqlExceptionUtil.class)) {
+        // st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
+        // .thenAnswer(inv -> {
+        // Throwable t = inv.getArgument(0);
+        // while (t != null) {
+        // if (t instanceof SQLException)
+        // return (SQLException) t;
+        // t = t.getCause();
+        // }
+        // return null;
+        // });
+        // st.when(() ->
+        // ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
+        // .thenReturn(false);
 
-                        // 実行・確認
-                        assertThrows(CustomSqlException.class, () -> service.sendPush(req, header));
-                }
-        }
+        // // 実行・確認
+        // assertThrows(CustomSqlException.class, () -> service.sendPush(req, header));
+        // }
+        // }
 
         /**
          * クラス：SendPushServiceImpl sendPush

@@ -15,8 +15,6 @@ import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
 import com.windowsazure.messaging.NotificationHubsException;
 
 import java.sql.SQLException;
-import java.sql.SQLNonTransientException;
-import java.sql.SQLTransientException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -27,6 +25,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 端末情報登録サービス実装クラス
@@ -52,6 +51,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
      * @param header  ヘッダーDTO
      * @return 結果コード
      */
+    @Transactional(rollbackFor = Exception.class)
     public ResponseDto registDeviceInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
 
         try {
@@ -101,7 +101,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                     LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
                     throw new RuntimeException();
-                } else if (sqlEx instanceof SQLTransientException || sqlEx instanceof SQLNonTransientException) {
+                } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
                     LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
