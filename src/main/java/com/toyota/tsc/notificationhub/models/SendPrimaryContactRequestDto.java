@@ -12,7 +12,7 @@ public class SendPrimaryContactRequestDto {
     private String internalUserId;
     private String brdCd;
     private String title;
-    private String body_text;
-    private String body_html;
-    private String body_sms;
+    private String bodyText;
+    private String bodyHtml;
+    private String bodySms;
 }

@@ -1,8 +1,10 @@
+
 package com.toyota.tsc.notificationhub.services;
 
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
 import com.toyota.tsc.notificationhub.commons.NotificationHubUtil;
+import com.toyota.tsc.notificationhub.commons.PropertiesUtil;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
 import com.toyota.tsc.notificationhub.models.RegistNotificationDeviceInfoRequestDto;
@@ -15,6 +17,8 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -29,11 +33,12 @@ import static org.mockito.Mockito.*;
 
 /**
  * 実装：RegistNotificationDeviceInfoServiceImpl に対する包括テスト
- * - 例外ハンドリングは ExtractSqlExceptionUtil.findSqlException に基づくチェーン探索に一本化済み
+ * - 例外ハンドリングは ExtractSqlExceptionUtil.findSqlException に基づくチェーン探索に準拠
  * - while (cnt < retryCount) の true/false（0回転）両分岐を網羅
  * - validate は異常時に例外、正常時は null を返す仕様に準拠
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // ← Strict Stubs を緩め、不要スタブエラーを抑止
 class RegistNotificationDeviceInfoServiceImplTest {
 
         @InjectMocks
@@ -45,6 +50,9 @@ class RegistNotificationDeviceInfoServiceImplTest {
         @Mock
         private NotificationHubUtil notificationHubUtil;
 
+        // PropertiesUtil をテスト側でモックし、service へ差し込んで retryCount を制御する
+        private PropertiesUtil props;
+
         private RequestHeaderDto header;
 
         @BeforeEach
@@ -52,10 +60,14 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 header = new RequestHeaderDto();
                 header.setCorrelationId("corr-xxx");
 
-                // デフォルトのリトライ回数（必要に応じてテスト内で上書き）
-                Field f = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredField("retryCount");
-                f.setAccessible(true);
-                f.setInt(service, 2);
+                // PropertiesUtil をモックし、デフォルトのリトライ回数を 2 に設定
+                props = mock(PropertiesUtil.class);
+                when(props.getRetryCount()).thenReturn(2);
+
+                // 実装クラスの private フィールド propertiesUtil にモックを差し込み
+                Field pf = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredField("propertiesUtil");
+                pf.setAccessible(true);
+                pf.set(service, props);
         }
 
         private RegistNotificationDeviceInfoRequestDto baseRequest() {
@@ -73,7 +85,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 return new NtfInfoEntity(user, inst, token, dvc, brd, pf, ts, ts);
         }
 
-        // ---------- 正常系 ----------
+        // ---------------- 正常系 ----------------
 
         /** 新規トークン・端末数<=2・Azure成功 → 正常終了 */
         @Test
@@ -84,11 +96,9 @@ class RegistNotificationDeviceInfoServiceImplTest {
                                 entity("U1", "i-2", "tok-old-2", "d-old2", "1", "1", LocalDateTime.now()));
                 when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(deviceList);
                 when(ntfInfoRepository.upsert(any(NtfInfoEntity.class))).thenReturn(1);
-
                 doNothing().when(notificationHubUtil).deleteInstallation(anyString(), anyString());
                 doNothing().when(notificationHubUtil).upsertInstallation(anyString(), anyString(), anyString(),
-                                anyString(),
-                                anyString());
+                                anyString(), anyString());
 
                 try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
                         cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any()))
@@ -107,11 +117,16 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
         /** 既存トークン一致 → SKIPログ出力・正常終了 */
         @Test
-        void registDeviceInfo_skip_existingToken() {
+        void registDeviceInfo_skip_existingToken() throws NotificationHubsException {
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
                 List<NtfInfoEntity> deviceList = Collections.singletonList(
                                 entity("U1", "i-1", "token-new", "d1", "1", "1", LocalDateTime.now()));
+                // 実装は SKIP ログ出力後も upsert/delete/upsertInstallation を実行するため以下が必要
                 when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(deviceList);
+                when(ntfInfoRepository.upsert(any(NtfInfoEntity.class))).thenReturn(1);
+                doNothing().when(notificationHubUtil).deleteInstallation(anyString(), anyString());
+                doNothing().when(notificationHubUtil).upsertInstallation(anyString(), anyString(), anyString(),
+                                anyString(), anyString());
 
                 try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
                         cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any(), any()))
@@ -134,11 +149,9 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(deviceList);
                 when(ntfInfoRepository.upsert(any(NtfInfoEntity.class))).thenReturn(1);
                 when(ntfInfoRepository.delete(anyString(), anyString())).thenReturn(1);
-
                 doNothing().when(notificationHubUtil).deleteInstallation(anyString(), anyString());
                 doNothing().when(notificationHubUtil).upsertInstallation(anyString(), anyString(), anyString(),
-                                anyString(),
-                                anyString());
+                                anyString(), anyString());
 
                 try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
                         cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any(), any(), any(),
@@ -151,7 +164,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 }
         }
 
-        // ---------- 異常系（DB） ----------
+        // ---------------- 異常系（DB） ----------------
 
         /** upsert=0 → RuntimeException */
         @Test
@@ -159,7 +172,6 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
                 when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(Collections.emptyList());
                 when(ntfInfoRepository.upsert(any(NtfInfoEntity.class))).thenReturn(0);
-
                 assertThrows(RuntimeException.class, () -> service.registDeviceInfo(req, header));
         }
 
@@ -174,11 +186,9 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(deviceList);
                 when(ntfInfoRepository.upsert(any(NtfInfoEntity.class))).thenReturn(1);
                 when(ntfInfoRepository.delete(anyString(), anyString())).thenReturn(0);
-
                 doNothing().when(notificationHubUtil).deleteInstallation(anyString(), anyString());
                 doNothing().when(notificationHubUtil).upsertInstallation(anyString(), anyString(), anyString(),
-                                anyString(),
-                                anyString());
+                                anyString(), anyString());
 
                 assertThrows(RuntimeException.class, () -> service.registDeviceInfo(req, header));
         }
@@ -188,17 +198,16 @@ class RegistNotificationDeviceInfoServiceImplTest {
         void registDeviceInfo_fail_sqlConnection_byCause() {
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
                 when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(Collections.emptyList());
-
                 // upsert が RuntimeException(cause=SQLException) を投げる
                 when(ntfInfoRepository.upsert(any(NtfInfoEntity.class)))
                                 .thenThrow(new RuntimeException(new SQLException("conn")));
 
                 try (MockedStatic<ExtractSqlExceptionUtil> st = Mockito.mockStatic(ExtractSqlExceptionUtil.class);
                                 MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
+
                         st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
                                         .thenAnswer(inv -> {
                                                 Throwable t = inv.getArgument(0);
-                                                // チェーンから SQLException を返す動きを模倣
                                                 while (t != null) {
                                                         if (t instanceof SQLException)
                                                                 return (SQLException) t;
@@ -214,64 +223,6 @@ class RegistNotificationDeviceInfoServiceImplTest {
                         assertThrows(RuntimeException.class, () -> service.registDeviceInfo(req, header));
                 }
         }
-
-        /** cause: SQLTransientException → CustomSqlException */
-        // @Test
-        // void registDeviceInfo_fail_sqlTransient_byCause_toCustom() {
-        // RegistNotificationDeviceInfoRequestDto req = baseRequest();
-        // when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(Collections.emptyList());
-        // when(ntfInfoRepository.upsert(any(NtfInfoEntity.class)))
-        // .thenThrow(new RuntimeException(new SQLTransientException("trans")));
-
-        // try (MockedStatic<ExtractSqlExceptionUtil> st =
-        // Mockito.mockStatic(ExtractSqlExceptionUtil.class)) {
-        // st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
-        // .thenAnswer(inv -> {
-        // Throwable t = inv.getArgument(0);
-        // while (t != null) {
-        // if (t instanceof SQLException)
-        // return (SQLException) t;
-        // t = t.getCause();
-        // }
-        // return null;
-        // });
-        // st.when(() ->
-        // ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
-        // .thenReturn(false);
-
-        // assertThrows(CustomSqlException.class, () -> service.registDeviceInfo(req,
-        // header));
-        // }
-        // }
-
-        /** cause: SQLNonTransientException → CustomSqlException */
-        // @Test
-        // void registDeviceInfo_fail_sqlNonTransient_byCause_toCustom() {
-        // RegistNotificationDeviceInfoRequestDto req = baseRequest();
-        // when(ntfInfoRepository.selectAllByInternalUserId("U1")).thenReturn(Collections.emptyList());
-        // when(ntfInfoRepository.upsert(any(NtfInfoEntity.class)))
-        // .thenThrow(new RuntimeException(new SQLNonTransientException("nontrans")));
-
-        // try (MockedStatic<ExtractSqlExceptionUtil> st =
-        // Mockito.mockStatic(ExtractSqlExceptionUtil.class)) {
-        // st.when(() -> ExtractSqlExceptionUtil.findSqlException(any(Throwable.class)))
-        // .thenAnswer(inv -> {
-        // Throwable t = inv.getArgument(0);
-        // while (t != null) {
-        // if (t instanceof SQLException)
-        // return (SQLException) t;
-        // t = t.getCause();
-        // }
-        // return null;
-        // });
-        // st.when(() ->
-        // ExtractSqlExceptionUtil.isSqlConnectionError(any(SQLException.class)))
-        // .thenReturn(false);
-
-        // assertThrows(CustomSqlException.class, () -> service.registDeviceInfo(req,
-        // header));
-        // }
-        // }
 
         /** cause: その他の SQLException → RuntimeException */
         @Test
@@ -299,7 +250,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 }
         }
 
-        // ---------- 異常系（業務／通知） ----------
+        // ---------------- 異常系（業務／通知） ----------------
 
         /** validate：不正ブランドコード → TscApplicationException */
         @Test
@@ -318,8 +269,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
         }
 
         /**
-         * NotificationHubs：非Transient例外 →
-         * TscNotificationHubsExceptionが内部で発生→RuntimeExceptionに変換
+         * NotificationHubs：非Transient例外 → 内部で TscNotificationHubsException
+         * が発生→RuntimeException に変換
          */
         @Test
         void registDeviceInfo_fail_notificationHub_nonTransient_toRuntime() throws Exception {
@@ -354,11 +305,14 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 assertThrows(RuntimeException.class, () -> service.registDeviceInfo(req, header));
         }
 
-        // ---------- whileループの分岐網羅（true/false） ----------
+        // ---------------- while ループの分岐網羅（true/false） ----------------
 
         /** executeDeleteInstallation：Transient→リトライ成功（true側の典型） */
         @Test
         void executeDeleteInstallation_retry_thenSuccess() throws Exception {
+                // リトライ 2 回設定（1回目失敗→2回目成功）
+                when(props.getRetryCount()).thenReturn(2);
+
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
                 NtfInfoEntity e = entity("U1", "i-1", "tok1", "d1", "1", "1", LocalDateTime.now());
 
@@ -372,7 +326,6 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 when(ex.isTransient()).thenReturn(true);
                 when(ex.httpStatusCode()).thenReturn(500);
 
-                // 1回目は例外、2回目成功
                 doThrow(ex).doNothing().when(notificationHubUtil).deleteInstallation(anyString(), anyString());
 
                 try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
@@ -380,6 +333,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
                         cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any(), any(), any(),
                                         any(), any()))
                                         .thenReturn("MSG");
+
                         m.invoke(service, req, header, e);
                         verify(notificationHubUtil, times(2)).deleteInstallation(anyString(), anyString());
                 }
@@ -390,18 +344,12 @@ class RegistNotificationDeviceInfoServiceImplTest {
          */
         @Test
         void executeDeleteInstallation_retryExceeded_toTscException() throws Exception {
+                // リトライ回数を 2 に設定
+                when(props.getRetryCount()).thenReturn(2);
+                final int attempts = 2;
+
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
                 NtfInfoEntity e = entity("U1", "i-1", "tok1", "d1", "1", "1", LocalDateTime.now());
-
-                // retryCount を取得し、少なくとも 2 に
-                Field f = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredField("retryCount");
-                f.setAccessible(true);
-                int raw = f.getInt(service);
-                if (raw <= 0) {
-                        f.setInt(service, 2);
-                        raw = 2;
-                }
-                final int attempts = raw;
 
                 NotificationHubsException ex = mock(NotificationHubsException.class);
                 when(ex.isTransient()).thenReturn(true);
@@ -412,8 +360,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
                         if (counter[0]++ < attempts)
                                 throw ex;
                         return null;
-                })
-                                .when(notificationHubUtil).deleteInstallation(anyString(), anyString());
+                }).when(notificationHubUtil).deleteInstallation(anyString(), anyString());
 
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "executeDeleteInstallation",
@@ -425,6 +372,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
                         cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any(), any(), any(),
                                         any(), any()))
                                         .thenReturn("MSG");
+
                         InvocationTargetException ite = assertThrows(InvocationTargetException.class,
                                         () -> m.invoke(service, req, header, e));
                         assertInstanceOf(TscNotificationHubsException.class, ite.getCause());
@@ -432,7 +380,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 }
         }
 
-        /** executeDeleteInstallation：非Transient→即TscNotificationHubsException */
+        /** executeDeleteInstallation：非Transient→即 TscNotificationHubsException */
         @Test
         void executeDeleteInstallation_nonTransient_toTscException() throws Exception {
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
@@ -455,15 +403,14 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 assertTrue(ite.getCause() instanceof TscNotificationHubsException);
         }
 
-        /** executeDeleteInstallation：retryCount=0 → while不成立（false側） */
+        /** executeDeleteInstallation：retryCount=0 → while 不成立（false側） */
         @Test
         void executeDeleteInstallation_retryCountZero_skipsLoop() throws Exception {
+                // while ループに入らないように 0 を返す
+                when(props.getRetryCount()).thenReturn(0);
+
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
                 NtfInfoEntity e = entity("U1", "i-1", "tok1", "d1", "1", "1", LocalDateTime.now());
-
-                Field f = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredField("retryCount");
-                f.setAccessible(true);
-                f.setInt(service, 0);
 
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "executeDeleteInstallation",
@@ -478,6 +425,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
         /** executeUpsertInstallation：Transient→リトライ成功（true側） */
         @Test
         void executeUpsertInstallation_retry_thenSuccess() throws Exception {
+                when(props.getRetryCount()).thenReturn(2);
+
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
 
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
@@ -502,6 +451,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
          */
         @Test
         void executeUpsertInstallation_retryExceeded_toTscException() throws Exception {
+                when(props.getRetryCount()).thenReturn(2);
+
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
 
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
@@ -521,7 +472,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 assertTrue(ite.getCause() instanceof TscNotificationHubsException);
         }
 
-        /** executeUpsertInstallation：非Transient→即TscNotificationHubsException */
+        /** executeUpsertInstallation：非Transient→即 TscNotificationHubsException */
         @Test
         void executeUpsertInstallation_nonTransient_toTscException() throws Exception {
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
@@ -543,14 +494,12 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 assertTrue(ite.getCause() instanceof TscNotificationHubsException);
         }
 
-        /** executeUpsertInstallation：retryCount=0 → while不成立（false側） */
+        /** executeUpsertInstallation：retryCount=0 → while 不成立（false側） */
         @Test
         void executeUpsertInstallation_retryCountZero_skipsLoop() throws Exception {
-                RegistNotificationDeviceInfoRequestDto req = baseRequest();
+                when(props.getRetryCount()).thenReturn(0);
 
-                Field f = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredField("retryCount");
-                f.setAccessible(true);
-                f.setInt(service, 0);
+                RegistNotificationDeviceInfoRequestDto req = baseRequest();
 
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "executeUpsertInstallation",
@@ -562,7 +511,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
                                 .upsertInstallation(anyString(), anyString(), anyString(), anyString(), anyString());
         }
 
-        // ---------- Private補助メソッドの動作検証（必要分） ----------
+        // ---------------- Private補助メソッドの動作検証（必要分） ----------------
 
         @Test
         void extractByDeviceToken_notFound() throws Exception {
@@ -572,6 +521,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "extractByDeviceToken", List.class, String.class);
                 m.setAccessible(true);
+
+                @SuppressWarnings("unchecked")
                 List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(service, list, "tokX");
                 assertEquals(0, result.size());
         }
@@ -584,6 +535,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "extractByDeviceToken", List.class, String.class);
                 m.setAccessible(true);
+
+                @SuppressWarnings("unchecked")
                 List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(service, list, "tok1");
                 assertEquals(1, result.size());
                 assertEquals("tok1", result.get(0).getDeviceToken());
@@ -597,6 +550,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "extractToDeviceTokenList", List.class);
                 m.setAccessible(true);
+
+                @SuppressWarnings("unchecked")
                 List<String> tokens = (List<String>) m.invoke(service, list);
                 assertEquals(Arrays.asList("tok1", "tok2"), tokens);
         }
@@ -610,6 +565,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "getAllDeviceData", String.class);
                 m.setAccessible(true);
+
+                @SuppressWarnings("unchecked")
                 List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(service, "U1");
                 assertEquals(1, result.size());
         }
@@ -646,11 +603,12 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 assertTrue(sum >= 1);
         }
 
-        // ---------- validateの挙動（異常系：必須／正常系：null） ----------
+        // ---------------- validate の挙動（異常系：必須／正常系：null） ----------------
 
         @Test
         void validate_requiredMissing_throwsAppException() throws Exception {
                 RegistNotificationDeviceInfoRequestDto req = new RegistNotificationDeviceInfoRequestDto();
+
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "validate", RegistNotificationDeviceInfoRequestDto.class, RequestHeaderDto.class);
                 m.setAccessible(true);
@@ -664,6 +622,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
         void validate_invalidBrand_throwsAppException() throws Exception {
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
                 req.setBrdCd("9");
+
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "validate", RegistNotificationDeviceInfoRequestDto.class, RequestHeaderDto.class);
                 m.setAccessible(true);
@@ -677,6 +636,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
         void validate_invalidPlatform_throwsAppException() throws Exception {
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
                 req.setPlatform("9");
+
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "validate", RegistNotificationDeviceInfoRequestDto.class, RequestHeaderDto.class);
                 m.setAccessible(true);
@@ -689,6 +649,7 @@ class RegistNotificationDeviceInfoServiceImplTest {
         @Test
         void validate_normal_returnsNull() throws Exception {
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
+
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "validate", RegistNotificationDeviceInfoRequestDto.class, RequestHeaderDto.class);
                 m.setAccessible(true);
@@ -697,13 +658,14 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 assertNull(result); // 正常時は null を返す仕様
         }
 
-        // ---------- validateRequired の詳細網羅 ----------
+        // ---------------- validateRequired の詳細網羅 ----------------
 
         @Test
         void validateRequired_requestNull_returnsRequestBody() throws Exception {
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
                 m.setAccessible(true);
+
                 String result = (String) m.invoke(service, new Object[] { null });
                 assertEquals("requestBody", result);
         }
@@ -711,9 +673,11 @@ class RegistNotificationDeviceInfoServiceImplTest {
         @Test
         void validateRequired_multipleMissing_containsAll() throws Exception {
                 RegistNotificationDeviceInfoRequestDto req = new RegistNotificationDeviceInfoRequestDto();
+
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
                 m.setAccessible(true);
+
                 String result = (String) m.invoke(service, req);
                 assertTrue(result.contains("internalUserId"));
                 assertTrue(result.contains("platform"));
@@ -725,14 +689,114 @@ class RegistNotificationDeviceInfoServiceImplTest {
         @Test
         void validateRequired_normal_returnsNull() throws Exception {
                 RegistNotificationDeviceInfoRequestDto req = baseRequest();
+
                 Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
                                 "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
                 m.setAccessible(true);
+
                 String result = (String) m.invoke(service, req);
                 assertNull(result);
         }
 
-        // ---------- 判定メソッド ----------
+        /** validateRequired：internalUserId が null → "internalUserId" を検出 */
+        @Test
+        void validateRequired_09_null_internalUserId_detected() throws Exception {
+                RegistNotificationDeviceInfoRequestDto req = baseRequest();
+                req.setInternalUserId(null);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                String result = (String) m.invoke(service, req);
+                assertNotNull(result);
+                assertTrue(result.contains("internalUserId"));
+        }
+
+        /** validateRequired：platform が null → "platform" を検出 */
+        @Test
+        void validateRequired_10_null_platform_detected() throws Exception {
+                RegistNotificationDeviceInfoRequestDto req = baseRequest();
+                req.setPlatform(null);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                String result = (String) m.invoke(service, req);
+                assertNotNull(result);
+                assertTrue(result.contains("platform"));
+        }
+
+        /** validateRequired：deviceToken が null → "deviceToken" を検出 */
+        @Test
+        void validateRequired_11_null_deviceToken_detected() throws Exception {
+                RegistNotificationDeviceInfoRequestDto req = baseRequest();
+                req.setDeviceToken(null);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                String result = (String) m.invoke(service, req);
+                assertNotNull(result);
+                assertTrue(result.contains("deviceToken"));
+        }
+
+        /** validateRequired：dvcId が null → "dvcId" を検出 */
+        @Test
+        void validateRequired_12_null_dvcId_detected() throws Exception {
+                RegistNotificationDeviceInfoRequestDto req = baseRequest();
+                req.setDvcId(null);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                String result = (String) m.invoke(service, req);
+                assertNotNull(result);
+                assertTrue(result.contains("dvcId"));
+        }
+
+        /** validateRequired：brdCd が null → "brdCd" を検出 */
+        @Test
+        void validateRequired_13_null_brdCd_detected() throws Exception {
+                RegistNotificationDeviceInfoRequestDto req = baseRequest();
+                req.setBrdCd(null);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                String result = (String) m.invoke(service, req);
+                assertNotNull(result);
+                assertTrue(result.contains("brdCd"));
+        }
+
+        /** validateRequired：全項目が空文字 → 全て検出される（isEmpty()側の再確認） */
+        @Test
+        void validateRequired_14_allEmpty_detected() throws Exception {
+                RegistNotificationDeviceInfoRequestDto req = new RegistNotificationDeviceInfoRequestDto();
+                req.setInternalUserId("");
+                req.setPlatform("");
+                req.setDeviceToken("");
+                req.setDvcId("");
+                req.setBrdCd("");
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                String result = (String) m.invoke(service, req);
+                assertNotNull(result);
+                assertTrue(result.contains("internalUserId"));
+                assertTrue(result.contains("platform"));
+                assertTrue(result.contains("deviceToken"));
+                assertTrue(result.contains("dvcId"));
+                assertTrue(result.contains("brdCd"));
+        }
+
+        // ---------------- 判定メソッド ----------------
 
         @Test
         void isValidPlatform_trueFor1() throws Exception {
@@ -813,103 +877,4 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 // 原因が RuntimeException であること（catch(Exception e){ throw e; } が働いた証拠）
                 assertTrue(ite.getCause() instanceof RuntimeException);
         }
-
-        /** validateRequired：internalUserId が null → "internalUserId" を検出 */
-        @Test
-        void validateRequired_09_null_internalUserId_detected() throws Exception {
-                RegistNotificationDeviceInfoRequestDto req = baseRequest();
-                req.setInternalUserId(null);
-
-                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
-                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-                m.setAccessible(true);
-
-                String result = (String) m.invoke(service, req);
-                assertNotNull(result);
-                assertTrue(result.contains("internalUserId"));
-        }
-
-        /** validateRequired：platform が null → "platform" を検出 */
-        @Test
-        void validateRequired_10_null_platform_detected() throws Exception {
-                RegistNotificationDeviceInfoRequestDto req = baseRequest();
-                req.setPlatform(null);
-
-                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
-                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-                m.setAccessible(true);
-
-                String result = (String) m.invoke(service, req);
-                assertNotNull(result);
-                assertTrue(result.contains("platform"));
-        }
-
-        /** validateRequired：deviceToken が null → "deviceToken" を検出 */
-        @Test
-        void validateRequired_11_null_deviceToken_detected() throws Exception {
-                RegistNotificationDeviceInfoRequestDto req = baseRequest();
-                req.setDeviceToken(null);
-
-                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
-                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-                m.setAccessible(true);
-
-                String result = (String) m.invoke(service, req);
-                assertNotNull(result);
-                assertTrue(result.contains("deviceToken"));
-        }
-
-        /** validateRequired：dvcId が null → "dvcId" を検出 */
-        @Test
-        void validateRequired_12_null_dvcId_detected() throws Exception {
-                RegistNotificationDeviceInfoRequestDto req = baseRequest();
-                req.setDvcId(null);
-
-                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
-                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-                m.setAccessible(true);
-
-                String result = (String) m.invoke(service, req);
-                assertNotNull(result);
-                assertTrue(result.contains("dvcId"));
-        }
-
-        /** validateRequired：brdCd が null → "brdCd" を検出 */
-        @Test
-        void validateRequired_13_null_brdCd_detected() throws Exception {
-                RegistNotificationDeviceInfoRequestDto req = baseRequest();
-                req.setBrdCd(null);
-
-                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
-                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-                m.setAccessible(true);
-
-                String result = (String) m.invoke(service, req);
-                assertNotNull(result);
-                assertTrue(result.contains("brdCd"));
-        }
-
-        /** validateRequired：全項目が空文字 → 全て検出される（isEmpty() 側の再確認） */
-        @Test
-        void validateRequired_14_allEmpty_detected() throws Exception {
-                RegistNotificationDeviceInfoRequestDto req = new RegistNotificationDeviceInfoRequestDto();
-                req.setInternalUserId("");
-                req.setPlatform("");
-                req.setDeviceToken("");
-                req.setDvcId("");
-                req.setBrdCd("");
-
-                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
-                                "validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-                m.setAccessible(true);
-
-                String result = (String) m.invoke(service, req);
-                assertNotNull(result);
-                assertTrue(result.contains("internalUserId"));
-                assertTrue(result.contains("platform"));
-                assertTrue(result.contains("deviceToken"));
-                assertTrue(result.contains("dvcId"));
-                assertTrue(result.contains("brdCd"));
-        }
-
 }

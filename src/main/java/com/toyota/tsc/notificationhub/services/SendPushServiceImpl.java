@@ -5,6 +5,7 @@ import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.commons.NotificationHubUtil;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
@@ -20,7 +21,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -33,12 +33,19 @@ public class SendPushServiceImpl implements SendPushServiceIF {
     @Value("${azure.notification-hub.retry-count}")
     private int retryCount;
 
-    @Autowired
     private NtfInfoRepositoryIF ntfInfoRepository;
-    @Autowired
     private NotificationHubUtil notificationHubUtil;
 
+    public SendPushServiceImpl(
+            NtfInfoRepositoryIF ntfInfoRepository,
+            NotificationHubUtil notificationHubUtil) {
+        this.ntfInfoRepository = ntfInfoRepository;
+        this.notificationHubUtil = notificationHubUtil;
+    }
+
     private static final String PROCCESS_NAME = "プッシュ通知送信要求";
+    private static final String FCM = "1";
+    private static final String APN = "2";
 
     @Override
     /**
@@ -60,6 +67,11 @@ public class SendPushServiceImpl implements SendPushServiceIF {
 
             // InstallationID取得
             List<NtfInfoEntity> deviceList = getAllDeviceData(request.getInternalUserId());
+            if (deviceList.isEmpty()) {
+                LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00013", request.getInternalUserId(), header.getCorrelationId()));
+                throw new TscApplicationException();
+            }
             NtfInfoEntity deviceData = getLastData(deviceList);
 
             // プッシュ通知実行
@@ -73,6 +85,12 @@ public class SendPushServiceImpl implements SendPushServiceIF {
 
             return new ResponseDto(resultCode);
 
+        } catch (TscApplicationException e) {
+            throw new TscApplicationException();
+
+        } catch (TscNotificationHubsException e) {
+            throw new CustomException();
+
         } catch (Exception e) {
             SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
             if (sqlEx != null) {
@@ -80,7 +98,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                     // 接続エラー
                     LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new RuntimeException();
+                    throw new CustomException();
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
                     LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
@@ -89,15 +107,11 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                 }
                 LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new RuntimeException();
-            } else if (e instanceof TscApplicationException) {
-                throw new TscApplicationException();
-            } else if (e instanceof TscNotificationHubsException) {
-                throw new RuntimeException();
+                throw new CustomException();
             } else {
                 LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new RuntimeException();
+                throw new CustomException();
             }
         }
     }
@@ -121,7 +135,34 @@ public class SendPushServiceImpl implements SendPushServiceIF {
         // プッシュ通知完了ログ
         LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
                 "RS07I00008", request.getInternalUserId(), request.getBody(), deviceData.getInstallationId(),
-                deviceData.getInternalUserId(), header.getCorrelationId()));
+                header.getCorrelationId()));
+    }
+
+    /**
+     * ペイロード作成
+     * 
+     * @param request
+     * @param header
+     * @param deviceData
+     * @return
+     */
+    private String createPayload(
+            SendPushRequestDto request, RequestHeaderDto header, NtfInfoEntity deviceData) {
+        try {
+            switch (deviceData.getPlatformType()) {
+                case APN:
+                    return notificationHubUtil.buildApnsPayload(request.getBody());
+                case FCM:
+                    return notificationHubUtil.buildFcmV1Payload(request.getBody());
+                default:
+                    throw new CustomException(); // 1,2以外は登録されないので基本到達しない。
+            }
+        } catch (Exception e) {
+            LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00014", request.getInternalUserId(), request.getBody(), header.getCorrelationId()));
+            throw new TscApplicationException();
+        }
+
     }
 
     /**
@@ -137,10 +178,10 @@ public class SendPushServiceImpl implements SendPushServiceIF {
         int cnt = 0;
         while (cnt < this.retryCount) {
             try {
-                NotificationOutcome outcome = notificationHubUtil.postMessage(
-                        deviceData.getInstallationId(), request.getBody(), deviceData.getBrdCd(),
+                String payload = createPayload(request, header, deviceData);
+                return notificationHubUtil.postMessage(
+                        deviceData.getInstallationId(), payload, deviceData.getBrdCd(),
                         deviceData.getPlatformType());
-                return outcome;
             } catch (NotificationHubsException ex) {
                 if (ex.isTransient()) {
                     cnt++;

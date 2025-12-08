@@ -2,22 +2,22 @@
 package com.toyota.tsc.notificationhub.repositories;
 
 import java.sql.SQLException;
-import java.sql.SQLNonTransientException;
 import java.sql.SQLTransientException;
 import java.util.List;
 import java.util.concurrent.Callable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 
 /**
  * 通知情報リポジトリ実装クラス
  */
-@Primary
 @Repository
+@Profile("!local")
 public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
     private final NtfInfoMapper ntfInfoMapper;
 
@@ -114,33 +114,51 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
      * @return アクション実行結果
      */
     private <T> T executeWithRetry(Callable<T> action, int retryCount) {
-        int retry = 0;
-        while (true) {
+        for (int retry = 0;; retry++) {
             try {
                 return action.call();
-
             } catch (Exception e) {
-                SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
-                if (!(sqlEx instanceof SQLTransientException)) {
-                    if (sqlEx instanceof SQLNonTransientException) {
-                        throw new RuntimeException(sqlEx);
-                    } else if (sqlEx != null) {
-                        throw new RuntimeException(sqlEx);
-                    } else {
-                        throw new RuntimeException(e);
-                    }
+                // ここを「投げるか（throw）／待つか（sleep）」の1行判定にする
+                if (shouldThrow(e, retry, retryCount)) {
+                    throw toCustom(e);
                 }
-                retry++;
-                if (retry > retryCount) {
-                    throw new RuntimeException(e);
-                }
-                long wait = Math.min((long) (upsertRetryBaseInterval * Math.pow(2, retry - 1)), upsertRetryMaxInterval);
-                try {
-                    Thread.sleep(wait);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                }
+                sleep(backoffMillis(retry + 1)); // 1回目の待機は指数0
             }
+        }
+    }
+
+    /** 例外をどう扱うかの“ロジック”をここに集約（本体の複雑度を下げる） */
+    private boolean shouldThrow(Exception e, int retry, int retryCount) {
+        final SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
+
+        // SQL例外でない → リトライ不可
+        if (sqlEx == null)
+            return true;
+
+        // 非Transient → リトライ不可
+        if (!(sqlEx instanceof SQLTransientException))
+            return true;
+
+        // Transientだが回数超過 → リトライ不可
+        return retry >= retryCount;
+    }
+
+    /** 例外ラップも1箇所に集約（本体の分岐を削減） */
+    private CustomException toCustom(Exception e) {
+        final SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
+        return new CustomException(sqlEx != null ? sqlEx : e);
+    }
+
+    private long backoffMillis(int attempt) {
+        long base = (long) (upsertRetryBaseInterval * Math.pow(2, (double) attempt - 1));
+        return Math.min(base, upsertRetryMaxInterval);
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
     }
 }

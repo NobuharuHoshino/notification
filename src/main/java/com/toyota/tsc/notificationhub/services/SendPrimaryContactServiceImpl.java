@@ -6,6 +6,7 @@ import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.commons.SendGridUtil;
 import com.toyota.tsc.notificationhub.commons.SmsCountryUtil;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
 import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
@@ -15,7 +16,6 @@ import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.models.SendPrimaryContactRequestDto;
 import java.util.ArrayList;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.stereotype.Service;
 
@@ -29,10 +29,15 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
     private static final String CONTACT_PHONE = "1";
     private static final String CONTACT_EMAIL = "2";
 
-    @Autowired
-    SmsCountryUtil smsCountryUtil;
-    @Autowired
+    private SmsCountryUtil smsCountryUtil;
     private SendGridUtil sendGridUtil;
+
+    public SendPrimaryContactServiceImpl(
+            SmsCountryUtil smsCountryUtil,
+            SendGridUtil sendGridUtil) {
+        this.smsCountryUtil = smsCountryUtil;
+        this.sendGridUtil = sendGridUtil;
+    }
 
     @Override
     /**
@@ -55,7 +60,9 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             // 個人情報取得
             PersonalInfoResponseDto response = CommonUtil.getPersonalInfoApiResponse(request.getInternalUserId());
             if (response == null) {
-                throw new RuntimeException();
+                LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00015", request.getInternalUserId(), header.getCorrelationId()));
+                throw new TscApplicationException();
             }
             List<PersonalInfoResponseDto.ContactDto> contactList = response.getContactList();
 
@@ -72,25 +79,22 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         } catch (TscEMailException e) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00007", e.getStatusCode(), CommonUtil.maskText(e.getAddress()),
-                    request.getTitle(), header.getCorrelationId()));
-            throw new RuntimeException();
+                    e.getTitle(), header.getCorrelationId()));
+            throw new CustomException(e.getCause());
 
         } catch (TscSMSException e) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00006", e.getStatusCode(), CommonUtil.maskPhoneNumber(e.getPhoneNo()),
                     header.getCorrelationId()));
-            throw new RuntimeException();
+            throw new CustomException(e);
+
+        } catch (TscApplicationException e) {
+            throw new TscApplicationException();
 
         } catch (Exception e) {
-
-            if (e instanceof TscApplicationException) {
-                throw new TscApplicationException();
-
-            } else {
-                LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                        "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new RuntimeException();
-            }
+            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
+            throw new CustomException(e);
         }
     }
 
@@ -111,15 +115,15 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             if (contact.getContactType().equals(CONTACT_PHONE) && contact.isPrimaryContactFlag()) {
                 // SMS送信要求
                 LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                        "RS07I00013", request.getInternalUserId(), contact.getContact(), request.getTitle(),
-                        header.getCorrelationId()));
-                executeSendSms(request, header, contact.getContact());
+                        "RS07I00013", request.getInternalUserId(), request.getBrdCd(), contact.getContact(),
+                        request.getTitle(), header.getCorrelationId()));
+                executeSendSms(request, contact.getContact());
             } else if (contact.getContactType().equals(CONTACT_EMAIL) && contact.isPrimaryContactFlag()) {
                 // メール送信要求
                 LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                         "RS07I00014", request.getInternalUserId(), request.getBrdCd(), contact.getContact(),
                         request.getTitle(), header.getCorrelationId()));
-                executeSendEmail(request, header, contact.getContact());
+                executeSendEmail(request, contact.getContact());
             } else {
                 return;
             }
@@ -134,9 +138,9 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
      * @param phoneNo 送信先電話番号
      * @return なし
      */
-    private void executeSendSms(SendPrimaryContactRequestDto request, RequestHeaderDto header, String phoneNo) {
+    private void executeSendSms(SendPrimaryContactRequestDto request, String phoneNo) {
         HttpEntity<String> entity = smsCountryUtil.createRequest(
-                CommonUtil.normalizePhoneNumber(phoneNo), request.getBody_sms(),
+                CommonUtil.normalizePhoneNumber(phoneNo), request.getBodySms(),
                 request.getBrdCd());
         smsCountryUtil.sendSmsCountry(entity, phoneNo);
     }
@@ -149,10 +153,10 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
      * @param email   送信先メールアドレス
      * @return なし
      */
-    private void executeSendEmail(SendPrimaryContactRequestDto request, RequestHeaderDto header, String email) {
+    private void executeSendEmail(SendPrimaryContactRequestDto request, String email) {
         Mail mail = sendGridUtil.generateEmail(
-                email, request.getTitle(), request.getBody_text(),
-                request.getBody_html(), request.getBrdCd());
+                email, request.getTitle(), request.getBodyText(),
+                request.getBodyHtml(), request.getBrdCd());
         sendGridUtil.executeSendEmail(mail);
     }
 

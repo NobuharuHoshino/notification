@@ -2,12 +2,13 @@ package com.toyota.tsc.notificationhub.commons;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import java.net.URLEncoder;
 import java.time.Instant;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.windowsazure.messaging.NotificationHubsException;
@@ -16,6 +17,10 @@ import com.windowsazure.messaging.NotificationHub;
 import com.windowsazure.messaging.FcmV1Installation;
 import com.windowsazure.messaging.FcmV1Notification;
 import com.windowsazure.messaging.Notification;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.windowsazure.messaging.AppleInstallation;
 import com.windowsazure.messaging.AppleNotification;
 
@@ -25,43 +30,31 @@ import com.windowsazure.messaging.AppleNotification;
 @Component
 public class NotificationHubUtil {
 
-    private final String BRD_TOYOTA = "1";
-    private final String BRD_LEXUS = "2";
+    private static final String BRD_TOYOTA = "1";
+    private static final String BRD_LEXUS = "2";
     private static final String PLATFORM_ANDROID = "1"; // FCM v1
     private static final String PLATFORM_IOS = "2"; // APNs
+    private static final String[] TAGS = { "internalUserId" };
+    private static final String PUSH_INFORMATION_LIST = "pushInformationList";
+    private static final String LOC_KEY = "LocKey";
+    private static final String LCS_SELECTED = "lcsSelected";
+    private static final String PUSH_FLG = "pushFlg";
+    private static final String PUSH_DEEP_LINK = "pushDeepLink";
+    private static final String POPUP_BUTTON_DEEP_LINK = "popUpButtonDeepLink";
+    private static final String POPUP_INFORMATION_LIST = "popupInformationList";
+    private static final String NOTIFICATION_ID = "notificationId";
+    private static final String ANDROID = "android";
+    private static final String DATA = "data";
+    private static final String MESSAGE = "message";
+    private static final String APS = "aps";
+    private static final String ALERT = "alert";
+    private static final String MUTABLE_CONTENT = "mutable-content";
 
-    @Value("${azure.notification-hub.api-version}")
-    private String apiVersion;
-    @Value("${azure.notification-hub.root-uri}")
-    private String rootUri;
-    @Value("${azure.notification-hub.installation-uri}")
-    private String installationUri;
-    @Value("${azure.notification-hub.sas.ttlSeconds}")
-    private int ttlSeconds;
-    @Value("${azure.notification-hub.http.timeoutMillis}")
-    private int timeoutMillis;
-    @Value("${azure.notification-hub.namespace-t}")
-    private String namespaceT;
-    @Value("${azure.notification-hub.hub-name-t}")
-    private String hubNameT;
-    @Value("${azure.notification-hub.shared-access-key-name-t}")
-    private String keyNameT;
-    @Value("${azure.notification-hub.shared-access-key-t}")
-    private String keyT;
-    @Value("${azure.notification-hub.namespace-l}")
-    private String namespaceL;
-    @Value("${azure.notification-hub.hub-name-l}")
-    private String hubNameL;
-    @Value("${azure.notification-hub.shared-access-key-name-l}")
-    private String keyNameL;
-    @Value("${azure.notification-hub.shared-access-key-l}")
-    private String keyL;
-    @Value("${azure.notification-hub.sas.template}")
-    private String sasTemplate;
-    @Value("${azure.notification-hub.installation.payload.template}")
-    private String installationPayloadTemplate;
-    @Value("${azure.notification-hub.sdk.connection-string}")
-    private String sdkConnectionStringTemplate;
+    private PropertiesUtil propertiesUtil;
+
+    public NotificationHubUtil(PropertiesUtil propertiesUtil) {
+        this.propertiesUtil = propertiesUtil;
+    }
 
     /**
      * SASトークンを生成します。
@@ -76,29 +69,29 @@ public class NotificationHubUtil {
         final String key;
         try {
             if (BRD_TOYOTA.equals(brdCd)) {
-                namespace = namespaceT;
-                hubName = hubNameT;
-                keyName = keyNameT;
-                key = keyT;
+                namespace = propertiesUtil.getNamespaceT();
+                hubName = propertiesUtil.getHubNameT();
+                keyName = propertiesUtil.getKeyNameT();
+                key = propertiesUtil.getKeyT();
             } else if (BRD_LEXUS.equals(brdCd)) {
-                namespace = namespaceL;
-                hubName = hubNameL;
-                keyName = keyNameL;
-                key = keyL;
+                namespace = propertiesUtil.getNamespaceL();
+                hubName = propertiesUtil.getHubNameL();
+                keyName = propertiesUtil.getKeyNameL();
+                key = propertiesUtil.getKeyL();
             } else {
                 return null; // サービスでバリデーションチェックしているため、対応ブランド以外は到達しない想定。
             }
-            String uri = String.format(rootUri, namespace, hubName);
+            String uri = String.format(propertiesUtil.getRootUri(), namespace, hubName);
             String encodedUri = URLEncoder.encode(uri, StandardCharsets.UTF_8.name());
-            long expiry = Instant.now().getEpochSecond() + ttlSeconds;
+            long expiry = Instant.now().getEpochSecond() + propertiesUtil.getTtlSeconds();
             String toSign = encodedUri + "\n" + expiry;
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
             String signature = Base64.getEncoder().encodeToString(mac.doFinal(toSign.getBytes(StandardCharsets.UTF_8)));
             String encodedSig = URLEncoder.encode(signature, StandardCharsets.UTF_8.name());
-            return String.format(sasTemplate, encodedUri, encodedSig, expiry, keyName);
+            return String.format(propertiesUtil.getSasTemplate(), encodedUri, encodedSig, expiry, keyName);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new CustomException(e);
         }
     }
 
@@ -120,20 +113,21 @@ public class NotificationHubUtil {
         final String keyName;
         final String key;
         if (BRD_TOYOTA.equals(brdCd)) {
-            namespace = namespaceT;
-            hubName = hubNameT;
-            keyName = keyNameT;
-            key = keyT;
+            namespace = propertiesUtil.getNamespaceT();
+            hubName = propertiesUtil.getHubNameT();
+            keyName = propertiesUtil.getKeyNameT();
+            key = propertiesUtil.getKeyT();
         } else if (BRD_LEXUS.equals(brdCd)) {
-            namespace = namespaceL;
-            hubName = hubNameL;
-            keyName = keyNameL;
-            key = keyL;
+            namespace = propertiesUtil.getNamespaceL();
+            hubName = propertiesUtil.getHubNameL();
+            keyName = propertiesUtil.getKeyNameL();
+            key = propertiesUtil.getKeyL();
         } else {
             return; // サービスでバリデーションチェックしているため、対応ブランド以外は到達しない想定。
         }
 
-        final String connectionString = String.format(sdkConnectionStringTemplate, namespace, keyName, key);
+        final String connectionString = String.format(propertiesUtil.getSdkConnectionStringTemplate(), namespace,
+                keyName, key);
         NotificationHub hub = new NotificationHub(connectionString, hubName);
 
         switch (platformCode) {
@@ -141,7 +135,7 @@ public class NotificationHubUtil {
                 FcmV1Installation installation = new FcmV1Installation(
                         installationId,
                         deviceToken,
-                        new String[] { internalUserId });
+                        TAGS);
                 hub.createOrUpdateInstallation(installation);
                 break;
             }
@@ -149,7 +143,7 @@ public class NotificationHubUtil {
                 AppleInstallation installation = new AppleInstallation(
                         installationId,
                         deviceToken,
-                        new String[] { internalUserId });
+                        TAGS);
                 hub.createOrUpdateInstallation(installation);
                 break;
             }
@@ -171,20 +165,21 @@ public class NotificationHubUtil {
         final String keyName;
         final String key;
         if (BRD_TOYOTA.equals(brdCd)) {
-            namespace = namespaceT;
-            hubName = hubNameT;
-            keyName = keyNameT;
-            key = keyT;
+            namespace = propertiesUtil.getNamespaceT();
+            hubName = propertiesUtil.getHubNameT();
+            keyName = propertiesUtil.getKeyNameT();
+            key = propertiesUtil.getKeyT();
         } else if (BRD_LEXUS.equals(brdCd)) {
-            namespace = namespaceL;
-            hubName = hubNameL;
-            keyName = keyNameL;
-            key = keyL;
+            namespace = propertiesUtil.getNamespaceL();
+            hubName = propertiesUtil.getHubNameL();
+            keyName = propertiesUtil.getKeyNameL();
+            key = propertiesUtil.getKeyL();
         } else {
             return; // サービスでバリデーションチェックしているため、対応ブランド以外は到達しない想定。
         }
 
-        final String connectionString = String.format(sdkConnectionStringTemplate, namespace, keyName, key);
+        final String connectionString = String.format(propertiesUtil.getSdkConnectionStringTemplate(), namespace,
+                keyName, key);
         NotificationHub hub = new NotificationHub(connectionString, hubName);
         hub.deleteInstallation(installationId);
     }
@@ -206,15 +201,15 @@ public class NotificationHubUtil {
         final String keyName;
         final String key;
         if (BRD_TOYOTA.equals(brdCd)) {
-            namespace = namespaceT;
-            hubName = hubNameT;
-            keyName = keyNameT;
-            key = keyT;
+            namespace = propertiesUtil.getNamespaceT();
+            hubName = propertiesUtil.getHubNameT();
+            keyName = propertiesUtil.getKeyNameT();
+            key = propertiesUtil.getKeyT();
         } else if (BRD_LEXUS.equals(brdCd)) {
-            namespace = namespaceL;
-            hubName = hubNameL;
-            keyName = keyNameL;
-            key = keyL;
+            namespace = propertiesUtil.getNamespaceL();
+            hubName = propertiesUtil.getHubNameL();
+            keyName = propertiesUtil.getKeyNameL();
+            key = propertiesUtil.getKeyL();
         } else {
             return null; // サービスでバリデーションチェックしているため、対応ブランド以外は到達しない想定。
         }
@@ -234,10 +229,102 @@ public class NotificationHubUtil {
         }
 
         // NotificationHub クライアント生成
-        final String connectionString = String.format(sdkConnectionStringTemplate, namespace, keyName, key);
+        final String connectionString = String.format(propertiesUtil.getSdkConnectionStringTemplate(), namespace,
+                keyName, key);
         NotificationHub hub = new NotificationHub(connectionString, hubName);
-        // 端末（device handle）宛のダイレクト送信
-        return hub.sendDirectNotification(notification, installationId);
+        String tagExpr = String.format("$InstallationId:{%s}", installationId);
+        return hub.sendNotification(notification, tagExpr);
     }
 
+    /**
+     * ペイロードを組み立てます。
+     * 
+     * @param bodyData ペイロードデータマップ
+     * @return FCM v1ペイロード文字列
+     */
+    public String buildFcmV1Payload(Map<String, Object> bodyData) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            ObjectNode dataNode = mapper.createObjectNode();
+            Object pushInformationList = bodyData.get(PUSH_INFORMATION_LIST);
+            if (pushInformationList != null) {
+                String json = mapper.writeValueAsString(pushInformationList);
+                dataNode.put(PUSH_INFORMATION_LIST, json);
+            }
+            putAsStringIfPresent(dataNode, bodyData, LOC_KEY);
+            putAsStringIfPresent(dataNode, bodyData, LCS_SELECTED);
+            putAsStringIfPresent(dataNode, bodyData, PUSH_FLG);
+            putAsStringIfPresent(dataNode, bodyData, PUSH_DEEP_LINK);
+            putAsStringIfPresent(dataNode, bodyData, POPUP_BUTTON_DEEP_LINK);
+            Object popupInformationList = bodyData.get(POPUP_INFORMATION_LIST);
+            if (popupInformationList != null) {
+                String json = mapper.writeValueAsString(popupInformationList);
+                dataNode.put(POPUP_INFORMATION_LIST, json);
+            }
+            putAsStringIfPresent(dataNode, bodyData, NOTIFICATION_ID);
+            ObjectNode androidNode = mapper.createObjectNode();
+            androidNode.set(DATA, dataNode);
+            ObjectNode messageNode = mapper.createObjectNode();
+            messageNode.set(ANDROID, androidNode);
+            ObjectNode root = mapper.createObjectNode();
+            root.set(MESSAGE, messageNode);
+
+            return mapper.writeValueAsString(root);
+
+        } catch (JsonProcessingException e) {
+            throw new CustomException(e);
+        }
+    }
+
+    /**
+     * bodyData の値を文字列化して dataNode に設定します。
+     * 値が Number/Boolean でも String.valueOf(...) で文字列統一。
+     */
+    private void putAsStringIfPresent(ObjectNode dataNode, Map<String, Object> bodyData, String key) {
+        Object val = bodyData.get(key);
+        if (val != null) {
+            dataNode.put(key, String.valueOf(val));
+        }
+    }
+
+    public String buildApnsPayload(Map<String, Object> bodyData) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            ObjectNode root = mapper.createObjectNode();
+            ObjectNode aps = mapper.createObjectNode();
+            aps.put(ALERT, " ");
+            aps.put(MUTABLE_CONTENT, 1);
+            root.set(APS, aps);
+            Object pushInformationList = bodyData.get(PUSH_INFORMATION_LIST);
+            if (pushInformationList != null) {
+                root.set(PUSH_INFORMATION_LIST, mapper.valueToTree(pushInformationList));
+            }
+            Object popupInformationList = bodyData.get(POPUP_INFORMATION_LIST);
+            if (popupInformationList != null) {
+                root.set(POPUP_INFORMATION_LIST, mapper.valueToTree(popupInformationList));
+            }
+            putIfPresent(root, mapper, bodyData, LOC_KEY);
+            putIfPresent(root, mapper, bodyData, LCS_SELECTED);
+            putIfPresent(root, mapper, bodyData, PUSH_FLG);
+            putIfPresent(root, mapper, bodyData, PUSH_DEEP_LINK);
+            putIfPresent(root, mapper, bodyData, POPUP_BUTTON_DEEP_LINK);
+            putIfPresent(root, mapper, bodyData, NOTIFICATION_ID);
+            return mapper.writeValueAsString(root);
+
+        } catch (JsonProcessingException e) {
+            throw new CustomException(e);
+        }
+    }
+
+    /**
+     * bodyData の値を「そのままの型」で JSON ノードに変換して root に設定します。
+     * String/Number/Boolean/Map/List/POJO いずれでも valueToTree でツリー化できます。
+     */
+    private void putIfPresent(ObjectNode root, ObjectMapper mapper,
+            Map<String, Object> bodyData, String key) {
+        Object val = bodyData.get(key);
+        if (val != null) {
+            root.set(key, mapper.valueToTree(val));
+        }
+    }
 }

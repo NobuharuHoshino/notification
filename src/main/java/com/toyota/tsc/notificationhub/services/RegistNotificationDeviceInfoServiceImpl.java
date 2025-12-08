@@ -4,6 +4,8 @@ import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.commons.NotificationHubUtil;
+import com.toyota.tsc.notificationhub.commons.PropertiesUtil;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
@@ -20,10 +22,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +31,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificationDeviceInfoServiceIF {
 
-    @Autowired
     private NtfInfoRepositoryIF ntfInfoRepository;
-    @Autowired
     private NotificationHubUtil notificationHubUtil;
 
-    @Value("${azure.notification-hub.retry-count}")
-    private int retryCount;
+    public RegistNotificationDeviceInfoServiceImpl(
+            NtfInfoRepositoryIF ntfInfoRepository,
+            NotificationHubUtil notificationHubUtil,
+            PropertiesUtil propertiesUtil) {
+        this.ntfInfoRepository = ntfInfoRepository;
+        this.notificationHubUtil = notificationHubUtil;
+        this.propertiesUtil = propertiesUtil;
+    }
 
+    private PropertiesUtil propertiesUtil;
     private static final String PROCCESS_NAME = "通知端末情報登録";
 
     @Override
@@ -65,24 +68,12 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
 
             // Installation実行
             List<NtfInfoEntity> deviceList = getAllDeviceData(request.getInternalUserId());
-            if (extractByDeviceToken(deviceList, request.getDeviceToken()).size() == 0) {
-                String installationId = generateInstallationId(request, header);
-                int upsertCount = upsertDeviceInfo(request, header, installationId);
-                if (upsertCount == 0) {
-                    throw new RuntimeException();
-                }
-                operationDeleteInstallation(request, header, deviceList);
-                operationUpsertInstallation(request, header, installationId);
-                if (deviceList.size() > 2) {
-                    int deleteCount = deleteDeviceData(request, header, deviceList);
-                    if (deleteCount == 0) {
-                        throw new RuntimeException();
-                    }
-                }
-            } else {
+            if (!extractByDeviceToken(deviceList, request.getDeviceToken()).isEmpty()) {
                 LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                         "RS07D00002", request.getDeviceToken(), "SKIP",
                         CommonUtil.toJson(extractToDeviceTokenList(deviceList)), header.getCorrelationId()));
+            } else {
+                execRegistNotificationInfo(request, header, deviceList);
             }
 
             String resultCode = CommonUtil.getResultCode("SUCCESS");
@@ -93,6 +84,12 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
 
             return new ResponseDto(resultCode);
 
+        } catch (TscApplicationException e) {
+            throw new TscApplicationException();
+
+        } catch (TscNotificationHubsException e) {
+            throw new CustomException();
+
         } catch (Exception e) {
             SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
             if (sqlEx != null) {
@@ -100,7 +97,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                     // 接続エラー
                     LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new RuntimeException();
+                    throw new CustomException();
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
                     LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
@@ -109,22 +106,32 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                 }
                 LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new RuntimeException();
-            }
-            if (e instanceof TscApplicationException) {
-                // 業務エラー（必須チェック違反/ブランドコードなどの不正）
-                throw new TscApplicationException();
-            } else if (e instanceof TscNotificationHubsException) {
-                // AzureNotificationHub関連エラー
-                throw new RuntimeException();
+                throw new CustomException();
             } else {
                 // その他予期せぬエラー
                 LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new RuntimeException();
+                throw new CustomException();
             }
         }
 
+    }
+
+    private void execRegistNotificationInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header,
+            List<NtfInfoEntity> deviceList) {
+        String installationId = generateInstallationId(request, header);
+        int upsertCount = upsertDeviceInfo(request, header, installationId);
+        if (upsertCount == 0) {
+            throw new CustomException();
+        }
+        operationDeleteInstallation(request, header, deviceList);
+        operationUpsertInstallation(request, header, installationId);
+        if (deviceList.size() > 2) {
+            int deleteCount = deleteDeviceData(request, header, deviceList);
+            if (deleteCount == 0) {
+                throw new CustomException();
+            }
+        }
     }
 
     // #region NotificationHub Methods
@@ -178,14 +185,14 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     private void executeDeleteInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, NtfInfoEntity entity) {
         int cnt = 0;
-        while (cnt < this.retryCount) {
+        while (cnt < propertiesUtil.getRetryCount()) {
             try {
                 notificationHubUtil.deleteInstallation(entity.getInstallationId(), request.getBrdCd());
                 return;
             } catch (NotificationHubsException ex) {
                 if (ex.isTransient()) {
                     cnt++;
-                    if (cnt >= this.retryCount) {
+                    if (cnt >= propertiesUtil.getRetryCount()) {
                         LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                                 "RS07E00003", ex.httpStatusCode(), request.getBrdCd(), request.getInternalUserId(),
                                 entity.getInstallationId(), request.getPlatform(), request.getDeviceToken(),
@@ -241,7 +248,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     private void executeUpsertInstallation(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, String installationId) {
         int cnt = 0;
-        while (cnt < this.retryCount) {
+        while (cnt < propertiesUtil.getRetryCount()) {
             try {
                 notificationHubUtil.upsertInstallation(
                         installationId, request.getBrdCd(), request.getInternalUserId(),
@@ -250,7 +257,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
             } catch (NotificationHubsException ex) {
                 if (ex.isTransient()) {
                     cnt++;
-                    if (cnt >= this.retryCount) {
+                    if (cnt >= propertiesUtil.getRetryCount()) {
                         LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                                 "RS07E00004", ex.httpStatusCode(), request.getInternalUserId(),
                                 installationId, request.getDvcId(), header.getCorrelationId()));
@@ -282,7 +289,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
      */
     private List<NtfInfoEntity> extractByDeviceToken(List<NtfInfoEntity> deviceList, String deviceToken) {
         return deviceList.stream()
-                .filter(entity -> entity.getDeviceToken().equals(deviceToken)).collect(Collectors.toList());
+                .filter(entity -> entity.getDeviceToken().equals(deviceToken)).toList();
     }
 
     /**
@@ -294,7 +301,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
     private List<String> extractToDeviceTokenList(List<NtfInfoEntity> deviceList) {
         return deviceList.stream()
                 .map(NtfInfoEntity::getDeviceToken)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -344,7 +351,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                         NtfInfoEntity::getUpdatedAt,
                         Comparator.nullsLast(Comparator.<LocalDateTime>naturalOrder())).reversed())
                 .skip(2)
-                .collect(Collectors.toList());
+                .toList();
         int deleteCount = deleteTarget.stream()
                 .mapToInt(t -> ntfInfoRepository.delete(t.getInternalUserId(), t.getInstallationId()))
                 .sum();

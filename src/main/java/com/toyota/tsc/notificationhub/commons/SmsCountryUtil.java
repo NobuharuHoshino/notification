@@ -6,13 +6,12 @@ import java.nio.charset.StandardCharsets;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-// import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-// import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestTemplate;
 
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
-
-import org.springframework.beans.factory.annotation.Value;
 
 /**
  * SMS送信（SmsCountry）ユーティリティクラス
@@ -20,19 +19,15 @@ import org.springframework.beans.factory.annotation.Value;
 @Component
 public class SmsCountryUtil {
 
-    @Value("${sms-country.user}")
-    private String smsCountryUser;
-    @Value("${sms-country.pass}")
-    private String smsCountryPass;
-    @Value("${sms-country.sender-id-t}")
-    private String senderIdToyota;
-    @Value("${sms-country.sender-id-l}")
-    private String senderIdLexus;
-    @Value("${sms-country.api-url}")
-    private String smsCountryApiUrl;
+    private static final String BRD_INVALID = "0";
+    private static final String BRD_TOYOTA = "1";
+    private static final String BRD_LEXUS = "2";
 
-    private final String BRD_TOYOTA = "1";
-    private final String BRD_LEXUS = "2";
+    private PropertiesUtil propertiesUtil;
+
+    public SmsCountryUtil(PropertiesUtil propertiesUtil) {
+        this.propertiesUtil = propertiesUtil;
+    }
 
     /**
      * SMS送信リクエストを生成します。
@@ -46,31 +41,30 @@ public class SmsCountryUtil {
 
         String senderId;
         try {
-            if (BRD_TOYOTA.equals(brdCd)) {
-                senderId = senderIdToyota;
+            if (BRD_TOYOTA.equals(brdCd) || brdCd.equals(BRD_INVALID)) {
+                senderId = propertiesUtil.getSenderIdToyota();
             } else if (BRD_LEXUS.equals(brdCd)) {
-                senderId = senderIdLexus;
+                senderId = propertiesUtil.getSenderIdLexus();
             } else {
                 return null;
             }
 
-            String encodedUser = URLEncoder.encode(smsCountryUser, "UTF-8");
+            String encodedUser = URLEncoder.encode(propertiesUtil.getSmsCountryUser(), "UTF-8");
             String hexMessage = toHexUtf16BE(message);
             String payload = "User=" + encodedUser +
-                    "&passwd=" + smsCountryPass +
+                    "&passwd=" + propertiesUtil.getSmsCountryPass() +
                     "&mobilenumber=" + to +
                     "&message=" + hexMessage +
-                    "&SenderID=" + senderId +
+                    "&sid=" + senderId +
                     "&Mtype=OL&DR=N";
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
-            HttpEntity<String> entity = new HttpEntity<>(payload, headers);
-            return entity;
+            return new HttpEntity<>(payload, headers);
 
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new CustomException(e);
         }
     }
 
@@ -83,17 +77,19 @@ public class SmsCountryUtil {
      */
     public void sendSmsCountry(HttpEntity<String> entity, String phoneNo) {
         try {
-            // RestTemplate restTemplate = new RestTemplate();
-            // ResponseEntity<String> response =
-            // restTemplate.postForEntity(smsCountryApiUrl, entity, String.class);
-            // if (!response.getStatusCode().is2xxSuccessful()) {
-            // throw new TscSMSException(response.getStatusCode().value(),
-            // response.getBody(), phoneNo);
-            // }
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<String> response = restTemplate.postForEntity(propertiesUtil.getSmsCountryApiUrl(), entity,
+                    String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new TscSMSException(response.getStatusCode().value(),
+                        response.getBody(), phoneNo);
+            }
         } catch (TscSMSException scEx) {
-            throw new TscSMSException(scEx.getStatusCode(), scEx.getResponseBody(), scEx.getPhoneNo());
+            throw new TscSMSException(scEx.getStatusCode(), scEx.getResponseBody(),
+                    scEx.getPhoneNo());
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new CustomException(e);
         }
     }
 

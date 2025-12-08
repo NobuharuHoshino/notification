@@ -10,5 +10,5 @@ import lombok.NoArgsConstructor;
 public class SendSmsRequestDto {
     private String brdCd;
     private String mobileNumber;
-    private String body_sms;
+    private String bodySms;
 }

@@ -77,25 +77,30 @@ class NotificationControllerTest {
         @Test
         void sendPush_01() {
                 // 準備
+                java.util.Map<String, Object> pushBody = java.util.Map.of("message", "pushBody");
                 com.toyota.tsc.notificationhub.models.SendPushRequestDto req = new com.toyota.tsc.notificationhub.models.SendPushRequestDto(
-                                "proc01", "user01", "pushBody");
-                org.mockito.Mockito.when(pushService.sendPush(org.mockito.Mockito.any(), org.mockito.Mockito.any()))
+                                "user01", pushBody);
+                org.mockito.Mockito.when(pushService.sendPush(org.mockito.Mockito.any(),
+                                org.mockito.Mockito.any()))
                                 .thenReturn(new ResponseDto("00001548N001"));
                 // 実行
                 org.springframework.http.ResponseEntity<ResponseDto> res = controller.sendPush("apiKey",
                                 "application/json",
                                 "keep-alive", "gzip", "corr01", "accessKey", "smartgbook", req);
                 // 確認
-                org.junit.jupiter.api.Assertions.assertEquals("00001548N001", res.getBody().getResultCode());
+                org.junit.jupiter.api.Assertions.assertEquals("00001548N001",
+                                res.getBody().getResultCode());
         }
 
         /** クラス：NotificationController sendPushの異常系を確認するテストケース */
         @Test
         void sendPush_02() {
                 // 準備：サービスが例外を投げる
+                java.util.Map<String, Object> pushBody = java.util.Map.of("message", "pushBody");
                 com.toyota.tsc.notificationhub.models.SendPushRequestDto req = new com.toyota.tsc.notificationhub.models.SendPushRequestDto(
-                                "proc01", "user01", "pushBody");
-                org.mockito.Mockito.when(pushService.sendPush(org.mockito.Mockito.any(), org.mockito.Mockito.any()))
+                                "user01", pushBody);
+                org.mockito.Mockito.when(pushService.sendPush(org.mockito.Mockito.any(),
+                                org.mockito.Mockito.any()))
                                 .thenThrow(new com.toyota.tsc.notificationhub.exceptions.TscApplicationException());
                 // 実行・確認
                 org.junit.jupiter.api.Assertions
@@ -111,13 +116,16 @@ class NotificationControllerTest {
         @Test
         void sendPush_03() {
                 // 準備：サービスがRuntimeExceptionを投げる
+                java.util.Map<String, Object> pushBody = java.util.Map.of("message", "pushBody");
                 com.toyota.tsc.notificationhub.models.SendPushRequestDto req = new com.toyota.tsc.notificationhub.models.SendPushRequestDto(
-                                "proc01", "user01", "pushBody");
-                org.mockito.Mockito.when(pushService.sendPush(org.mockito.Mockito.any(), org.mockito.Mockito.any()))
+                                "user01", pushBody);
+                org.mockito.Mockito.when(pushService.sendPush(org.mockito.Mockito.any(),
+                                org.mockito.Mockito.any()))
                                 .thenThrow(new RuntimeException());
                 // 実行・確認
                 org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> {
-                        controller.sendPush("apiKey", "application/json", "keep-alive", "gzip", "corr01", "accessKey",
+                        controller.sendPush("apiKey", "application/json", "keep-alive", "gzip",
+                                        "corr01", "accessKey",
                                         "smartgbook",
                                         req);
                 });

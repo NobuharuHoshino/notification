@@ -1,11 +1,19 @@
+
 package com.toyota.tsc.notificationhub.commons;
 
 import com.windowsazure.messaging.NotificationHubsException;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.windowsazure.messaging.NotificationHub;
 import com.windowsazure.messaging.NotificationOutcome;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -14,37 +22,42 @@ import static org.mockito.Mockito.*;
 /**
  * クラス：NotificationHubUtil すべての分岐を確認するテストケース
  */
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class NotificationHubUtilTest {
 
+    @InjectMocks
     private NotificationHubUtil util;
+
+    @Mock
+    private PropertiesUtil propsMock;
 
     @BeforeEach
     void setup() throws Exception {
-        util = new NotificationHubUtil();
-        // @Value を直接セット
-        setField(util, NotificationHubUtil.class, "apiVersion", "2020-01");
-        setField(util, NotificationHubUtil.class, "rootUri", "https://%s.servicebus.windows.net/%s");
-        setField(util, NotificationHubUtil.class, "installationUri", "/installations");
-        setField(util, NotificationHubUtil.class, "ttlSeconds", 3600);
-        setField(util, NotificationHubUtil.class, "timeoutMillis", 10000);
+        // --- PropertiesUtil をモック ---
+        propsMock = mock(PropertiesUtil.class);
 
-        // TOYOTA
-        setField(util, NotificationHubUtil.class, "namespaceT", "ns-t");
-        setField(util, NotificationHubUtil.class, "hubNameT", "hub-t");
-        setField(util, NotificationHubUtil.class, "keyNameT", "DefaultFullSharedAccessSignature");
-        setField(util, NotificationHubUtil.class, "keyT", "KEY_T_123456");
+        // 共通テンプレート（null だと NPE になるため必須）
+        when(propsMock.getRootUri()).thenReturn("https://%s.servicebus.windows.net/%s");
+        when(propsMock.getSasTemplate()).thenReturn("SharedAccessSignature sr=%s&sig=%s&se=%d&skn=%s");
+        when(propsMock.getSdkConnectionStringTemplate())
+                .thenReturn("Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=%s;SharedAccessKey=%s");
+        when(propsMock.getTtlSeconds()).thenReturn(3600);
 
-        // LEXUS
-        setField(util, NotificationHubUtil.class, "namespaceL", "ns-l");
-        setField(util, NotificationHubUtil.class, "hubNameL", "hub-l");
-        setField(util, NotificationHubUtil.class, "keyNameL", "DefaultFullSharedAccessSignature");
-        setField(util, NotificationHubUtil.class, "keyL", "KEY_L_654321");
+        // TOYOTA（BRD_TOYOTA = "1"）
+        when(propsMock.getNamespaceT()).thenReturn("ns-toyota");
+        when(propsMock.getHubNameT()).thenReturn("hub-toyota");
+        when(propsMock.getKeyNameT()).thenReturn("DefaultFullSharedAccessSignature");
+        when(propsMock.getKeyT()).thenReturn("dummy-key-toyota");
 
-        setField(util, NotificationHubUtil.class, "sasTemplate",
-                "SharedAccessSignature sr=%s&sig=%s&se=%d&skn=%s");
-        setField(util, NotificationHubUtil.class, "installationPayloadTemplate", "{\"id\":\"%s\"}");
-        setField(util, NotificationHubUtil.class, "sdkConnectionStringTemplate",
-                "Endpoint=sb://%s.servicebus.windows.net/;SharedAccessKeyName=%s;SharedAccessKey=%s;");
+        // LEXUS（BRD_LEXUS = "2"）
+        when(propsMock.getNamespaceL()).thenReturn("ns-lexus");
+        when(propsMock.getHubNameL()).thenReturn("hub-lexus");
+        when(propsMock.getKeyNameL()).thenReturn("DefaultFullSharedAccessSignature");
+        when(propsMock.getKeyL()).thenReturn("dummy-key-lexus");
+
+        // NotificationHubUtil の private フィールドへモックを挿入
+        setField(util, NotificationHubUtil.class, "propertiesUtil", propsMock);
     }
 
     private static void setField(Object target, Class<?> declaring, String name, Object value) throws Exception {
@@ -61,6 +74,10 @@ class NotificationHubUtilTest {
         String token = util.generateSasToken("1");
         assertNotNull(token);
         assertTrue(token.startsWith("SharedAccessSignature "));
+        assertTrue(token.contains("skn=DefaultFullSharedAccessSignature"));
+        assertTrue(token.contains("sr=")); // 対象URI
+        assertTrue(token.contains("sig=")); // 署名
+        assertTrue(token.contains("se=")); // 期限
     }
 
     /** クラス：NotificationHubUtil generateSasToken LEXUSブランドの生成を確認するテストケース */
@@ -68,6 +85,7 @@ class NotificationHubUtilTest {
     void generateSasToken_02() {
         String token = util.generateSasToken("2");
         assertNotNull(token);
+        assertTrue(token.startsWith("SharedAccessSignature "));
         assertTrue(token.contains("skn=DefaultFullSharedAccessSignature"));
     }
 
@@ -79,12 +97,16 @@ class NotificationHubUtilTest {
 
     /**
      * クラス：NotificationHubUtil generateSasToken
-     * キー未設定でRuntimeExceptionとなることを確認するテストケース
+     * キー未設定で CustomException が投げられることを確認するテストケース
      */
     @Test
     void generateSasToken_04() throws Exception {
-        setField(util, NotificationHubUtil.class, "keyT", null);
-        assertThrows(RuntimeException.class, () -> util.generateSasToken("1"));
+        // TOYOTAキーを null に差し替え
+        when(propsMock.getKeyT()).thenReturn(null);
+
+        // 例外型を CustomException に変更（cause は NullPointerException が望ましい）
+        CustomException ex = assertThrows(CustomException.class, () -> util.generateSasToken("1"));
+        assertTrue(ex.getCause() instanceof NullPointerException);
     }
 
     // --- upsertInstallation ---
@@ -121,22 +143,15 @@ class NotificationHubUtilTest {
 
     /**
      * クラス：NotificationHubUtil upsertInstallation
-     * 不正プラットフォームでhub生成はされるがcreateOrUpdateInstallationが呼ばれないことを確認するテストケース
+     * 不正プラットフォームで hub 生成はされるが createOrUpdateInstallation が呼ばれないことを確認
      */
     @Test
     void upsertInstallation_04() throws Exception {
         try (MockedConstruction<NotificationHub> nhc = Mockito.mockConstruction(NotificationHub.class, (hub, ctx) -> {
-            // もし呼ばれたら分かるようにスタブ（今回は呼ばれない想定）
-            // doNothing().when(hub).createOrUpdateInstallation(any());
+            // 呼ばれない想定のためスタブ不要
         })) {
-
-            // 実行（platformCode="X"：不正）
             assertDoesNotThrow(() -> util.upsertInstallation("inst-3", "1", "U3", "X", "token"));
-
-            // 確認：hub は生成されている（実装上、switch前に生成）
             assertEquals(1, nhc.constructed().size());
-
-            // 確認：createOrUpdateInstallation は呼ばれていない
             NotificationHub constructed = nhc.constructed().get(0);
             verify(constructed, times(0)).createOrUpdateInstallation(any());
         }
@@ -146,7 +161,6 @@ class NotificationHubUtilTest {
     @Test
     void upsertInstallation_05() throws Exception {
         try (MockedConstruction<NotificationHub> nhc = Mockito.mockConstruction(NotificationHub.class, (hub, ctx) -> {
-            // ★ コンストラクタに依存せず、モック例外を投げる
             doThrow(mock(NotificationHubsException.class))
                     .when(hub).createOrUpdateInstallation(any());
         })) {
@@ -189,6 +203,22 @@ class NotificationHubUtilTest {
         }
     }
 
+    /**
+     * クラス：NotificationHubUtil deleteInstallation
+     * LEXUS分岐でHubが生成され削除APIが1回呼ばれることを確認するテストケース
+     */
+    @Test
+    void deleteInstallation_04() throws Exception {
+        try (MockedConstruction<NotificationHub> nhc = Mockito.mockConstruction(NotificationHub.class, (hub, ctx) -> {
+            doNothing().when(hub).deleteInstallation(anyString());
+        })) {
+            assertDoesNotThrow(() -> util.deleteInstallation("inst-lex-001", "2")); // BRD_LEXUS
+            assertEquals(1, nhc.constructed().size());
+            NotificationHub constructed = nhc.constructed().get(0);
+            verify(constructed, times(1)).deleteInstallation("inst-lex-001");
+        }
+    }
+
     // --- postMessage ---
 
     /** クラス：NotificationHubUtil postMessage Androidへ通知送信されることを確認するテストケース */
@@ -196,7 +226,7 @@ class NotificationHubUtilTest {
     void postMessage_01() throws Exception {
         NotificationOutcome outcome = mock(NotificationOutcome.class);
         try (MockedConstruction<NotificationHub> nhc = Mockito.mockConstruction(NotificationHub.class, (hub, ctx) -> {
-            when(hub.sendDirectNotification(any(), anyString())).thenReturn(outcome);
+            when(hub.sendNotification(any(), anyString())).thenReturn(outcome);
         })) {
             NotificationOutcome r = util.postMessage("inst-1", "{\"k\":\"v\"}", "1", "1");
             assertSame(outcome, r);
@@ -208,7 +238,7 @@ class NotificationHubUtilTest {
     void postMessage_02() throws Exception {
         NotificationOutcome outcome = mock(NotificationOutcome.class);
         try (MockedConstruction<NotificationHub> nhc = Mockito.mockConstruction(NotificationHub.class, (hub, ctx) -> {
-            when(hub.sendDirectNotification(any(), anyString())).thenReturn(outcome);
+            when(hub.sendNotification(any(), anyString())).thenReturn(outcome);
         })) {
             NotificationOutcome r = util.postMessage("inst-2", "{\"k\":\"v\"}", "2", "2");
             assertSame(outcome, r);
@@ -231,34 +261,11 @@ class NotificationHubUtilTest {
     @Test
     void postMessage_05() throws Exception {
         try (MockedConstruction<NotificationHub> nhc = Mockito.mockConstruction(NotificationHub.class, (hub, ctx) -> {
-            when(hub.sendDirectNotification(any(), anyString()))
+            when(hub.sendNotification(any(), anyString()))
                     .thenThrow(mock(NotificationHubsException.class));
         })) {
             assertThrows(NotificationHubsException.class,
                     () -> util.postMessage("inst-e", "{\"k\":\"v\"}", "1", "1"));
         }
     }
-
-    /**
-     * クラス：NotificationHubUtil deleteInstallation
-     * LEXUS分岐でHubが生成され削除APIが1回呼ばれることを確認するテストケース
-     */
-    @Test
-    void deleteInstallation_04() throws Exception {
-        // 準備：NotificationHub の生成と delete 呼び出しを監視
-        try (MockedConstruction<NotificationHub> nhc = Mockito.mockConstruction(NotificationHub.class, (hub, ctx) -> {
-            // 呼ばれるが、ここでは特に副作用無し
-            doNothing().when(hub).deleteInstallation(anyString());
-        })) {
-
-            // 実行
-            assertDoesNotThrow(() -> util.deleteInstallation("inst-lex-001", "2")); // BRD_LEXUS
-
-            // 確認：Hub が1回生成され、deleteInstallation が1回呼ばれている
-            assertEquals(1, nhc.constructed().size());
-            NotificationHub constructed = nhc.constructed().get(0);
-            verify(constructed, times(1)).deleteInstallation("inst-lex-001");
-        }
-    }
-
 }

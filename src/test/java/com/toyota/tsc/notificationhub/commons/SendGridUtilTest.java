@@ -4,10 +4,17 @@ import com.sendgrid.Request;
 import com.sendgrid.Response;
 import com.sendgrid.SendGrid;
 import com.sendgrid.helpers.mail.Mail;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -16,19 +23,26 @@ import static org.mockito.Mockito.*;
 /**
  * クラス：SendGridUtil すべての分岐を確認するテストケース
  */
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class SendGridUtilTest {
 
+    @InjectMocks
     private SendGridUtil util;
+    @Mock
+    private PropertiesUtil propsMock;
 
     @BeforeEach
     void setup() throws Exception {
-        util = new SendGridUtil();
+        propsMock = mock(PropertiesUtil.class);
         // @Value を直接セット（最小）
-        setField(util, SendGridUtil.class, "sendGridApiKey", "SG.TEST");
-        setField(util, SendGridUtil.class, "fromAddressToyota", "t@toyota.example");
-        setField(util, SendGridUtil.class, "fromNameToyota", "TOYOTA");
-        setField(util, SendGridUtil.class, "fromAddressLexus", "l@lexus.example");
-        setField(util, SendGridUtil.class, "fromNameLexus", "LEXUS");
+        when(propsMock.getSendGridApiKey()).thenReturn("SG.TEST");
+        when(propsMock.getFromAddressToyota()).thenReturn("t@toyota.example");
+        when(propsMock.getFromNameToyota()).thenReturn("TOYOTA");
+        when(propsMock.getFromAddressLexus()).thenReturn("l@lexus.example");
+        when(propsMock.getFromNameLexus()).thenReturn("LEXUS");
+
+        setField(util, SendGridUtil.class, "propertiesUtil", propsMock);
     }
 
     private static void setField(Object target, Class<?> declaring, String name, Object value) throws Exception {
@@ -106,7 +120,7 @@ class SendGridUtilTest {
         try (MockedConstruction<SendGrid> sgc = Mockito.mockConstruction(SendGrid.class, (sg, ctx) -> {
             // メッセージ・cause・address コンストラクタ（statusCode は -1）
             when(sg.api(any(Request.class)))
-                    .thenThrow(new TscEMailException("SG Error", new RuntimeException("io"), "to@example.com"));
+                    .thenThrow(new TscEMailException("SG Error", new CustomException("io"), "to@example.com"));
         })) {
             TscEMailException ex = assertThrows(TscEMailException.class, () -> util.executeSendEmail(mail));
             assertEquals(-1, ex.getStatusCode());
@@ -115,15 +129,15 @@ class SendGridUtilTest {
     }
 
     /**
-     * クラス：SendGridUtil executeSendEmail 予期せぬ例外がRuntimeExceptionへ変換されることを確認するテストケース
+     * クラス：SendGridUtil executeSendEmail 予期せぬ例外がCustomExceptionへ変換されることを確認するテストケース
      */
     @Test
     void executeSendEmail_04() {
         Mail mail = util.generateEmail("to@example.com", "Title", "TEXT", "<p>HTML</p>", "1");
         try (MockedConstruction<SendGrid> sgc = Mockito.mockConstruction(SendGrid.class, (sg, ctx) -> {
-            when(sg.api(any(Request.class))).thenThrow(new RuntimeException("boom"));
+            when(sg.api(any(Request.class))).thenThrow(new CustomException("boom"));
         })) {
-            assertThrows(RuntimeException.class, () -> util.executeSendEmail(mail));
+            assertThrows(CustomException.class, () -> util.executeSendEmail(mail));
         }
     }
 

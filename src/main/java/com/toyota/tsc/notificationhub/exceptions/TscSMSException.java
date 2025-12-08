@@ -27,7 +27,7 @@ public class TscSMSException extends RuntimeException {
         this.phoneNo = phoneNo;
     }
 
-    public TscSMSException(String message, Throwable cause, String phoneNo) {
+    public TscSMSException(String phoneNo) {
         this.statusCode = -1; // I/O等でHTTPコードが得られない場合
         this.responseBody = null;
         this.phoneNo = phoneNo;

@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * ローカル端末からAzureDBへの接続ができないため、デバッグ時はこちらのモックを利用してください。
  */
-@Profile("dev")
+@Profile("local")
 @Repository
 public class NtfInfoRepositoryMock implements NtfInfoRepositoryIF {
     @Override

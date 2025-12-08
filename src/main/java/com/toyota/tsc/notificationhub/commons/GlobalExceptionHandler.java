@@ -14,6 +14,8 @@ import com.toyota.tsc.notificationhub.models.ResponseDto;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String EXCEPTION = "EXCEPTION";
+
     @ExceptionHandler(CustomSqlException.class)
     /**
      * CustomSqlException発生時のハンドリング
@@ -23,7 +25,7 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ResponseDto> handleCustomSqlException(CustomSqlException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ResponseDto(CommonUtil.getResultCode("EXCEPTION")));
+                .body(new ResponseDto(CommonUtil.getResultCode(EXCEPTION)));
     }
 
     @ExceptionHandler(TscApplicationException.class)
@@ -35,7 +37,7 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ResponseDto> handleTscApplicationException(TscApplicationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ResponseDto(CommonUtil.getResultCode("EXCEPTION")));
+                .body(new ResponseDto(CommonUtil.getResultCode(EXCEPTION)));
     }
 
     @ExceptionHandler(RuntimeException.class)
@@ -47,7 +49,7 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ResponseDto> handleRuntimeException(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ResponseDto(CommonUtil.getResultCode("EXCEPTION")));
+                .body(new ResponseDto(CommonUtil.getResultCode(EXCEPTION)));
     }
 
     @ExceptionHandler(Exception.class)
@@ -59,6 +61,6 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ResponseDto> handleException(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ResponseDto(CommonUtil.getResultCode("EXCEPTION")));
+                .body(new ResponseDto(CommonUtil.getResultCode(EXCEPTION)));
     }
 }

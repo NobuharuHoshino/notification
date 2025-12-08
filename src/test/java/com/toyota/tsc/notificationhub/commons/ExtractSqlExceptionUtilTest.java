@@ -212,8 +212,6 @@ class ExtractSqlExceptionUtilTest {
         assertFalse(ExtractSqlExceptionUtil.isSqlConnectionError(e2));
     }
 
-    // --- 60行目：next != null && next != e && isSqlConnectionError(next)
-    // の偽（next==self）
     @Test
     void isSqlConnectionError_nextIsSelf_false() {
         SQLException e = new SQLException("top", "00000");
@@ -221,8 +219,6 @@ class ExtractSqlExceptionUtilTest {
         assertFalse(ExtractSqlExceptionUtil.isSqlConnectionError(e));
     }
 
-    // --- 60行目：next != null && next != e && isSqlConnectionError(next)
-    // の偽（nextが非接続系）
     @Test
     void isSqlConnectionError_nextNonConn_false() {
         SQLException e = new SQLException("top", "00000");

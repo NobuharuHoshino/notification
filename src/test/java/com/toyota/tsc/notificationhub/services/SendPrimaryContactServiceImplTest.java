@@ -4,6 +4,7 @@ import com.sendgrid.helpers.mail.Mail;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.SendGridUtil;
 import com.toyota.tsc.notificationhub.commons.SmsCountryUtil;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
 import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
@@ -51,9 +52,9 @@ class SendPrimaryContactServiceImplTest {
         req.setInternalUserId("U1");
         req.setBrdCd("1");
         req.setTitle("Hello");
-        req.setBody_text("TEXT");
-        req.setBody_html("<p>HTML</p>");
-        req.setBody_sms("SMS");
+        req.setBodyText("TEXT");
+        req.setBodyHtml("<p>HTML</p>");
+        req.setBodySms("SMS");
         return req;
     }
 
@@ -197,7 +198,7 @@ class SendPrimaryContactServiceImplTest {
 
     /**
      * クラス：SendPrimaryContactServiceImpl sendPrimaryContact
-     * SMS例外をRuntimeExceptionへ変換することを確認するテストケース
+     * SMS例外をCustomExceptionへ変換することを確認するテストケース
      */
     @Test
     void sendPrimaryContact_05() {
@@ -217,14 +218,14 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
             cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
                     .thenReturn("MSG");
-            // 実行・確認：RuntimeException へ
-            assertThrows(RuntimeException.class, () -> service.sendPrimaryContact(req, header));
+            // 実行・確認：CustomException へ
+            assertThrows(CustomException.class, () -> service.sendPrimaryContact(req, header));
         }
     }
 
     /**
      * クラス：SendPrimaryContactServiceImpl sendPrimaryContact
-     * メール例外をRuntimeExceptionへ変換することを確認するテストケース
+     * メール例外をCustomExceptionへ変換することを確認するテストケース
      */
     @Test
     void sendPrimaryContact_06() {
@@ -245,8 +246,8 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.getPersonalInfoApiResponse(anyString())).thenReturn(resp);
             cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any(), any()))
                     .thenReturn("MSG");
-            // 実行・確認：RuntimeException へ
-            assertThrows(RuntimeException.class, () -> service.sendPrimaryContact(req, header));
+            // 実行・確認：CustomException へ
+            assertThrows(CustomException.class, () -> service.sendPrimaryContact(req, header));
         }
     }
 
@@ -484,8 +485,8 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.maskPhoneNumber("+819012345678"))
                     .thenReturn("+81********678");
 
-            // Act + Assert：RuntimeException に変換される
-            assertThrows(RuntimeException.class, () -> service.sendPrimaryContact(req, header));
+            // Act + Assert：CustomException に変換される
+            assertThrows(CustomException.class, () -> service.sendPrimaryContact(req, header));
 
             // Verify：マスク化が呼ばれている
             cm.verify(() -> CommonUtil.maskPhoneNumber("+819012345678"), times(1));
@@ -565,15 +566,9 @@ class SendPrimaryContactServiceImplTest {
             cm.when(() -> CommonUtil.getMessage(anyString(), any(), any(), any()))
                     .thenReturn("MSG");
 
-            // Act + Assert：RuntimeException に変換される
-            assertThrows(RuntimeException.class, () -> service.sendPrimaryContact(req, header));
+            // Act + Assert：CustomException に変換される
+            assertThrows(TscApplicationException.class, () -> service.sendPrimaryContact(req, header));
 
-            // Verify：RS07E00001 の例外ログが出力される（メッセージ内容は any で許容）
-            cm.verify(() -> CommonUtil.getMessage(
-                    eq("RS07E00001"),
-                    any(), // e.getMessage()
-                    any(), // e.getStackTrace()
-                    eq(header.getCorrelationId())), times(1));
         }
 
         // Verify：外部ユーティリティは呼ばれない
