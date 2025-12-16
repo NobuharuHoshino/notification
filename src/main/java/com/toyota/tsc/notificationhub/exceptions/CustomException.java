@@ -4,6 +4,7 @@ package com.toyota.tsc.notificationhub.exceptions;
  * 汎用カスタム例外クラス（SonarQube指摘対応用）
  */
 public class CustomException extends RuntimeException {
+
     public CustomException() {
         super();
     }

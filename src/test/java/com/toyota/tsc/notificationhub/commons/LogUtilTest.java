@@ -1,128 +1,131 @@
+
+// ファイルパス: src/test/java/com/toyota/tsc/notificationhub/commons/LogUtilTest.java
 package com.toyota.tsc.notificationhub.commons;
 
-import org.junit.jupiter.api.*;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
-import org.slf4j.Logger;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.core.read.ListAppender;
+import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 /**
- * クラス：LogUtil すべての分岐を確認するテストケース
+ * LogUtil のテストクラス
  */
 class LogUtilTest {
 
-    private ByteArrayOutputStream out;
-
-    @BeforeEach
-    void setup() {
-        out = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(out));
+    static class DummyClass {
     }
 
-    @AfterEach
-    void teardown() {
-        System.setOut(System.out);
-    }
-
-    /** クラス：LogUtil info ログが標準出力へ出ることを確認するテストケース */
+    /** クラス：LogUtil コンストラクタがprivateであることを確認するテストケース */
     @Test
-    void info_01() {
-        try (MockedStatic<LoggerFactory> lf = Mockito.mockStatic(LoggerFactory.class)) {
-            Logger mockLogger = mock(Logger.class);
-            doAnswer(inv -> {
-                System.out.println("INFO:" + inv.getArgument(0));
-                return null;
-            })
-                    .when(mockLogger).info(any(String.class));
-            lf.when(() -> LoggerFactory.getLogger(any(Class.class))).thenReturn(mockLogger);
+    void LogUtil_001() throws Exception {
+        // Arrange
+        Constructor<LogUtil> ctor = LogUtil.class.getDeclaredConstructor();
 
-            // 実行
-            LogUtil.info(LogUtilTest.class, "hello");
+        // Act
+        int mod = ctor.getModifiers();
 
-            // 確認
-            String s = out.toString();
-            assertTrue(s.contains("INFO:hello"));
-        }
+        // Assert
+        assertTrue(Modifier.isPrivate(mod));
     }
 
-    /** クラス：LogUtil warn ログが標準出力へ出ることを確認するテストケース */
+    /** クラス：LogUtil getLogger 指定クラスのLoggerが取得できることを確認するテストケース */
     @Test
-    void warn_01() {
-        try (MockedStatic<LoggerFactory> lf = Mockito.mockStatic(LoggerFactory.class)) {
-            Logger mockLogger = mock(Logger.class);
-            doAnswer(inv -> {
-                System.out.println("WARN:" + inv.getArgument(0));
-                return null;
-            })
-                    .when(mockLogger).warn(any(String.class));
-            lf.when(() -> LoggerFactory.getLogger(any(Class.class))).thenReturn(mockLogger);
+    void getLogger_001() {
+        // Arrange
+        Class<?> clazz = DummyClass.class;
 
-            LogUtil.warn(LogUtilTest.class, "warn");
-            assertTrue(out.toString().contains("WARN:warn"));
-        }
+        // Act
+        org.slf4j.Logger logger = LogUtil.getLogger(clazz);
+
+        // Assert
+        assertNotNull(logger);
+        assertTrue(logger.getName().contains(clazz.getName()));
     }
 
-    /** クラス：LogUtil error ログが標準出力へ出ることを確認するテストケース */
+    /** クラス：LogUtil info infoレベルのログが出力されることを確認するテストケース */
     @Test
-    void error_01() {
-        try (MockedStatic<LoggerFactory> lf = Mockito.mockStatic(LoggerFactory.class)) {
-            Logger mockLogger = mock(Logger.class);
-            doAnswer(inv -> {
-                System.out.println("ERROR:" + inv.getArgument(0));
-                return null;
-            })
-                    .when(mockLogger).error(any(String.class));
-            lf.when(() -> LoggerFactory.getLogger(any(Class.class))).thenReturn(mockLogger);
+    void info_001() {
+        // Arrange
+        Logger logger = (Logger) LoggerFactory.getLogger(DummyClass.class);
+        ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
 
-            LogUtil.error(LogUtilTest.class, "error!");
-            assertTrue(out.toString().contains("ERROR:error!"));
-        }
+        // Act
+        LogUtil.info(DummyClass.class, "INFO_MSG");
+
+        // Assert
+        assertEquals(1, appender.list.size());
+        assertEquals(Level.INFO, appender.list.get(0).getLevel());
+        assertEquals("INFO_MSG", appender.list.get(0).getFormattedMessage());
+
+        logger.detachAppender(appender);
     }
 
-    /** クラス：LogUtil debug ログが標準出力へ出ることを確認するテストケース */
+    /** クラス：LogUtil warn warnレベルのログが出力されることを確認するテストケース */
     @Test
-    void debug_01() {
-        try (MockedStatic<LoggerFactory> lf = Mockito.mockStatic(LoggerFactory.class)) {
-            Logger mockLogger = mock(Logger.class);
-            doAnswer(inv -> {
-                System.out.println("DEBUG:" + inv.getArgument(0));
-                return null;
-            })
-                    .when(mockLogger).debug(any(String.class));
-            lf.when(() -> LoggerFactory.getLogger(any(Class.class))).thenReturn(mockLogger);
+    void warn_001() {
+        // Arrange
+        Logger logger = (Logger) LoggerFactory.getLogger(DummyClass.class);
+        ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
 
-            LogUtil.debug(LogUtilTest.class, "dbg");
-            assertTrue(out.toString().contains("DEBUG:dbg"));
-        }
+        // Act
+        LogUtil.warn(DummyClass.class, "WARN_MSG");
+
+        // Assert
+        assertEquals(1, appender.list.size());
+        assertEquals(Level.WARN, appender.list.get(0).getLevel());
+        assertEquals("WARN_MSG", appender.list.get(0).getFormattedMessage());
+
+        logger.detachAppender(appender);
     }
 
-    /** クラス：LogUtil getLogger LoggerFactoryが呼ばれることを確認するテストケース */
+    /** クラス：LogUtil error errorレベルのログが出力されることを確認するテストケース */
     @Test
-    void getLogger_01() {
-        try (MockedStatic<LoggerFactory> lf = Mockito.mockStatic(LoggerFactory.class)) {
-            Logger mockLogger = mock(Logger.class);
-            lf.when(() -> LoggerFactory.getLogger(any(Class.class))).thenReturn(mockLogger);
+    void error_001() {
+        // Arrange
+        Logger logger = (Logger) LoggerFactory.getLogger(DummyClass.class);
+        ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
 
-            Logger logger = LogUtil.getLogger(LogUtilTest.class);
-            assertNotNull(logger);
-            lf.verify(() -> LoggerFactory.getLogger(LogUtilTest.class), times(1));
-        }
+        // Act
+        LogUtil.error(DummyClass.class, "ERROR_MSG");
+
+        // Assert
+        assertEquals(1, appender.list.size());
+        assertEquals(Level.ERROR, appender.list.get(0).getLevel());
+        assertEquals("ERROR_MSG", appender.list.get(0).getFormattedMessage());
+
+        logger.detachAppender(appender);
     }
 
-    /** クラス：LogUtil private コンストラクタがインスタンス化できることを確認するテストケース */
+    /** クラス：LogUtil debug debugレベルのログが出力されることを確認するテストケース */
     @Test
-    void constructor_01() throws Exception {
-        Constructor<LogUtil> c = LogUtil.class.getDeclaredConstructor();
-        c.setAccessible(true);
-        LogUtil inst = c.newInstance();
-        assertNotNull(inst);
+    void debug_001() {
+        // Arrange
+        Logger logger = (Logger) LoggerFactory.getLogger(DummyClass.class);
+        logger.setLevel(Level.DEBUG);
+        ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        // Act
+        LogUtil.debug(DummyClass.class, "DEBUG_MSG");
+
+        // Assert
+        assertEquals(1, appender.list.size());
+        assertEquals(Level.DEBUG, appender.list.get(0).getLevel());
+        assertEquals("DEBUG_MSG", appender.list.get(0).getFormattedMessage());
+
+        logger.detachAppender(appender);
     }
 }

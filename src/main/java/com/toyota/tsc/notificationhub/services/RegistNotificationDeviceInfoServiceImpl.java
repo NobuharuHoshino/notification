@@ -22,17 +22,21 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 端末情報登録サービス実装クラス
  */
+@Profile("me")
 @Service
 public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificationDeviceInfoServiceIF {
 
     private NtfInfoRepositoryIF ntfInfoRepository;
     private NotificationHubUtil notificationHubUtil;
+    private PropertiesUtil propertiesUtil;
 
     public RegistNotificationDeviceInfoServiceImpl(
             NtfInfoRepositoryIF ntfInfoRepository,
@@ -43,8 +47,14 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         this.propertiesUtil = propertiesUtil;
     }
 
-    private PropertiesUtil propertiesUtil;
     private static final String PROCCESS_NAME = "通知端末情報登録";
+    private static final String RESULT_SUCCESS = "RND_SUCCESS";
+    private static final String RESULT_FIELD_MISSING = "RND_FIELD_MISSING";
+    private static final String RESULT_INVALID_BRAND = "RND_INVALID_BRAND";
+    private static final String RESULT_INVALID_PLATFORM = "RND_INVALID_PLATFORM";
+    private static final String RESULT_DEL_INSTALLATION_EXCEPTION = "RND_DEL_INSTALLATION_EXCEPTION";
+    private static final String RESULT_PUT_INSTALLATION_EXCEPTION = "RND_PUT_INSTALLATION_EXCEPTION";
+    private static final String RESULT_EXCEPTION = "RND_EXCEPTION";
 
     @Override
     /**
@@ -70,13 +80,13 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
             List<NtfInfoEntity> deviceList = getAllDeviceData(request.getInternalUserId());
             if (!extractByDeviceToken(deviceList, request.getDeviceToken()).isEmpty()) {
                 LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                        "RS07D00002", request.getDeviceToken(), "SKIP",
+                        "RS07D00002", request.getDeviceToken(), "InstallationID生成SKIP",
                         CommonUtil.toJson(extractToDeviceTokenList(deviceList)), header.getCorrelationId()));
             } else {
                 execRegistNotificationInfo(request, header, deviceList);
             }
 
-            String resultCode = CommonUtil.getResultCode("SUCCESS");
+            String resultCode = CommonUtil.getResultCode(RESULT_SUCCESS);
 
             // 正常終了ログ
             LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
@@ -85,10 +95,10 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
             return new ResponseDto(resultCode);
 
         } catch (TscApplicationException e) {
-            throw new TscApplicationException();
+            throw new TscApplicationException(e.getResultCode());
 
         } catch (TscNotificationHubsException e) {
-            throw new CustomException();
+            throw new TscNotificationHubsException(e.getResultCode());
 
         } catch (Exception e) {
             SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
@@ -97,7 +107,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                     // 接続エラー
                     LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new CustomException();
+                    throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
                     LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
@@ -197,7 +207,8 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                                 "RS07E00003", ex.httpStatusCode(), request.getBrdCd(), request.getInternalUserId(),
                                 entity.getInstallationId(), request.getPlatform(), request.getDeviceToken(),
                                 request.getDvcId(), header.getCorrelationId()));
-                        throw new TscNotificationHubsException(ex);
+                        throw new TscNotificationHubsException(
+                                CommonUtil.getResultCode(RESULT_DEL_INSTALLATION_EXCEPTION));
                     }
                     LogUtil.warn(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                             "RS07W00001", cnt, CommonUtil.toJson(entity), ex.httpStatusCode(),
@@ -208,7 +219,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                         "RS07E00003", ex.httpStatusCode(), request.getBrdCd(), request.getInternalUserId(),
                         entity.getInstallationId(), request.getPlatform(), request.getDeviceToken(),
                         request.getDvcId(), header.getCorrelationId()));
-                throw new TscNotificationHubsException(ex);
+                throw new TscNotificationHubsException(CommonUtil.getResultCode(RESULT_DEL_INSTALLATION_EXCEPTION));
             } catch (Exception e) {
                 throw e;
             }
@@ -261,7 +272,8 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                         LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                                 "RS07E00004", ex.httpStatusCode(), request.getInternalUserId(),
                                 installationId, request.getDvcId(), header.getCorrelationId()));
-                        throw new TscNotificationHubsException(ex);
+                        throw new TscNotificationHubsException(
+                                CommonUtil.getResultCode(RESULT_PUT_INSTALLATION_EXCEPTION));
                     }
                     LogUtil.warn(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                             "RS07W00002", cnt, installationId, ex.httpStatusCode(),
@@ -271,7 +283,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                 LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00004", ex.httpStatusCode(), request.getInternalUserId(),
                         installationId, request.getDvcId(), header.getCorrelationId()));
-                throw new TscNotificationHubsException(ex);
+                throw new TscNotificationHubsException(CommonUtil.getResultCode(RESULT_PUT_INSTALLATION_EXCEPTION));
             } catch (Exception e) {
                 throw e;
             }
@@ -375,17 +387,17 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         if (missingField != null) {
             LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00012", missingField, header.getCorrelationId()));
-            throw new TscApplicationException();
+            throw new TscApplicationException(CommonUtil.getResultCode(RESULT_FIELD_MISSING));
         }
         if (!isValidBrdCd(request.getBrdCd())) {
             LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
-            throw new TscApplicationException();
+            throw new TscApplicationException(CommonUtil.getResultCode(RESULT_INVALID_BRAND));
         }
         if (!isValidPlatform(request.getPlatform())) {
             LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00009", request.getPlatform(), header.getCorrelationId()));
-            throw new TscApplicationException();
+            throw new TscApplicationException(CommonUtil.getResultCode(RESULT_INVALID_PLATFORM));
         }
         return null;
     }

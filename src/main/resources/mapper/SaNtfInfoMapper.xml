@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.toyota.tsc.notificationhub.repositories.SaNtfInfoMapper">
+  <insert id="upsert" parameterType="com.toyota.tsc.notificationhub.repositories.SaNtfInfoEntity" timeout="5">
+    INSERT INTO 
+      sa_ntf_info (
+        internal_user_id,
+        device_id, 
+        brd_cd, 
+        platform_type, 
+        created_at, 
+        updated_at
+      ) VALUES (
+        #{entity.internalUserId},
+        #{entity.deviceId},
+        #{entity.brdCd}, 
+        #{entity.platformType}, 
+        #{entity.createdAt}, 
+        #{entity.updatedAt}
+      )
+    ON CONFLICT (internal_user_id)
+    DO UPDATE SET
+      device_id     = EXCLUDED.device_id,
+      brd_cd        = EXCLUDED.brd_cd,
+      platform_type = EXCLUDED.platform_type,
+      updated_at    = EXCLUDED.updated_at
+  </insert>
+
+  <insert id="insert" parameterType="com.toyota.tsc.notificationhub.repositories.SaNtfInfoEntity" timeout="5">
+    INSERT INTO sa_ntf_info (
+      internal_user_id, 
+      device_id, 
+      brd_cd, 
+      platform_type, 
+      created_at, 
+      updated_at
+    ) VALUES (
+      #{entity.internalUserId}, 
+      #{entity.deviceId}, 
+      #{entity.brdCd}, 
+      #{entity.platformType}, 
+      #{entity.createdAt}, 
+      #{entity.updatedAt}
+    )
+  </insert>
+
+  <update id="update" parameterType="com.toyota.tsc.notificationhub.repositories.SaNtfInfoEntity" timeout="5">
+    UPDATE 
+      sa_ntf_info 
+    SET
+      device_id      = #{entity.deviceId},
+      brd_cd         = #{entity.brdCd},
+      platform_type  = #{entity.platformType},
+      updated_at     = #{entity.updatedAt}
+    WHERE 
+      internal_user_id = #{entity.internalUserId}
+  </update>
+
+  <delete id="delete" timeout="5">
+    DELETE FROM 
+      sa_ntf_info
+    WHERE 
+      internal_user_id = #{internalUserId}
+  </delete>
+
+  <select id="select" resultType="com.toyota.tsc.notificationhub.repositories.SaNtfInfoEntity" timeout="5">
+    SELECT 
+      internal_user_id,
+      device_id,
+      brd_cd,
+      platform_type,
+      created_at,
+      updated_at
+    FROM 
+      sa_ntf_info
+    WHERE 
+      internal_user_id = #{internalUserId}
+  </select>
+</mapper>

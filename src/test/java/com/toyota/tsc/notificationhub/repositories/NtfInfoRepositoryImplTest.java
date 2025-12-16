@@ -1,538 +1,427 @@
+
+// ファイルパス: src/test/java/com/toyota/tsc/notificationhub/repositories/NtfInfoRepositoryImplTest.java
 package com.toyota.tsc.notificationhub.repositories;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import com.toyota.tsc.notificationhub.commons.PropertiesUtil;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientException;
 import java.sql.SQLTransientException;
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Callable;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.Test;
-
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.MockedStatic;
-
-import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
- * クラス：NtfInfoRepositoryImpl NtfInfoRepositoryImplの各メソッドを網羅的に確認するテストケース
+ * NtfInfoRepositoryImpl のテストクラス
  */
+@SuppressWarnings("all")
 @ExtendWith(MockitoExtension.class)
-public class NtfInfoRepositoryImplTest {
+class NtfInfoRepositoryImplTest {
 
-    @Mock
-    private NtfInfoMapper mapper;
+        @Mock
+        private NtfInfoMapper ntfInfoMapper;
 
-    private NtfInfoRepositoryImpl sut;
+        @Mock
+        private PropertiesUtil propertiesUtil;
 
-    @BeforeEach
-    void setUp() {
-        sut = new NtfInfoRepositoryImpl(mapper);
-        // デフォルトのリトライ設定（必要に応じて各テストで上書き）
-        setField(sut, "upsertRetryCount", 3);
-        setField(sut, "upsertRetryBaseInterval", 0L);
-        setField(sut, "upsertRetryMaxInterval", 0L);
-    }
+        /** クラス：NtfInfoRepositoryImpl insert mapperの戻り値が返ることを確認するテストケース */
+        @Test
+        void insert_001() {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                NtfInfoEntity entity = mock(NtfInfoEntity.class);
+                when(ntfInfoMapper.insert(entity)).thenReturn(1);
 
-    @AfterEach
-    void tearDown() {
-        // 割り込みフラグのクリア（他テストへ影響させない）
-        Thread.interrupted();
-    }
+                // Act
+                int actual = sut.insert(entity);
 
-    // ---------------------------
-    // insert
-    // ---------------------------
-
-    /** クラス：NtfInfoRepositoryImpl insertの正常系を確認するテストケース */
-    @Test
-    void insert_01() {
-        // 準備
-        NtfInfoEntity entity = sampleEntity();
-        when(mapper.insert(entity)).thenReturn(1);
-
-        // 実行
-        int result = sut.insert(entity);
-
-        // 確認
-        assertThat(result).isEqualTo(1);
-        verify(mapper).insert(entity);
-    }
-
-    /** クラス：NtfInfoRepositoryImpl insertで例外が伝播されることを確認するテストケース */
-    @Test
-    void insert_02() {
-        // 準備
-        NtfInfoEntity entity = sampleEntity();
-        RuntimeException ex = new RuntimeException("insert failed");
-        when(mapper.insert(entity)).thenThrow(ex);
-
-        // 実行 & 確認
-        assertThrows(RuntimeException.class, () -> sut.insert(entity));
-        verify(mapper).insert(entity);
-    }
-
-    // ---------------------------
-    // update
-    // ---------------------------
-
-    /** クラス：NtfInfoRepositoryImpl updateの正常系を確認するテストケース */
-    @Test
-    void update_01() {
-        // 準備
-        NtfInfoEntity entity = sampleEntity();
-        when(mapper.update(entity)).thenReturn(1);
-
-        // 実行
-        int result = sut.update(entity);
-
-        // 確認
-        assertThat(result).isEqualTo(1);
-        verify(mapper).update(entity);
-    }
-
-    /** クラス：NtfInfoRepositoryImpl updateで例外が伝播されることを確認するテストケース */
-    @Test
-    void update_02() {
-        // 準備
-        NtfInfoEntity entity = sampleEntity();
-        RuntimeException ex = new RuntimeException("update failed");
-        when(mapper.update(entity)).thenThrow(ex);
-
-        // 実行 & 確認
-        assertThrows(RuntimeException.class, () -> sut.update(entity));
-        verify(mapper).update(entity);
-    }
-
-    // ---------------------------
-    // select
-    // ---------------------------
-
-    /** クラス：NtfInfoRepositoryImpl selectの正常系を確認するテストケース */
-    @Test
-    void select_01() {
-        // 準備
-        String internalUserId = "u1";
-        String installationId = "inst1";
-        NtfInfoEntity entity = sampleEntity();
-        when(mapper.select(internalUserId, installationId)).thenReturn(entity);
-
-        // 実行
-        NtfInfoEntity result = sut.select(internalUserId, installationId);
-
-        // 確認
-        assertThat(result).isNotNull();
-        assertThat(result.getInternalUserId()).isEqualTo(entity.getInternalUserId());
-        verify(mapper).select(internalUserId, installationId);
-    }
-
-    /** クラス：NtfInfoRepositoryImpl selectで例外が伝播されることを確認するテストケース */
-    @Test
-    void select_02() {
-        // 準備
-        String internalUserId = "u1";
-        String installationId = "inst1";
-        RuntimeException ex = new RuntimeException("select failed");
-        when(mapper.select(internalUserId, installationId)).thenThrow(ex);
-
-        // 実行 & 確認
-        assertThrows(RuntimeException.class, () -> sut.select(internalUserId, installationId));
-        verify(mapper).select(internalUserId, installationId);
-    }
-
-    // ---------------------------
-    // selectAllByInternalUserId
-    // ---------------------------
-
-    /** クラス：NtfInfoRepositoryImpl selectAllByInternalUserIdの正常系を確認するテストケース */
-    @Test
-    void selectAllByInternalUserId_01() {
-        // 準備
-        String internalUserId = "u1";
-        List<NtfInfoEntity> list = Arrays.asList(sampleEntity(), sampleEntity());
-        when(mapper.selectAllByInternalUserId(internalUserId)).thenReturn(list);
-
-        // 実行
-        List<NtfInfoEntity> result = sut.selectAllByInternalUserId(internalUserId);
-
-        // 確認
-        assertThat(result).hasSize(2);
-        verify(mapper).selectAllByInternalUserId(internalUserId);
-    }
-
-    /** クラス：NtfInfoRepositoryImpl selectAllByInternalUserIdで例外が伝播されることを確認するテストケース */
-    @Test
-    void selectAllByInternalUserId_02() {
-        // 準備
-        String internalUserId = "u1";
-        RuntimeException ex = new RuntimeException("selectAll failed");
-        when(mapper.selectAllByInternalUserId(internalUserId)).thenThrow(ex);
-
-        // 実行 & 確認
-        assertThrows(RuntimeException.class, () -> sut.selectAllByInternalUserId(internalUserId));
-        verify(mapper).selectAllByInternalUserId(internalUserId);
-    }
-
-    // ---------------------------
-    // delete（executeWithRetry 経由）
-    // ---------------------------
-
-    /** クラス：NtfInfoRepositoryImpl deleteの正常系（リトライなし）を確認するテストケース */
-    @Test
-    void delete_01() {
-        // 準備
-        when(mapper.delete("u1", "inst1")).thenReturn(1);
-
-        // 実行
-        int result = sut.delete("u1", "inst1");
-
-        // 確認
-        assertThat(result).isEqualTo(1);
-        verify(mapper).delete("u1", "inst1");
-    }
-
-    /**
-     * クラス：NtfInfoRepositoryImpl deleteでSQLTransientException後にリトライ成功することを確認するテストケース
-     */
-    @Test
-    void delete_02() {
-        // 準備
-        setField(sut, "upsertRetryCount", 3);
-        setField(sut, "upsertRetryBaseInterval", 0L);
-        setField(sut, "upsertRetryMaxInterval", 0L);
-
-        SQLTransientException tex = new SQLTransientException("temporary");
-        RuntimeException wrapped = new RuntimeException("wrapped transient", tex);
-
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            // ラップ例外を渡すと SQLTransientException が見つかる設定
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(tex);
-
-            when(mapper.delete("u1", "inst1"))
-                    .thenThrow(wrapped) // 1回目：ラップ例外（catch → transient と判定 → リトライ）
-                    .thenReturn(1); // 2回目：成功
-
-            // 実行
-            int result = sut.delete("u1", "inst1");
-
-            // 確認
-            assertThat(result).isEqualTo(1);
-            verify(mapper, times(2)).delete("u1", "inst1");
+                // Assert
+                assertEquals(1, actual);
+                verify(ntfInfoMapper, times(1)).insert(entity);
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * deleteでSQLTransientExceptionがリトライ上限を超えた場合にRuntimeExceptionが発生することを確認するテストケース
-     */
-    @Test
-    void delete_03() {
-        // 準備：上限0 → 1回目で越える
-        setField(sut, "upsertRetryCount", 0);
-        setField(sut, "upsertRetryBaseInterval", 0L);
-        setField(sut, "upsertRetryMaxInterval", 0L);
+        /** クラス：NtfInfoRepositoryImpl update mapperの戻り値が返ることを確認するテストケース */
+        @Test
+        void update_001() {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                NtfInfoEntity entity = mock(NtfInfoEntity.class);
+                when(ntfInfoMapper.update(entity)).thenReturn(2);
 
-        SQLTransientException tex = new SQLTransientException("temporary");
-        RuntimeException wrapped = new RuntimeException("wrapped transient", tex);
+                // Act
+                int actual = sut.update(entity);
 
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(tex);
-            when(mapper.delete("u1", "inst1")).thenThrow(wrapped);
-
-            // 実行 & 確認
-            assertThrows(RuntimeException.class, () -> sut.delete("u1", "inst1"));
-            verify(mapper, times(1)).delete("u1", "inst1");
+                // Assert
+                assertEquals(2, actual);
+                verify(ntfInfoMapper, times(1)).update(entity);
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * deleteでSQLNonTransientExceptionが発生した場合にRuntimeExceptionが発生することを確認するテストケース
-     */
-    @Test
-    void delete_04() {
-        // 準備
-        SQLNonTransientException ntex = new SQLNonTransientException("non-transient");
-        RuntimeException wrapped = new RuntimeException("wrapped non-transient", ntex);
+        /** クラス：NtfInfoRepositoryImpl select mapperの戻り値が返ることを確認するテストケース */
+        @Test
+        void select_001() {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                NtfInfoEntity entity = mock(NtfInfoEntity.class);
+                when(ntfInfoMapper.select("u", "i")).thenReturn(entity);
 
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(ntex);
-            when(mapper.delete("u1", "inst1")).thenThrow(wrapped);
+                // Act
+                NtfInfoEntity actual = sut.select("u", "i");
 
-            // 実行 & 確認
-            assertThrows(RuntimeException.class, () -> sut.delete("u1", "inst1"));
-            verify(mapper, times(1)).delete("u1", "inst1");
+                // Assert
+                assertSame(entity, actual);
+                verify(ntfInfoMapper, times(1)).select("u", "i");
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * deleteでSQLException（Transient以外）が発生した場合にRuntimeExceptionが発生することを確認するテストケース
-     */
-    @Test
-    void delete_05() {
-        // 準備
-        SQLException sqlex = new SQLException("sql");
-        RuntimeException wrapped = new RuntimeException("wrapped sql", sqlex);
+        /**
+         * クラス：NtfInfoRepositoryImpl delete Transientが1回失敗後に成功する場合にリトライされることを確認するテストケース
+         */
+        @Test
+        void delete_001() {
+                // Arrange
+                when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(3);
+                when(propertiesUtil.getNtfinfoUpsertRetryBaseInterval()).thenReturn(0);
+                when(propertiesUtil.getNtfinfoUpsertRetryMaxInterval()).thenReturn(0);
 
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(sqlex);
-            when(mapper.delete("u1", "inst1")).thenThrow(wrapped);
+                when(ntfInfoMapper.delete("u", "i"))
+                                .thenThrow(new RuntimeException(new java.sql.SQLTransientException("transient")))
+                                .thenReturn(1);
 
-            // 実行 & 確認
-            assertThrows(RuntimeException.class, () -> sut.delete("u1", "inst1"));
-            verify(mapper, times(1)).delete("u1", "inst1");
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+
+                // Act
+                int actual = sut.delete("u", "i");
+
+                // Assert
+                assertEquals(1, actual);
+                verify(ntfInfoMapper, times(2)).delete("u", "i");
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * deleteでSQLExceptionに該当しない例外が発生した場合にRuntimeExceptionが発生することを確認するテストケース
-     */
-    @Test
-    void delete_06() {
-        // 準備
-        RuntimeException ex = new RuntimeException("other");
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(ex)).thenReturn(null);
-            when(mapper.delete("u1", "inst1")).thenThrow(ex);
+        /**
+         * クラス：NtfInfoRepositoryImpl delete 非SQL例外の場合にCustomExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void delete_002() {
+                // Arrange
+                when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(3);
 
-            // 実行 & 確認
-            assertThrows(RuntimeException.class, () -> sut.delete("u1", "inst1"));
+                when(ntfInfoMapper.delete("u", "i")).thenThrow(new RuntimeException("boom"));
+
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+
+                // Act
+                CustomException ex = assertThrows(CustomException.class, () -> sut.delete("u", "i"));
+
+                // Assert
+                assertNotNull(ex.getCause());
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * deleteでスリープ中に割り込みが発生しても処理が継続されること（割り込みフラグ再設定）を確認するテストケース
-     */
-    @Test
-    void delete_07() {
-        // 準備
-        setField(sut, "upsertRetryCount", 1); // 1回目はリトライする
-        setField(sut, "upsertRetryBaseInterval", 0L);
-        setField(sut, "upsertRetryMaxInterval", 0L);
-        Thread.currentThread().interrupt(); // 事前に割り込み
+        /**
+         * クラス：NtfInfoRepositoryImpl delete
+         * 非TransientなSQL例外の場合にCustomExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void delete_003() {
+                // Arrange
+                when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(3);
 
-        SQLTransientException tex = new SQLTransientException("temporary");
-        RuntimeException wrapped = new RuntimeException("wrapped transient", tex);
+                when(ntfInfoMapper.delete("u", "i"))
+                                .thenThrow(new RuntimeException(
+                                                new java.sql.SQLNonTransientException("non-transient")));
 
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(tex);
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
 
-            when(mapper.delete("u1", "inst1"))
-                    .thenThrow(wrapped) // 1回目：ラップ例外 → transient 判定 → sleep(0)で割り込み
-                    .thenReturn(1); // 2回目：成功
+                // Act
+                CustomException ex = assertThrows(CustomException.class, () -> sut.delete("u", "i"));
 
-            // 実行
-            int result = sut.delete("u1", "inst1");
-
-            // 確認
-            assertThat(result).isEqualTo(1);
-            assertThat(Thread.currentThread().isInterrupted()).isTrue(); // 割り込みフラグ再設定を確認
-            verify(mapper, times(2)).delete("u1", "inst1");
+                // Assert
+                assertNotNull(ex.getCause());
         }
-    }
 
-    // ---------------------------
-    // upsert（executeWithRetry 経由）
-    // ---------------------------
+        /**
+         * クラス：NtfInfoRepositoryImpl delete
+         * Transientがリトライ回数超過した場合にCustomExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void delete_004() {
+                // Arrange
+                when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(1);
+                when(propertiesUtil.getNtfinfoUpsertRetryBaseInterval()).thenReturn(0);
+                when(propertiesUtil.getNtfinfoUpsertRetryMaxInterval()).thenReturn(0);
 
-    /** クラス：NtfInfoRepositoryImpl upsertの正常系（リトライなし）を確認するテストケース */
-    @Test
-    void upsert_01() {
-        // 準備
-        NtfInfoEntity entity = sampleEntity();
-        when(mapper.upsert(entity)).thenReturn(1);
+                when(ntfInfoMapper.delete("u", "i"))
+                                .thenThrow(new RuntimeException(new java.sql.SQLTransientException("transient")));
 
-        // 実行
-        int result = sut.upsert(entity);
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
 
-        // 確認
-        assertThat(result).isEqualTo(1);
-        verify(mapper).upsert(entity);
-    }
+                // Act
+                CustomException ex = assertThrows(CustomException.class, () -> sut.delete("u", "i"));
 
-    /**
-     * クラス：NtfInfoRepositoryImpl upsertでSQLTransientException後にリトライ成功することを確認するテストケース
-     */
-    @Test
-    void upsert_02() {
-        // 準備
-        setField(sut, "upsertRetryCount", 3);
-        setField(sut, "upsertRetryBaseInterval", 0L);
-        setField(sut, "upsertRetryMaxInterval", 0L);
-
-        NtfInfoEntity entity = sampleEntity();
-        SQLTransientException tex = new SQLTransientException("temporary");
-        RuntimeException wrapped = new RuntimeException("wrapped transient", tex);
-
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(tex);
-
-            when(mapper.upsert(entity))
-                    .thenThrow(wrapped) // 1回目：ラップ例外 → transient 判定 → リトライ
-                    .thenReturn(1); // 2回目：成功
-
-            // 実行
-            int result = sut.upsert(entity);
-
-            // 確認
-            assertThat(result).isEqualTo(1);
-            verify(mapper, times(2)).upsert(entity);
+                // Assert
+                assertNotNull(ex.getCause());
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * upsertでSQLTransientExceptionがリトライ上限を超えた場合にRuntimeExceptionが発生することを確認するテストケース
-     */
-    @Test
-    void upsert_03() {
-        // 準備：上限0 → 1回目で越える
-        setField(sut, "upsertRetryCount", 0);
-        setField(sut, "upsertRetryBaseInterval", 0L);
-        setField(sut, "upsertRetryMaxInterval", 0L);
+        /**
+         * クラス：NtfInfoRepositoryImpl upsert Transientが1回失敗後に成功する場合にリトライされることを確認するテストケース
+         */
+        @Test
+        void upsert_001() {
+                // Arrange
+                when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(3);
+                when(propertiesUtil.getNtfinfoUpsertRetryBaseInterval()).thenReturn(0);
+                when(propertiesUtil.getNtfinfoUpsertRetryMaxInterval()).thenReturn(0);
 
-        NtfInfoEntity entity = sampleEntity();
-        SQLTransientException tex = new SQLTransientException("temporary");
-        RuntimeException wrapped = new RuntimeException("wrapped transient", tex);
+                NtfInfoEntity entity = mock(NtfInfoEntity.class);
 
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(tex);
-            when(mapper.upsert(entity)).thenThrow(wrapped);
+                when(ntfInfoMapper.upsert(entity))
+                                .thenThrow(new RuntimeException(new java.sql.SQLTransientException("transient")))
+                                .thenReturn(1);
 
-            // 実行 & 確認
-            assertThrows(RuntimeException.class, () -> sut.upsert(entity));
-            verify(mapper, times(1)).upsert(entity);
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+
+                // Act
+                int actual = sut.upsert(entity);
+
+                // Assert
+                assertEquals(1, actual);
+                verify(ntfInfoMapper, times(2)).upsert(entity);
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * upsertでSQLNonTransientExceptionが発生した場合にRuntimeExceptionが発生することを確認するテストケース
-     */
-    @Test
-    void upsert_04() {
-        // 準備
-        NtfInfoEntity entity = sampleEntity();
-        SQLNonTransientException ntex = new SQLNonTransientException("non-transient");
-        RuntimeException wrapped = new RuntimeException("wrapped non-transient", ntex);
+        /**
+         * クラス：NtfInfoRepositoryImpl selectAllByInternalUserId
+         * 正常にmapperの結果が返ることを確認するテストケース
+         */
+        @Test
+        void selectAllByInternalUserId_001() {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                List<NtfInfoEntity> list = List.of(mock(NtfInfoEntity.class));
+                when(ntfInfoMapper.selectAllByInternalUserId("u")).thenReturn(list);
 
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(ntex);
-            when(mapper.upsert(entity)).thenThrow(wrapped);
+                // Act
+                List<NtfInfoEntity> actual = sut.selectAllByInternalUserId("u");
 
-            // 実行 & 確認
-            assertThrows(RuntimeException.class, () -> sut.upsert(entity));
-            verify(mapper, times(1)).upsert(entity);
+                // Assert
+                assertSame(list, actual);
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * upsertでSQLException（Transient以外）が発生した場合にRuntimeExceptionが発生することを確認するテストケース
-     */
-    @Test
-    void upsert_05() {
-        // 準備
-        NtfInfoEntity entity = sampleEntity();
-        SQLException sqlex = new SQLException("sql");
-        RuntimeException wrapped = new RuntimeException("wrapped sql", sqlex);
+        /**
+         * クラス：NtfInfoRepositoryImpl selectAllByInternalUserId
+         * mapper例外がそのまま再送出されることを確認するテストケース
+         */
+        @Test
+        void selectAllByInternalUserId_002() {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                RuntimeException cause = new RuntimeException("boom");
+                when(ntfInfoMapper.selectAllByInternalUserId("u")).thenThrow(cause);
 
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(sqlex);
-            when(mapper.upsert(entity)).thenThrow(wrapped);
+                // Act
+                RuntimeException ex = assertThrows(RuntimeException.class, () -> sut.selectAllByInternalUserId("u"));
 
-            // 実行 & 確認
-            assertThrows(RuntimeException.class, () -> sut.upsert(entity));
-            verify(mapper, times(1)).upsert(entity);
+                // Assert
+                assertSame(cause, ex);
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * upsertでSQLExceptionに該当しない例外が発生した場合にRuntimeExceptionが発生することを確認するテストケース
-     */
-    @Test
-    void upsert_06() {
-        // 準備
-        NtfInfoEntity entity = sampleEntity();
-        RuntimeException ex = new RuntimeException("other");
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(ex)).thenReturn(null);
-            when(mapper.upsert(entity)).thenThrow(ex);
+        /** クラス：NtfInfoRepositoryImpl shouldThrow SQL例外が見つからない場合にtrueとなることを確認するテストケース */
+        @Test
+        void shouldThrow_001() throws Exception {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("shouldThrow", Exception.class, int.class,
+                                int.class);
+                m.setAccessible(true);
 
-            // 実行 & 確認
-            assertThrows(RuntimeException.class, () -> sut.upsert(entity));
+                // Act
+                boolean actual = (boolean) m.invoke(sut, new Exception("x"), 0, 3);
+
+                // Assert
+                assertTrue(actual);
         }
-    }
 
-    /**
-     * クラス：NtfInfoRepositoryImpl
-     * upsertでスリープ中に割り込みが発生しても処理が継続されること（割り込みフラグ再設定）を確認するテストケース
-     */
-    @Test
-    void upsert_07() {
-        // 準備
-        setField(sut, "upsertRetryCount", 1); // 1回目はリトライする
-        setField(sut, "upsertRetryBaseInterval", 0L);
-        setField(sut, "upsertRetryMaxInterval", 0L);
-        Thread.currentThread().interrupt(); // 事前に割り込み
+        /**
+         * クラス：NtfInfoRepositoryImpl shouldThrow
+         * 非TransientなSQL例外の場合にtrueとなることを確認するテストケース
+         */
+        @Test
+        void shouldThrow_002() throws Exception {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("shouldThrow", Exception.class, int.class,
+                                int.class);
+                m.setAccessible(true);
 
-        NtfInfoEntity entity = sampleEntity();
-        SQLTransientException tex = new SQLTransientException("temporary");
-        RuntimeException wrapped = new RuntimeException("wrapped transient", tex);
+                Exception e = new Exception(new SQLNonTransientException("x"));
 
-        try (MockedStatic<ExtractSqlExceptionUtil> mocked = mockStatic(ExtractSqlExceptionUtil.class)) {
-            mocked.when(() -> ExtractSqlExceptionUtil.findSqlException(wrapped)).thenReturn(tex);
+                // Act
+                boolean actual = (boolean) m.invoke(sut, e, 0, 3);
 
-            when(mapper.upsert(entity))
-                    .thenThrow(wrapped) // 1回目：ラップ例外 → transient 判定 → sleep(0)で割り込み
-                    .thenReturn(1); // 2回目：成功
-
-            // 実行
-            int result = sut.upsert(entity);
-
-            // 確認
-            assertThat(result).isEqualTo(1);
-            assertThat(Thread.currentThread().isInterrupted()).isTrue(); // 割り込みフラグ再設定
-            verify(mapper, times(2)).upsert(entity);
+                // Assert
+                assertTrue(actual);
         }
-    }
 
-    // -----------------------------------
-    // ユーティリティ（テストデータ/反射）
-    // -----------------------------------
+        /**
+         * クラス：NtfInfoRepositoryImpl shouldThrow Transientで回数未満の場合にfalseとなることを確認するテストケース
+         */
+        @Test
+        void shouldThrow_003() throws Exception {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("shouldThrow", Exception.class, int.class,
+                                int.class);
+                m.setAccessible(true);
 
-    private NtfInfoEntity sampleEntity() {
-        return new NtfInfoEntity(
-                "u1",
-                "inst1",
-                "token1",
-                "device1",
-                "1",
-                "1",
-                LocalDateTime.now(),
-                LocalDateTime.now());
-    }
+                Exception e = new Exception(new SQLTransientException("x"));
 
-    private static void setField(Object target, String name, Object value) {
-        try {
-            Field f = target.getClass().getDeclaredField(name);
-            f.setAccessible(true);
-            f.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+                // Act
+                boolean actual = (boolean) m.invoke(sut, e, 0, 3);
+
+                // Assert
+                assertFalse(actual);
         }
-    }
+
+        /**
+         * クラス：NtfInfoRepositoryImpl shouldThrow Transientで回数超過の場合にtrueとなることを確認するテストケース
+         */
+        @Test
+        void shouldThrow_004() throws Exception {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("shouldThrow", Exception.class, int.class,
+                                int.class);
+                m.setAccessible(true);
+
+                Exception e = new Exception(new SQLTransientException("x"));
+
+                // Act
+                boolean actual = (boolean) m.invoke(sut, e, 1, 1);
+
+                // Assert
+                assertTrue(actual);
+        }
+
+        /**
+         * クラス：NtfInfoRepositoryImpl toCustom
+         * causeにSQLExceptionがある場合にSQLExceptionが原因として採用されることを確認するテストケース
+         */
+        @Test
+        void toCustom_001() throws Exception {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("toCustom", Exception.class);
+                m.setAccessible(true);
+
+                SQLException sql = new SQLException("sql");
+                Exception e = new Exception(sql);
+
+                // Act
+                CustomException ex = (CustomException) m.invoke(sut, e);
+
+                // Assert
+                assertSame(sql, ex.getCause());
+        }
+
+        /** クラス：NtfInfoRepositoryImpl toCustom SQL例外がない場合に元例外が原因として採用されることを確認するテストケース */
+        @Test
+        void toCustom_002() throws Exception {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("toCustom", Exception.class);
+                m.setAccessible(true);
+
+                Exception e = new Exception("x");
+
+                // Act
+                CustomException ex = (CustomException) m.invoke(sut, e);
+
+                // Assert
+                assertSame(e, ex.getCause());
+        }
+
+        /**
+         * クラス：NtfInfoRepositoryImpl backoffMillis
+         * 計算結果がmaxIntervalで上限クリップされることを確認するテストケース
+         */
+        @Test
+        void backoffMillis_001() throws Exception {
+                // Arrange
+                when(propertiesUtil.getNtfinfoUpsertRetryBaseInterval()).thenReturn(10);
+                when(propertiesUtil.getNtfinfoUpsertRetryMaxInterval()).thenReturn(15);
+
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("backoffMillis", int.class);
+                m.setAccessible(true);
+
+                // Act
+                long actual = (long) m.invoke(sut, 2);
+
+                // Assert
+                assertEquals(15L, actual);
+        }
+
+        /**
+         * クラス：NtfInfoRepositoryImpl backoffMillis maxInterval未満の場合に計算値が返ることを確認するテストケース
+         */
+        @Test
+        void backoffMillis_002() throws Exception {
+                // Arrange
+                when(propertiesUtil.getNtfinfoUpsertRetryBaseInterval()).thenReturn(10);
+                when(propertiesUtil.getNtfinfoUpsertRetryMaxInterval()).thenReturn(1000);
+
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("backoffMillis", int.class);
+                m.setAccessible(true);
+
+                // Act
+                long actual = (long) m.invoke(sut, 3);
+
+                // Assert
+                assertEquals(40L, actual);
+        }
+
+        /** クラス：NtfInfoRepositoryImpl sleep 割り込み時にinterruptフラグが立つことを確認するテストケース */
+        @Test
+        void sleep_001() throws Exception {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("sleep", long.class);
+                m.setAccessible(true);
+
+                Thread.currentThread().interrupt();
+
+                // Act
+                m.invoke(sut, 1L);
+
+                // Assert
+                assertTrue(Thread.currentThread().isInterrupted());
+
+                // ★ 副作用除去：interruptフラグをクリア（以降のテストに影響を出さない）
+                Thread.interrupted();
+        }
+
+        /**
+         * クラス：NtfInfoRepositoryImpl executeWithRetry actionが即成功する場合に結果が返ることを確認するテストケース
+         */
+        @Test
+        void executeWithRetry_001() throws Exception {
+                // Arrange
+                NtfInfoRepositoryImpl sut = new NtfInfoRepositoryImpl(ntfInfoMapper, propertiesUtil);
+                Method m = NtfInfoRepositoryImpl.class.getDeclaredMethod("executeWithRetry", Callable.class, int.class);
+                m.setAccessible(true);
+
+                Callable<Integer> action = () -> 7;
+
+                // Act
+                int actual = (int) m.invoke(sut, action, 3);
+
+                // Assert
+                assertEquals(7, actual);
+        }
 }

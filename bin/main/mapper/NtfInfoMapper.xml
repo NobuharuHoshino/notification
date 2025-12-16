@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.toyota.tsc.notificationhub.repositories.NtfInfoMapper">
+
+  <insert id="upsert" parameterType="com.toyota.tsc.notificationhub.repositories.NtfInfoEntity" timeout="5">
+    INSERT INTO ntf_info (
+      internal_user_id, installation_id, device_token, device_id, brd_cd, platform_type, created_at, updated_at
+    ) VALUES (
+      #{entity.internalUserId}, #{entity.installationId}::uuid, #{entity.deviceToken}, #{entity.deviceId},
+      #{entity.brdCd}, #{entity.platformType}, #{entity.createdAt}, #{entity.updatedAt}
+    )
+    ON CONFLICT (internal_user_id, installation_id)
+    DO UPDATE SET
+      device_token  = EXCLUDED.device_token,
+      device_id     = EXCLUDED.device_id,
+      brd_cd        = EXCLUDED.brd_cd,
+      platform_type = EXCLUDED.platform_type,
+      updated_at    = EXCLUDED.updated_at
+  </insert>
+
+  <insert id="insert" parameterType="com.toyota.tsc.notificationhub.repositories.NtfInfoEntity" timeout="5">
+    INSERT INTO ntf_info (
+      internal_user_id, installation_id, device_token, device_id, brd_cd, platform_type, created_at, updated_at
+    ) VALUES (
+      #{entity.internalUserId}, #{entity.installationId}::uuid, #{entity.deviceToken}, #{entity.deviceId},
+      #{entity.brdCd}, #{entity.platformType}, #{entity.createdAt}, #{entity.updatedAt}
+    )
+  </insert>
+
+  <update id="update" parameterType="com.toyota.tsc.notificationhub.repositories.NtfInfoEntity" timeout="5">
+    UPDATE ntf_info SET
+      device_token   = #{entity.deviceToken},
+      device_id      = #{entity.deviceId},
+      brd_cd         = #{entity.brdCd},
+      platform_type  = #{entity.platformType},
+      updated_at     = #{entity.updatedAt}
+    WHERE internal_user_id = #{entity.internalUserId}
+      AND installation_id  = #{entity.installationId}::uuid
+  </update>
+
+  <delete id="delete" timeout="5">
+    DELETE FROM ntf_info
+    WHERE internal_user_id = #{internalUserId}
+      AND installation_id  = #{installationId}::uuid
+  </delete>
+
+  <select id="select" resultType="com.toyota.tsc.notificationhub.repositories.NtfInfoEntity" timeout="5">
+    SELECT internal_user_id, installation_id, device_token, device_id, brd_cd,
+           platform_type, created_at, updated_at
+    FROM ntf_info
+    WHERE internal_user_id = #{internalUserId}
+      AND installation_id  = #{installationId}::uuid
+  </select>
+
+  <select id="selectAllByInternalUserId" resultType="com.toyota.tsc.notificationhub.repositories.NtfInfoEntity" timeout="5">
+    SELECT internal_user_id, installation_id, device_token, device_id, brd_cd,
+           platform_type, created_at, updated_at
+    FROM ntf_info
+    WHERE internal_user_id = #{internalUserId}
+  </select>
+
+</mapper>

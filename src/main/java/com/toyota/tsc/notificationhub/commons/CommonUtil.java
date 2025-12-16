@@ -2,16 +2,10 @@ package com.toyota.tsc.notificationhub.commons;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
-import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.ResourceBundle;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 /**
  * 共通ユーティリティクラス
@@ -23,8 +17,6 @@ public class CommonUtil {
     private CommonUtil() {
     }
 
-    private static final String RESOURCE_LOG = "properties.LogMessages";
-    private static final ResourceBundle bundleLog = ResourceBundle.getBundle(RESOURCE_LOG);
     private static final String RESOURCE_RESULT = "properties.ResultCode";
     private static final ResourceBundle bundleResult = ResourceBundle.getBundle(RESOURCE_RESULT);
     private static final String MASKED_STRING = "********";
@@ -52,6 +44,13 @@ public class CommonUtil {
      * @return フォーマット済みメッセージ
      */
     public static String getMessage(String id, Object... params) {
+        String profile = System.getProperty("spring.profiles.active", "");
+        String[] actProfile = Arrays.stream(profile.split("\\s*,\\s*"))
+                .filter(s -> !s.isBlank()).map(String::toLowerCase).toArray(String[]::new);
+        String useLogResource = Arrays.stream(actProfile).anyMatch("sa"::equals)
+                ? "properties.SaLogMessages"
+                : "properties.LogMessages";
+        ResourceBundle bundleLog = ResourceBundle.getBundle(useLogResource);
         String pattern = bundleLog.getString(id);
         return MessageFormat.format(pattern, params);
     }
@@ -113,69 +112,5 @@ public class CommonUtil {
         if (phoneNumber == null)
             return "";
         return phoneNumber.replaceAll("\\D", "");
-    }
-
-    /**
-     * 個人情報APIからレスポンスを取得します。
-     * 
-     * @param internalUserId ユーザーID
-     * @return 個人情報レスポンスDTO
-     */
-    public static PersonalInfoResponseDto getPersonalInfoApiResponse(String internalUserId) {
-        // TODO
-        PersonalInfoResponseDto dto = new PersonalInfoResponseDto();
-        dto.setResultCode("1");
-        dto.setInternalUserId("TEST_USER");
-        dto.setUserId("USER001"); // 任意
-        dto.setFirstName("太郎"); // 任意
-        dto.setLastName("山田"); // 任意
-        dto.setBirthday("1990-01-01"); // 任意
-        dto.setMemberStatus("ACTIVE"); // 任意
-        List<PersonalInfoResponseDto.ContactDto> contactList = new ArrayList<>();
-        PersonalInfoResponseDto.ContactDto contact1 = new PersonalInfoResponseDto.ContactDto();
-        contact1.setDisplayOrder(1);
-        contact1.setContactType("1");
-        contact1.setContact("818067582835");
-        contact1.setPrimaryContactFlag(true);
-        contactList.add(contact1);
-        PersonalInfoResponseDto.ContactDto contact2 = new PersonalInfoResponseDto.ContactDto();
-        contact2.setDisplayOrder(2);
-        contact2.setContactType("1");
-        contact2.setContact("818067582835");
-        contact2.setPrimaryContactFlag(false);
-        contactList.add(contact2);
-        PersonalInfoResponseDto.ContactDto contact3 = new PersonalInfoResponseDto.ContactDto();
-        contact3.setDisplayOrder(3);
-        contact3.setContactType("2");
-        contact3.setContact("nobuharu.hoshino.bp@jp.nttdata.com");
-        contact3.setPrimaryContactFlag(true);
-        contactList.add(contact3);
-        PersonalInfoResponseDto.ContactDto contact4 = new PersonalInfoResponseDto.ContactDto();
-        contact4.setDisplayOrder(4);
-        contact4.setContactType("2");
-        contact4.setContact("nobuharu.hoshino.bp@jp.nttdata.com");
-        contact4.setPrimaryContactFlag(false);
-        contactList.add(contact4);
-
-        dto.setContactList(contactList);
-        return dto;
-        // RestTemplate restTemplate = new RestTemplate();
-        // HttpHeaders headers = new HttpHeaders();
-        // headers.set("x-api-key", "検証");
-        // headers.set("号口", "固定キー");
-        // headers.setContentType(MediaType.APPLICATION_JSON);
-        // headers.set("connection", "keep-alive");
-        // headers.set("accept-encoding", "gzip");
-        // headers.set("x-correlation-id", internalUserId);
-        // PropertiesUtil propertiesUtil = new PropertiesUtil();
-        // ResponseEntity<String> response =
-        // restTemplate.getForEntity(propertiesUtil.getPersonalInfoApiUrl(),
-        // String.class, headers);
-        // try {
-        // ObjectMapper mapper = new ObjectMapper();
-        // return mapper.readValue(response.getBody(), PersonalInfoResponseDto.class);
-        // } catch (Exception e) {
-        // throw new CustomException(e);
-        // }
     }
 }

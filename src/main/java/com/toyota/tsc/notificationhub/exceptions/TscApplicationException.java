@@ -4,34 +4,14 @@ package com.toyota.tsc.notificationhub.exceptions;
  * 業務例外（アプリケーション例外）クラス
  */
 public class TscApplicationException extends RuntimeException {
-    private final String errorCode;
+    private final String resultCode;
 
-    public TscApplicationException() {
+    public TscApplicationException(String resultCode) {
         super();
-        this.errorCode = null;
+        this.resultCode = resultCode;
     }
 
-    public TscApplicationException(String message) {
-        super(message);
-        this.errorCode = null;
-    }
-
-    public TscApplicationException(String message, String errorCode) {
-        super(message);
-        this.errorCode = errorCode;
-    }
-
-    public TscApplicationException(String message, Throwable cause) {
-        super(message, cause);
-        this.errorCode = null;
-    }
-
-    public TscApplicationException(String message, String errorCode, Throwable cause) {
-        super(message, cause);
-        this.errorCode = errorCode;
-    }
-
-    public String getErrorCode() {
-        return errorCode;
+    public String getResultCode() {
+        return resultCode;
     }
 }

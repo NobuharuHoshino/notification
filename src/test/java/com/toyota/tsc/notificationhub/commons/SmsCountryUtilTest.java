@@ -1,177 +1,279 @@
+
+// ファイルパス: src/test/java/com/toyota/tsc/notificationhub/commons/SmsCountryUtilTest.java
 package com.toyota.tsc.notificationhub.commons;
 
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.TscSMSException;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.lang.reflect.Method;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * テストクラス：SmsCountryUtilTest
+ * SmsCountryUtil のテストクラス
  */
+@SuppressWarnings("all")
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class SmsCountryUtilTest {
 
-    @InjectMocks
-    private SmsCountryUtil util;
     @Mock
-    private PropertiesUtil propsMock;
+    private PropertiesUtil propertiesUtil;
 
-    @BeforeEach
-    void setUp() throws Exception {
-
-        propsMock = mock(PropertiesUtil.class);
-        when(propsMock.getSmsCountryUser()).thenReturn("user@example.com");
-        when(propsMock.getSmsCountryPass()).thenReturn("pass-123");
-        when(propsMock.getSenderIdToyota()).thenReturn("TOYOTA-ID");
-        when(propsMock.getSenderIdLexus()).thenReturn("LEXUS-ID");
-        when(propsMock.getSmsCountryApiUrl()).thenReturn("https://api.smscountry.local/send");
-
-        setField(util, SmsCountryUtil.class, "propertiesUtil", propsMock);
-    }
-
-    private static void setField(Object target, Class<?> declaring, String name, Object value) throws Exception {
-        var f = declaring.getDeclaredField(name);
-        f.setAccessible(true);
-        f.set(target, value);
-    }
-
-    private static String hexUtf16BE(String s) {
-        byte[] bytes = s.getBytes(StandardCharsets.UTF_16BE);
-        StringBuilder sb = new StringBuilder(bytes.length * 2);
-        for (byte b : bytes)
-            sb.append(String.format("%02X", b));
-        return sb.toString();
-    }
-
-    /**
-     * クラス：SmsCountryUtil createRequest（TOYOTAのSenderID/URLエンコード/Hex化）を確認するテストケース
-     */
+    /** クラス：SmsCountryUtil createRequest TOYOTAブランド(1)でリクエストが生成されることを確認するテストケース */
     @Test
-    void createRequest_01() {
-        // 準備
-        String to = "+819000000000";
-        String msg = "こんにちは";
-        String hex = hexUtf16BE(msg);
+    void createRequest_001() throws Exception {
+        // Arrange
+        when(propertiesUtil.getSenderIdToyota()).thenReturn("SIDT");
+        when(propertiesUtil.getSmsCountryUser()).thenReturn("user");
+        when(propertiesUtil.getSmsCountryPass()).thenReturn("pass");
 
-        // 実行
-        HttpEntity<String> entity = util.createRequest(to, msg, "1");
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+        String encodedUser = URLEncoder.encode("user", "UTF-8");
 
-        // 確認
+        // Act
+        HttpEntity<String> entity = sut.createRequest("819012345678", "A", "1");
+
+        // Assert
         assertNotNull(entity);
-        HttpHeaders headers = entity.getHeaders();
-        assertEquals(MediaType.APPLICATION_FORM_URLENCODED, headers.getContentType());
-        String body = entity.getBody();
-        assertTrue(body.contains("User=user%40example.com")); // URLエンコード済みユーザ
-        assertTrue(body.contains("mobilenumber=" + to));
-        assertTrue(body.contains("message=" + hex));
-        assertTrue(body.contains("sid=TOYOTA-ID"));
+        assertEquals(MediaType.APPLICATION_FORM_URLENCODED, entity.getHeaders().getContentType());
+        assertNotNull(entity.getBody());
+        assertTrue(entity.getBody().contains("User=" + encodedUser));
+        assertTrue(entity.getBody().contains("&passwd=pass"));
+        assertTrue(entity.getBody().contains("&mobilenumber=819012345678"));
+        assertTrue(entity.getBody().contains("&message=0041"));
+        assertTrue(entity.getBody().contains("&sid=SIDT"));
+        assertTrue(entity.getBody().contains("&Mtype=OL&DR=N"));
     }
 
-    /** クラス：SmsCountryUtil createRequest（LEXUSのSenderID）を確認するテストケース */
+    /** クラス：SmsCountryUtil createRequest 無効ブランド(0)でもTOYOTA扱いで生成されることを確認するテストケース */
     @Test
-    void createRequest_02() {
-        // 実行
-        HttpEntity<String> entity = util.createRequest("+819000000001", "HI", "2");
-        // 確認
+    void createRequest_002() {
+        // Arrange
+        when(propertiesUtil.getSenderIdToyota()).thenReturn("SIDT");
+        when(propertiesUtil.getSmsCountryUser()).thenReturn("user");
+        when(propertiesUtil.getSmsCountryPass()).thenReturn("pass");
+
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+
+        // Act
+        HttpEntity<String> entity = sut.createRequest("1", "A", "0");
+
+        // Assert
         assertNotNull(entity);
-        assertTrue(entity.getBody().contains("sid=LEXUS-ID"));
+        assertTrue(entity.getBody().contains("&sid=SIDT"));
     }
 
-    /** クラス：SmsCountryUtil createRequest（未知ブランド→null）を確認するテストケース */
+    /** クラス：SmsCountryUtil createRequest LEXUSブランド(2)でリクエストが生成されることを確認するテストケース */
     @Test
-    void createRequest_03() {
-        // 実行
-        HttpEntity<String> entity = util.createRequest("+819000000002", "HI", "9");
-        // 確認
+    void createRequest_003() {
+        // Arrange
+        when(propertiesUtil.getSenderIdLexus()).thenReturn("SIDL");
+        when(propertiesUtil.getSmsCountryUser()).thenReturn("user");
+        when(propertiesUtil.getSmsCountryPass()).thenReturn("pass");
+
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+
+        // Act
+        HttpEntity<String> entity = sut.createRequest("1", "A", "2");
+
+        // Assert
+        assertNotNull(entity);
+        assertTrue(entity.getBody().contains("&sid=SIDL"));
+    }
+
+    /** クラス：SmsCountryUtil createRequest 不正ブランドの場合にnullが返ることを確認するテストケース */
+    @Test
+    void createRequest_004() {
+        // Arrange
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+
+        // Act
+        HttpEntity<String> entity = sut.createRequest("1", "A", "9");
+
+        // Assert
         assertNull(entity);
     }
 
-    /** クラス：SmsCountryUtil sendSmsCountry（2xx成功）を確認するテストケース */
+    /**
+     * クラス：SmsCountryUtil createRequest
+     * messageがnullの場合にCustomExceptionが送出されることを確認するテストケース
+     */
     @Test
-    void sendSmsCountry_01() {
-        // 準備
-        HttpEntity<String> entity = new HttpEntity<>("payload");
+    void createRequest_005() {
+        // Arrange
+        when(propertiesUtil.getSenderIdToyota()).thenReturn("SIDT");
+        when(propertiesUtil.getSmsCountryUser()).thenReturn("user");
+        // ★ getSmsCountryPass() は message=null で toHexUtf16BE 到達時に例外となり参照されないためスタブしない
+
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+
+        // Act
+        CustomException ex = assertThrows(CustomException.class, () -> sut.createRequest("1", null, "1"));
+
+        // Assert
+        assertNotNull(ex.getCause());
+    }
+
+    /**
+     * クラス：SmsCountryUtil createRequest
+     * userがnullの場合にCustomExceptionが送出されることを確認するテストケース
+     */
+    @Test
+    void createRequest_006() {
+        // Arrange
+        when(propertiesUtil.getSenderIdToyota()).thenReturn("SIDT");
+        when(propertiesUtil.getSmsCountryUser()).thenReturn(null);
+        // ★ getSmsCountryPass() は URLEncoder.encode で例外になり参照されないためスタブしない
+
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+
+        // Act
+        CustomException ex = assertThrows(CustomException.class, () -> sut.createRequest("1", "A", "1"));
+
+        // Assert
+        assertNotNull(ex.getCause());
+    }
+
+    /** クラス：SmsCountryUtil sendSmsCountry 2xxの場合に例外が発生しないことを確認するテストケース */
+    @Test
+    void sendSmsCountry_001() {
+        // Arrange
+        when(propertiesUtil.getSmsCountryApiUrl()).thenReturn("https://example/sms");
+
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+
+        HttpEntity<String> entity = new HttpEntity<>("payload", new HttpHeaders());
+        ResponseEntity<String> ok = ResponseEntity.ok("OK");
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
-                (mock, ctx) -> when(mock.postForEntity(eq("https://api.smscountry.local/send"),
-                        eq(entity), eq(String.class))).thenReturn(ResponseEntity.ok("OK")))) {
+                (mock, ctx) -> when(mock.postForEntity(eq("https://example/sms"), eq(entity), eq(String.class)))
+                        .thenReturn(ok))) {
 
-            // 実行・確認
-            assertDoesNotThrow(() -> util.sendSmsCountry(entity, "+819000000000"));
+            // Act
+            assertDoesNotThrow(() -> sut.sendSmsCountry(entity, "090"));
 
-            // RestTemplate#postForEntityの呼び出し確認
+            // Assert
             RestTemplate rt = mocked.constructed().get(0);
-            verify(rt, times(1)).postForEntity(eq("https://api.smscountry.local/send"),
-                    eq(entity), eq(String.class));
-        }
-    }
-
-    /** クラス：SmsCountryUtil sendSmsCountry（非2xx→TscSMSException）を確認するテストケース */
-    @Test
-    void sendSmsCountry_02() {
-        // 準備
-        HttpEntity<String> entity = new HttpEntity<>("payload");
-
-        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
-                (mock, ctx) -> when(mock.postForEntity(eq("https://api.smscountry.local/send"),
-                        eq(entity),
-                        eq(String.class))).thenReturn(ResponseEntity.status(500).body("ERR")))) {
-
-            // 実行・確認
-            TscSMSException ex = assertThrows(TscSMSException.class,
-                    () -> util.sendSmsCountry(entity, "+819000000003"));
-            assertEquals(500, ex.getStatusCode());
-            assertEquals("+819000000003", ex.getPhoneNo());
-        }
-    }
-
-    /** クラス：SmsCountryUtil sendSmsCountry（一般例外→RuntimeException）を確認するテストケース */
-    @Test
-    void sendSmsCountry_03() {
-        // 準備
-        HttpEntity<String> entity = new HttpEntity<>("payload");
-
-        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
-                (mock, ctx) -> when(mock.postForEntity(eq("https://api.smscountry.local/send"),
-                        eq(entity), eq(String.class))).thenThrow(new RuntimeException("I/O")))) {
-
-            // 実行・確認
-            assertThrows(RuntimeException.class, () -> util.sendSmsCountry(entity,
-                    "+819000000004"));
+            verify(rt, times(1)).postForEntity(eq("https://example/sms"), eq(entity), eq(String.class));
         }
     }
 
     /**
-     * クラス：SmsCountryUtil createRequest 例外をRuntimeExceptionにラップして再送出することを確認するテストケース
+     * クラス：SmsCountryUtil sendSmsCountry 非2xxの場合にTscSMSExceptionが送出されることを確認するテストケース
      */
     @Test
-    void createRequest_04() {
-        // 準備：URLEncoder.encode(...) に null を渡すため、モックの戻り値を null にする
-        when(propsMock.getSmsCountryUser()).thenReturn(null);
+    void sendSmsCountry_002() {
+        // Arrange
+        when(propertiesUtil.getSmsCountryApiUrl()).thenReturn("https://example/sms");
 
-        // 実行・確認：RuntimeException にラップされて送出される
-        RuntimeException ex = assertThrows(RuntimeException.class,
-                () -> util.createRequest("+819012345678", "日本語もOK", "1")); // BRD_TOYOTA
-        assertNotNull(ex.getCause()); // 原因例外が内包される
-        assertTrue(ex.getCause() instanceof NullPointerException); // NPE が原因であること
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+
+        HttpEntity<String> entity = new HttpEntity<>("payload", new HttpHeaders());
+        ResponseEntity<String> ng = ResponseEntity.status(HttpStatus.BAD_REQUEST).body("NG");
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, ctx) -> when(mock.postForEntity(eq("https://example/sms"), eq(entity), eq(String.class)))
+                        .thenReturn(ng))) {
+
+            // Act
+            TscSMSException ex = assertThrows(TscSMSException.class, () -> sut.sendSmsCountry(entity, "090"));
+
+            // Assert
+            assertEquals(400, ex.getStatusCode());
+            assertEquals("NG", ex.getResponseBody());
+            assertEquals("090", ex.getPhoneNo());
+        }
     }
 
+    /**
+     * クラス：SmsCountryUtil sendSmsCountry
+     * postForEntityがTscSMSExceptionを投げた場合にTscSMSExceptionが送出されることを確認するテストケース
+     */
+    @Test
+    void sendSmsCountry_003() {
+        // Arrange
+        when(propertiesUtil.getSmsCountryApiUrl()).thenReturn("https://example/sms");
+
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+
+        HttpEntity<String> entity = new HttpEntity<>("payload", new HttpHeaders());
+        TscSMSException cause = new TscSMSException(500, "ERR", "090");
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, ctx) -> when(mock.postForEntity(eq("https://example/sms"), eq(entity), eq(String.class)))
+                        .thenThrow(cause))) {
+
+            // Act
+            TscSMSException ex = assertThrows(TscSMSException.class, () -> sut.sendSmsCountry(entity, "090"));
+
+            // Assert
+            assertEquals(500, ex.getStatusCode());
+            assertEquals("ERR", ex.getResponseBody());
+            assertEquals("090", ex.getPhoneNo());
+        }
+    }
+
+    /**
+     * クラス：SmsCountryUtil sendSmsCountry
+     * postForEntityが例外を投げた場合にCustomExceptionが送出されることを確認するテストケース
+     */
+    @Test
+    void sendSmsCountry_004() {
+        // Arrange
+        when(propertiesUtil.getSmsCountryApiUrl()).thenReturn("https://example/sms");
+
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+
+        HttpEntity<String> entity = new HttpEntity<>("payload", new HttpHeaders());
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, ctx) -> when(mock.postForEntity(anyString(), any(), eq(String.class)))
+                        .thenThrow(new RuntimeException("boom")))) {
+
+            // Act
+            CustomException ex = assertThrows(CustomException.class, () -> sut.sendSmsCountry(entity, "090"));
+
+            // Assert
+            assertNotNull(ex.getCause());
+        }
+    }
+
+    /** クラス：SmsCountryUtil toHexUtf16BE 文字列がUTF-16BEで16進変換されることを確認するテストケース */
+    @Test
+    void toHexUtf16BE_001() throws Exception {
+        // Arrange
+        Method m = SmsCountryUtil.class.getDeclaredMethod("toHexUtf16BE", String.class);
+        m.setAccessible(true);
+
+        // Act
+        String hex = (String) m.invoke(null, "あ");
+
+        // Assert
+        assertEquals("3042", hex);
+    }
+
+    /** クラス：SmsCountryUtil toHexUtf16BE ASCII文字がUTF-16BEで16進変換されることを確認するテストケース */
+    @Test
+    void toHexUtf16BE_002() throws Exception {
+        // Arrange
+        Method m = SmsCountryUtil.class.getDeclaredMethod("toHexUtf16BE", String.class);
+        m.setAccessible(true);
+
+        // Act
+        String hex = (String) m.invoke(null, "A");
+
+        // Assert
+        assertEquals("0041", hex);
+    }
 }

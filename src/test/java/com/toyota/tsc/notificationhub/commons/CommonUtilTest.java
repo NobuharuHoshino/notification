@@ -1,222 +1,361 @@
+
+// ファイルパス: src/test/java/com/toyota/tsc/notificationhub/commons/CommonUtilTest.java
 package com.toyota.tsc.notificationhub.commons;
 
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
-import org.junit.jupiter.api.*;
-import org.mockito.MockedConstruction;
-import org.mockito.Mockito;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.MissingResourceException;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 /**
- * クラス：CommonUtil すべての分岐・例外系を確認するテストケース
+ * CommonUtil のテストクラス
  */
+@SuppressWarnings("all")
 class CommonUtilTest {
 
-    /** テスト補助：static フィールド personalInfoApiUrl を設定 */
-    private static void setPersonalInfoApiUrl(String url) throws Exception {
-        Field f = CommonUtil.class.getDeclaredField("personalInfoApiUrl");
-        f.setAccessible(true);
-        f.set(null, url);
+    private static final String MASKED_STRING = "********";
+
+    @AfterEach
+    void tearDown() {
+        // Arrange/Act/Assert から分離し、各テストの独立性を確保
+        System.clearProperty("spring.profiles.active");
     }
 
-    // --- toJson ---
-
-    /** クラス：CommonUtil toJson 正常に JSON へシリアライズできることを確認するテストケース */
+    /** クラス：CommonUtil コンストラクタがprivateであることを確認するテストケース */
     @Test
-    void toJson_01() {
-        // 準備
-        @SuppressWarnings("unused")
-        class Dto {
-            public String a = "x";
-            public int b = 1;
-        }
-        Dto dto = new Dto();
-        // 実行
+    void CommonUtil_001() throws Exception {
+        // Arrange
+        Constructor<CommonUtil> ctor = CommonUtil.class.getDeclaredConstructor();
+
+        // Act
+        int mod = ctor.getModifiers();
+
+        // Assert
+        assertTrue(Modifier.isPrivate(mod));
+    }
+
+    /** クラス：CommonUtil toJson 正常にJSON文字列へ変換できることを確認するテストケース */
+    @Test
+    void toJson_001() {
+        // Arrange
+        DummyDto dto = new DummyDto();
+        dto.id = 1;
+        dto.name = "test";
+
+        // Act
         String json = CommonUtil.toJson(dto);
-        // 確認
-        assertTrue(json.contains("\"a\":\"x\""));
-        assertTrue(json.contains("\"b\":1"));
+
+        // Assert
+        assertTrue(json.contains("\"id\":1"));
+        assertTrue(json.contains("\"name\":\"test\""));
     }
 
-    /** クラス：CommonUtil toJson 引数が null の場合に "null" が返ることを確認するテストケース */
+    /** クラス：CommonUtil toJson Jackson変換例外時にCustomExceptionが送出されることを確認するテストケース */
     @Test
-    void toJson_02() {
-        // 実行
-        String json = CommonUtil.toJson(null);
-        // 確認
-        assertEquals("null", json);
+    void toJson_002() {
+        // Arrange
+        SelfRefDto dto = new SelfRefDto();
+
+        // Act
+        CustomException ex = assertThrows(CustomException.class, () -> CommonUtil.toJson(dto));
+
+        // Assert
+        assertNotNull(ex.getCause());
     }
 
-    /** クラス：CommonUtil toJson 例外発生時に RuntimeException へ変換されることを確認するテストケース */
+    /**
+     * クラス：CommonUtil getMessage
+     * spring.profiles.activeが未設定の場合にLogMessagesを使用することを確認するテストケース
+     */
     @Test
-    void toJson_03() {
-        // 準備：ObjectMapper の writeValueAsString を例外にする
-        try (MockedConstruction<ObjectMapper> mc = Mockito.mockConstruction(ObjectMapper.class,
-                (mapper, ctx) -> when(mapper.writeValueAsString(any())).thenThrow(new RuntimeException("boom")))) {
-            // 実行・確認
-            assertThrows(RuntimeException.class, () -> CommonUtil.toJson(new Object()));
-        }
+    void getMessage_001() {
+        // Arrange
+        System.clearProperty("spring.profiles.active");
+
+        // Act
+        String msg = CommonUtil.getMessage("TEST001", "World");
+
+        // Assert
+        assertEquals("LOG: Hello World", msg);
     }
 
-    // --- getMessage / getResultCode ---
-
-    /** クラス：CommonUtil getMessage ResourceBundle に従い文字列整形されることを確認するテストケース */
+    /**
+     * クラス：CommonUtil getMessage
+     * spring.profiles.activeにsaが含まれる場合にSaLogMessagesを使用することを確認するテストケース
+     */
     @Test
-    void getMessage_01() {
-        // 実行
-        String msg = CommonUtil.getMessage("RS07I00001", "A", "B", "C");
-        // 確認
-        assertEquals("A処理を開始します。相関ID：B、パラメータ：C", msg);
+    void getMessage_002() {
+        // Arrange
+        System.setProperty("spring.profiles.active", "sa");
+
+        // Act
+        String msg = CommonUtil.getMessage("TEST001", "World");
+
+        // Assert
+        assertEquals("SA: Hello World", msg);
     }
 
-    /** クラス：CommonUtil getResultCode ResourceBundle の値が返ることを確認するテストケース */
+    /**
+     * クラス：CommonUtil getMessage
+     * spring.profiles.activeに複数プロファイルがありsaが含まれる場合にSaLogMessagesを使用することを確認するテストケース
+     */
     @Test
-    void getResultCode_01() {
-        // 実行
-        String rc = CommonUtil.getResultCode("SUCCESS");
-        // 確認
-        assertEquals("00001548N001", rc);
+    void getMessage_003() {
+        // Arrange
+        System.setProperty("spring.profiles.active", "dev, sa,  ");
+
+        // Act
+        String msg = CommonUtil.getMessage("TEST001", "World");
+
+        // Assert
+        assertEquals("SA: Hello World", msg);
     }
 
-    // --- maskText ---
-
-    /** クラス：CommonUtil maskText 引数が null/空文字のとき空文字が返ることを確認するテストケース */
+    /**
+     * クラス：CommonUtil getMessage
+     * 存在しないメッセージIDの場合にMissingResourceExceptionが送出されることを確認するテストケース
+     */
     @Test
-    void maskText_01() {
-        assertEquals("", CommonUtil.maskText(null));
-        assertEquals("", CommonUtil.maskText(""));
+    void getMessage_004() {
+        // Arrange
+        System.clearProperty("spring.profiles.active");
+
+        // Act
+        MissingResourceException ex = assertThrows(MissingResourceException.class,
+                () -> CommonUtil.getMessage("NOT_FOUND_ID"));
+
+        // Assert
+        assertNotNull(ex);
     }
 
-    /** クラス：CommonUtil maskText メールアドレスをマスクできることを確認するテストケース */
+    /** クラス：CommonUtil getResultCode 正常に結果コードを取得できることを確認するテストケース */
     @Test
-    void maskText_02() {
-        // 準備
-        String email = "ab@example.com";
-        // 実行
-        String masked = CommonUtil.maskText(email);
-        // 確認：先頭2文字 + 8つの* + ドメイン
-        assertTrue(masked.startsWith("ab********@example.com"));
+    void getResultCode_001() {
+        // Arrange
+        String key = "EXCEPTION";
+
+        // Act
+        String code = CommonUtil.getResultCode(key);
+
+        // Assert
+        assertEquals("RC-EXCEPTION", code);
     }
 
-    /** クラス：CommonUtil maskText 通常文字列（長さ>2）をマスクできることを確認するテストケース */
+    /**
+     * クラス：CommonUtil getResultCode
+     * 存在しないキーの場合にMissingResourceExceptionが送出されることを確認するテストケース
+     */
     @Test
-    void maskText_03() {
-        String masked = CommonUtil.maskText("abcdef");
-        assertEquals("ab********", masked);
+    void getResultCode_002() {
+        // Arrange
+        String key = "NOT_FOUND_CODE";
+
+        // Act
+        MissingResourceException ex = assertThrows(MissingResourceException.class, () -> CommonUtil.getResultCode(key));
+
+        // Assert
+        assertNotNull(ex);
     }
 
-    /** クラス：CommonUtil maskText 通常文字列（長さ<=2）をマスクできることを確認するテストケース */
+    /** クラス：CommonUtil maskText 引数がnullの場合に空文字が返ることを確認するテストケース */
     @Test
-    void maskText_04() {
-        assertEquals("a********", CommonUtil.maskText("a"));
-        assertEquals("ab********", CommonUtil.maskText("ab"));
+    void maskText_001() {
+        // Arrange
+        String text = null;
+
+        // Act
+        String masked = CommonUtil.maskText(text);
+
+        // Assert
+        assertEquals("", masked);
     }
 
-    // --- normalizePhoneNumber / maskPhoneNumber ---
-
-    /** クラス：CommonUtil normalizePhoneNumber 非数字を除去することを確認するテストケース */
+    /** クラス：CommonUtil maskText 引数が空文字の場合に空文字が返ることを確認するテストケース */
     @Test
-    void normalizePhoneNumber_01() {
-        String r = CommonUtil.normalizePhoneNumber("+81-90-1234-5678");
-        assertEquals("819012345678", r);
+    void maskText_002() {
+        // Arrange
+        String text = "";
+
+        // Act
+        String masked = CommonUtil.maskText(text);
+
+        // Assert
+        assertEquals("", masked);
     }
 
-    /** クラス：CommonUtil normalizePhoneNumber null のとき空文字が返ることを確認するテストケース */
+    /** クラス：CommonUtil maskText メール形式で@より前が1文字の場合に先頭1文字+マスク+ドメインが返ることを確認するテストケース */
     @Test
-    void normalizePhoneNumber_02() {
-        assertEquals("", CommonUtil.normalizePhoneNumber(null));
+    void maskText_003() {
+        // Arrange
+        String text = "a@example.com";
+
+        // Act
+        String masked = CommonUtil.maskText(text);
+
+        // Assert
+        assertEquals("a" + MASKED_STRING + "@example.com", masked);
     }
 
-    /** クラス：CommonUtil maskPhoneNumber 引数が null/長さ<4 のとき固定マスクが返ることを確認するテストケース */
+    /**
+     * クラス：CommonUtil maskText メール形式で@より前が2文字以上の場合に先頭2文字+マスク+ドメインが返ることを確認するテストケース
+     */
     @Test
-    void maskPhoneNumber_01() {
-        assertEquals("********", CommonUtil.maskPhoneNumber(null));
-        assertEquals("********", CommonUtil.maskPhoneNumber("12")); // 長さ<4
+    void maskText_004() {
+        // Arrange
+        String text = "ab@example.com";
+
+        // Act
+        String masked = CommonUtil.maskText(text);
+
+        // Assert
+        assertEquals("ab" + MASKED_STRING + "@example.com", masked);
     }
 
-    /** クラス：CommonUtil maskPhoneNumber 正規化後に末尾4桁を残してマスクされることを確認するテストケース */
+    /** クラス：CommonUtil maskText @を含まない2文字以下の文字列の場合に元文字列+マスクが返ることを確認するテストケース */
     @Test
-    void maskPhoneNumber_02() {
-        String r = CommonUtil.maskPhoneNumber("+81-90-1234-5678");
-        assertTrue(r.endsWith("5678"));
-        // 先頭は * が連続している（桁数-4 分）
-        assertTrue(r.substring(0, r.length() - 4).matches("\\*+"));
+    void maskText_005() {
+        // Arrange
+        String text = "ab";
+
+        // Act
+        String masked = CommonUtil.maskText(text);
+
+        // Assert
+        assertEquals("ab" + MASKED_STRING, masked);
     }
 
-    /** クラス：CommonUtil maskPhoneNumber 長さがちょうど4桁の場合にそのまま返ることを確認するテストケース */
+    /** クラス：CommonUtil maskText @を含まない3文字以上の文字列の場合に先頭2文字+マスクが返ることを確認するテストケース */
     @Test
-    void maskPhoneNumber_03() {
-        String r = CommonUtil.maskPhoneNumber("1234");
-        assertEquals("1234", r);
+    void maskText_006() {
+        // Arrange
+        String text = "abc";
+
+        // Act
+        String masked = CommonUtil.maskText(text);
+
+        // Assert
+        assertEquals("ab" + MASKED_STRING, masked);
     }
 
-    // --- getPersonalInfoApiResponse ---
-
-    // @Test
-    // void getPersonalInfoApiResponse_01() {
-    // try (MockedConstruction<PropertiesUtil> pc = Mockito.mockConstruction(
-    // PropertiesUtil.class,
-    // (pu, ctx) ->
-    // when(pu.getPersonalInfoApiUrl()).thenReturn("https://test.invalid/api"));
-    // MockedConstruction<RestTemplate> rc =
-    // Mockito.mockConstruction(RestTemplate.class, (rt, ctx) -> {
-    // // varargs版（Object...）にマッチ
-    // doReturn(ResponseEntity.ok("{\"contactList\":[]}"))
-    // .when(rt).getForEntity(anyString(), eq(String.class), (Object) any());
-    // // Map版（保険）
-    // doReturn(ResponseEntity.ok("{\"contactList\":[]}"))
-    // .when(rt).getForEntity(anyString(), eq(String.class), anyMap());
-    // })) {
-    // PersonalInfoResponseDto dto =
-    // CommonUtil.getPersonalInfoApiResponse("user-001");
-    // assertNotNull(dto);
-    // assertNotNull(dto.getContactList());
-    // }
-    // }
-
-    // @Test
-    // void getPersonalInfoApiResponse_02() {
-    // try (MockedConstruction<PropertiesUtil> pc = Mockito.mockConstruction(
-    // PropertiesUtil.class,
-    // (pu, ctx) ->
-    // when(pu.getPersonalInfoApiUrl()).thenReturn("https://test.invalid/api"));
-    // MockedConstruction<RestTemplate> rc =
-    // Mockito.mockConstruction(RestTemplate.class, (rt, ctx) -> {
-    // doReturn(ResponseEntity.ok("INVALID_JSON"))
-    // .when(rt).getForEntity(anyString(), eq(String.class), (Object) any());
-    // doReturn(ResponseEntity.ok("INVALID_JSON"))
-    // .when(rt).getForEntity(anyString(), eq(String.class), anyMap());
-    // });
-    // MockedConstruction<ObjectMapper> mc =
-    // Mockito.mockConstruction(ObjectMapper.class, (om, ctx) -> {
-    // when(om.readValue(anyString(), eq(PersonalInfoResponseDto.class)))
-    // .thenThrow(new RuntimeException("parse error"));
-    // })) {
-    // RuntimeException ex = assertThrows(RuntimeException.class,
-    // () -> CommonUtil.getPersonalInfoApiResponse("user-002"));
-    // assertTrue(ex.getMessage().contains("parse error")); // 実装がそのまま例外を流す仕様のため
-    // }
-    // }
-
-    // --- private コンストラクタの網羅 ---
-
-    /** クラス：CommonUtil private コンストラクタのインスタンス化を確認するテストケース */
+    /** クラス：CommonUtil maskPhoneNumber 引数がnullの場合に固定マスクが返ることを確認するテストケース */
     @Test
-    void constructor_01() throws Exception {
-        // 準備
-        Constructor<CommonUtil> c = CommonUtil.class.getDeclaredConstructor();
-        c.setAccessible(true);
-        // 実行
-        CommonUtil inst = c.newInstance();
-        // 確認
-        assertNotNull(inst);
+    void maskPhoneNumber_001() {
+        // Arrange
+        String phone = null;
+
+        // Act
+        String masked = CommonUtil.maskPhoneNumber(phone);
+
+        // Assert
+        assertEquals(MASKED_STRING, masked);
+    }
+
+    /** クラス：CommonUtil maskPhoneNumber 引数長が4未満の場合に固定マスクが返ることを確認するテストケース */
+    @Test
+    void maskPhoneNumber_002() {
+        // Arrange
+        String phone = "123";
+
+        // Act
+        String masked = CommonUtil.maskPhoneNumber(phone);
+
+        // Assert
+        assertEquals(MASKED_STRING, masked);
+    }
+
+    /** クラス：CommonUtil maskPhoneNumber 正規化後4桁の場合にそのまま4桁が返ることを確認するテストケース */
+    @Test
+    void maskPhoneNumber_003() {
+        // Arrange
+        String phone = "1234";
+
+        // Act
+        String masked = CommonUtil.maskPhoneNumber(phone);
+
+        // Assert
+        assertEquals("1234", masked);
+    }
+
+    /** クラス：CommonUtil maskPhoneNumber 正規化後5桁の場合に先頭がマスクされ末尾4桁が残ることを確認するテストケース */
+    @Test
+    void maskPhoneNumber_004() {
+        // Arrange
+        String phone = "12345";
+
+        // Act
+        String masked = CommonUtil.maskPhoneNumber(phone);
+
+        // Assert
+        assertEquals("*2345", masked);
+    }
+
+    /** クラス：CommonUtil maskPhoneNumber 記号を含む電話番号が正規化され末尾4桁のみ残ることを確認するテストケース */
+    @Test
+    void maskPhoneNumber_005() {
+        // Arrange
+        String phone = "090-1234-5678";
+
+        // Act
+        String masked = CommonUtil.maskPhoneNumber(phone);
+
+        // Assert
+        assertEquals("*******5678", masked);
+
+    }
+
+    /** クラス：CommonUtil maskPhoneNumber 入力長は4以上だが正規化後が4未満の場合に例外が発生することを確認するテストケース */
+    @Test
+    void maskPhoneNumber_006() {
+        // Arrange
+        String phone = "a-b-c-1";
+
+        // Act
+        StringIndexOutOfBoundsException ex = assertThrows(StringIndexOutOfBoundsException.class,
+                () -> CommonUtil.maskPhoneNumber(phone));
+
+        // Assert
+        assertNotNull(ex);
+    }
+
+    /** クラス：CommonUtil normalizePhoneNumber 引数がnullの場合に空文字が返ることを確認するテストケース */
+    @Test
+    void normalizePhoneNumber_001() {
+        // Arrange
+        String phone = null;
+
+        // Act
+        String normalized = CommonUtil.normalizePhoneNumber(phone);
+
+        // Assert
+        assertEquals("", normalized);
+    }
+
+    /** クラス：CommonUtil normalizePhoneNumber 非数字が除去され数字のみになることを確認するテストケース */
+    @Test
+    void normalizePhoneNumber_002() {
+        // Arrange
+        String phone = "+81 (90) 1234-5678";
+
+        // Act
+        String normalized = CommonUtil.normalizePhoneNumber(phone);
+
+        // Assert
+        assertEquals("819012345678", normalized);
+    }
+
+    // ----- テスト用DTO -----
+    static class DummyDto {
+        public int id;
+        public String name;
+    }
+
+    static class SelfRefDto {
+        public SelfRefDto self = this;
     }
 }

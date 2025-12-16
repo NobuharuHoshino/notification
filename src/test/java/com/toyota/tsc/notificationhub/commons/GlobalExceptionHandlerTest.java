@@ -1,82 +1,170 @@
+
+// ファイルパス: src/test/java/com/toyota/tsc/notificationhub/commons/GlobalExceptionHandlerTest.java
 package com.toyota.tsc.notificationhub.commons;
 
-import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
+import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
+import com.toyota.tsc.notificationhub.exceptions.TscPrimaryContactException;
 import com.toyota.tsc.notificationhub.models.ResponseDto;
-
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 /**
- * クラス：GlobalExceptionHandler すべてのハンドラ分岐を確認するテストケース
+ * GlobalExceptionHandler のテストクラス
  */
+@SuppressWarnings("all")
+@ExtendWith(MockitoExtension.class)
 class GlobalExceptionHandlerTest {
 
-    /** クラス：GlobalExceptionHandler handleCustomSqlException 400 が返ることを確認するテストケース */
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    /**
+     * クラス：GlobalExceptionHandler handleTscApplicationException
+     * 400で例外の結果コードが返ることを確認するテストケース
+     */
     @Test
-    void handleCustomSqlException_01() {
-        // 準備
+    void handleTscApplicationException_001() throws Exception {
+        // Arrange
         GlobalExceptionHandler handler = new GlobalExceptionHandler();
-        CustomSqlException ex = new CustomSqlException("sql");
+        TscApplicationException ex = mock(TscApplicationException.class);
+        when(ex.getResultCode()).thenReturn("RC-APP");
 
-        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
-            cm.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("RC");
+        // Act
+        ResponseEntity<ResponseDto> response = handler.handleTscApplicationException(ex);
+        String json = mapper.writeValueAsString(response.getBody());
 
-            // 実行
-            ResponseEntity<ResponseDto> r = handler.handleCustomSqlException(ex);
-
-            // 確認
-            assertEquals(400, r.getStatusCode().value());
-            assertEquals("RC", r.getBody().getResultCode());
-        }
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(json.contains("RC-APP"));
     }
 
     /**
-     * クラス：GlobalExceptionHandler handleTscApplicationException 400 が返ることを確認するテストケース
+     * クラス：GlobalExceptionHandler handleTscApplicationException
+     * getResultCodeが例外を投げた場合に例外が伝播することを確認するテストケース
      */
     @Test
-    void handleTscApplicationException_01() {
+    void handleTscApplicationException_002() {
+        // Arrange
         GlobalExceptionHandler handler = new GlobalExceptionHandler();
-        TscApplicationException ex = new TscApplicationException();
+        TscApplicationException ex = mock(TscApplicationException.class);
+        when(ex.getResultCode()).thenThrow(new RuntimeException("boom"));
 
-        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
-            cm.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("RC");
-            ResponseEntity<ResponseDto> r = handler.handleTscApplicationException(ex);
-            assertEquals(400, r.getStatusCode().value());
-            assertEquals("RC", r.getBody().getResultCode());
-        }
+        // Act
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> handler.handleTscApplicationException(ex));
+
+        // Assert
+        assertEquals("boom", thrown.getMessage());
     }
 
-    /** クラス：GlobalExceptionHandler handleRuntimeException 500 が返ることを確認するテストケース */
+    /**
+     * クラス：GlobalExceptionHandler handleTscNotificationHubsException
+     * 500で例外の結果コードが返ることを確認するテストケース
+     */
     @Test
-    void handleRuntimeException_01() {
+    void handleTscNotificationHubsException_001() throws Exception {
+        // Arrange
         GlobalExceptionHandler handler = new GlobalExceptionHandler();
-        RuntimeException ex = new RuntimeException("boom");
+        TscNotificationHubsException ex = mock(TscNotificationHubsException.class);
+        when(ex.getResultCode()).thenReturn("RC-HUB");
 
-        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
-            cm.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("RC");
-            ResponseEntity<ResponseDto> r = handler.handleRuntimeException(ex);
-            assertEquals(500, r.getStatusCode().value());
-            assertEquals("RC", r.getBody().getResultCode());
-        }
+        // Act
+        ResponseEntity<ResponseDto> response = handler.handleTscNotificationHubsException(ex);
+        String json = mapper.writeValueAsString(response.getBody());
+
+        // Assert
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(json.contains("RC-HUB"));
     }
 
-    /** クラス：GlobalExceptionHandler handleException 500 が返ることを確認するテストケース */
+    /**
+     * クラス：GlobalExceptionHandler handleTscPrimaryContactException
+     * 400で例外の結果コードが返ることを確認するテストケース
+     */
     @Test
-    void handleException_01() {
+    void handleTscPrimaryContactException_001() throws Exception {
+        // Arrange
         GlobalExceptionHandler handler = new GlobalExceptionHandler();
-        Exception ex = new Exception("other");
+        TscPrimaryContactException ex = mock(TscPrimaryContactException.class);
+        when(ex.getResultCode()).thenReturn("RC-PC");
 
-        try (MockedStatic<CommonUtil> cm = Mockito.mockStatic(CommonUtil.class)) {
-            cm.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("RC");
-            ResponseEntity<ResponseDto> r = handler.handleException(ex);
-            assertEquals(500, r.getStatusCode().value());
-            assertEquals("RC", r.getBody().getResultCode());
-        }
+        // Act
+        ResponseEntity<ResponseDto> response = handler.handleTscPrimaryContactException(ex);
+        String json = mapper.writeValueAsString(response.getBody());
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(json.contains("RC-PC"));
+    }
+
+    /**
+     * クラス：GlobalExceptionHandler handleCustomException
+     * 500でEXCEPTIONの結果コードが返ることを確認するテストケース
+     */
+    @Test
+    void handleCustomException_001() throws Exception {
+        // Arrange
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        CustomException ex = mock(CustomException.class);
+
+        // Act
+        ResponseEntity<ResponseDto> response = handler.handleCustomException(ex);
+        String json = mapper.writeValueAsString(response.getBody());
+
+        // Assert
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(json.contains("RC-EXCEPTION"));
+    }
+
+    /**
+     * クラス：GlobalExceptionHandler handleRuntimeException
+     * 500でEXCEPTIONの結果コードが返ることを確認するテストケース
+     */
+    @Test
+    void handleRuntimeException_001() throws Exception {
+        // Arrange
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        RuntimeException ex = new RuntimeException("x");
+
+        // Act
+        ResponseEntity<ResponseDto> response = handler.handleRuntimeException(ex);
+        String json = mapper.writeValueAsString(response.getBody());
+
+        // Assert
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(json.contains("RC-EXCEPTION"));
+    }
+
+    /**
+     * クラス：GlobalExceptionHandler handleException
+     * 500でEXCEPTIONの結果コードが返ることを確認するテストケース
+     */
+    @Test
+    void handleException_001() throws Exception {
+        // Arrange
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        Exception ex = new Exception("x");
+
+        // Act
+        ResponseEntity<ResponseDto> response = handler.handleException(ex);
+        String json = mapper.writeValueAsString(response.getBody());
+
+        // Assert
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(json.contains("RC-EXCEPTION"));
     }
 }

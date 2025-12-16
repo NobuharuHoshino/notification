@@ -5,6 +5,7 @@ import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.commons.NotificationHubUtil;
+import com.toyota.tsc.notificationhub.commons.PropertiesUtil;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
@@ -21,31 +22,38 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 /**
  * プッシュ通知送信サービス実装クラス
  */
+@Profile("me")
 @Service
 public class SendPushServiceImpl implements SendPushServiceIF {
 
-    @Value("${azure.notification-hub.retry-count}")
-    private int retryCount;
-
     private NtfInfoRepositoryIF ntfInfoRepository;
     private NotificationHubUtil notificationHubUtil;
+    private PropertiesUtil properties;
 
     public SendPushServiceImpl(
             NtfInfoRepositoryIF ntfInfoRepository,
-            NotificationHubUtil notificationHubUtil) {
+            NotificationHubUtil notificationHubUtil,
+            PropertiesUtil properties) {
         this.ntfInfoRepository = ntfInfoRepository;
         this.notificationHubUtil = notificationHubUtil;
+        this.properties = properties;
     }
 
     private static final String PROCCESS_NAME = "プッシュ通知送信要求";
     private static final String FCM = "1";
     private static final String APN = "2";
+
+    public static final String RESULT_SUCCESS = "SP_SUCCESS";
+    public static final String RESULT_FIELD_MISSING = "SP_FIELD_MISSING";
+    public static final String RESULT_GET_DEVICE_EMPTY = "SP_GET_DEVICE_EMPTY";
+    public static final String RESULT_PUSH_EXCEPTION = "SP_PUSH_EXCEPTION";
+    public static final String RESULT_EXCEPTION = "SP_EXCEPTION";
 
     @Override
     /**
@@ -70,7 +78,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             if (deviceList.isEmpty()) {
                 LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00013", request.getInternalUserId(), header.getCorrelationId()));
-                throw new TscApplicationException();
+                throw new CustomException();
             }
             NtfInfoEntity deviceData = getLastData(deviceList);
 
@@ -86,10 +94,10 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             return new ResponseDto(resultCode);
 
         } catch (TscApplicationException e) {
-            throw new TscApplicationException();
+            throw new TscApplicationException(e.getResultCode());
 
         } catch (TscNotificationHubsException e) {
-            throw new CustomException();
+            throw new TscNotificationHubsException(e.getResultCode());
 
         } catch (Exception e) {
             SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
@@ -160,7 +168,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
         } catch (Exception e) {
             LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00014", request.getInternalUserId(), request.getBody(), header.getCorrelationId()));
-            throw new TscApplicationException();
+            throw new CustomException();
         }
 
     }
@@ -176,7 +184,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
     private NotificationOutcome executePostMessage(
             SendPushRequestDto request, RequestHeaderDto header, NtfInfoEntity deviceData) {
         int cnt = 0;
-        while (cnt < this.retryCount) {
+        while (cnt < properties.getRetryCount()) {
             try {
                 String payload = createPayload(request, header, deviceData);
                 return notificationHubUtil.postMessage(
@@ -185,11 +193,11 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             } catch (NotificationHubsException ex) {
                 if (ex.isTransient()) {
                     cnt++;
-                    if (cnt >= this.retryCount) {
+                    if (cnt >= properties.getRetryCount()) {
                         LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                                 "RS07E00005", ex.httpStatusCode(), request.getInternalUserId(),
                                 request.getBody(), deviceData.getInstallationId(), header.getCorrelationId()));
-                        throw new TscNotificationHubsException(ex);
+                        throw new TscNotificationHubsException(CommonUtil.getResultCode(RESULT_PUSH_EXCEPTION));
                     }
                     LogUtil.warn(SendPushServiceImpl.class, CommonUtil.getMessage(
                             "RS07W00003", cnt, ex.httpStatusCode(), request.getBody(),
@@ -199,7 +207,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                 LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00005", ex.httpStatusCode(), request.getInternalUserId(),
                         request.getBody(), deviceData.getInstallationId(), header.getCorrelationId()));
-                throw new TscNotificationHubsException(ex);
+                throw new TscNotificationHubsException(CommonUtil.getResultCode(RESULT_PUSH_EXCEPTION));
             } catch (Exception e) {
                 throw e;
             }
@@ -245,7 +253,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
         if (missingField != null) {
             LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00012", missingField, header.getCorrelationId()));
-            throw new TscApplicationException();
+            throw new TscApplicationException(CommonUtil.getResultCode(RESULT_FIELD_MISSING));
         }
         return null;
     }

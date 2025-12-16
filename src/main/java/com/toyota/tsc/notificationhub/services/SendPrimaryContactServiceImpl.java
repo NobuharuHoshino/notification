@@ -4,6 +4,7 @@ package com.toyota.tsc.notificationhub.services;
 import com.sendgrid.helpers.mail.Mail;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
+import com.toyota.tsc.notificationhub.commons.PersonalInfoUtil;
 import com.toyota.tsc.notificationhub.commons.SendGridUtil;
 import com.toyota.tsc.notificationhub.commons.SmsCountryUtil;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
@@ -16,12 +17,15 @@ import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.models.SendPrimaryContactRequestDto;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpEntity;
 import org.springframework.stereotype.Service;
 
 /**
  * プライマリ連絡先送信サービス実装クラス
  */
+@Profile("me")
 @Service
 public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceIF {
 
@@ -29,14 +33,23 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
     private static final String CONTACT_PHONE = "1";
     private static final String CONTACT_EMAIL = "2";
 
+    public static final String RESULT_SUCCESS = "PC_SUCCESS";
+    public static final String RESULT_FIELD_MISSING = "PC_FIELD_MISSING";
+    public static final String RESULT_INVALID_BRAND = "PC_INVALID_BRAND";
+    public static final String RESULT_GET_PERSONALINFO_EMPTY = "PC_GET_PERSONALINFO_EMPTY";
+    public static final String RESULT_EXCEPTION = "PC_EXCEPTION";
+
     private SmsCountryUtil smsCountryUtil;
     private SendGridUtil sendGridUtil;
+    private PersonalInfoUtil personalInfoUtil;
 
     public SendPrimaryContactServiceImpl(
             SmsCountryUtil smsCountryUtil,
-            SendGridUtil sendGridUtil) {
+            SendGridUtil sendGridUtil,
+            PersonalInfoUtil personalInfoUtil) {
         this.smsCountryUtil = smsCountryUtil;
         this.sendGridUtil = sendGridUtil;
+        this.personalInfoUtil = personalInfoUtil;
     }
 
     @Override
@@ -58,18 +71,19 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             validate(request, header);
 
             // 個人情報取得
-            PersonalInfoResponseDto response = CommonUtil.getPersonalInfoApiResponse(request.getInternalUserId());
+            PersonalInfoResponseDto response = personalInfoUtil.getPersonalInfoApiResponse(
+                    request.getInternalUserId(), header.getCorrelationId());
             if (response == null) {
                 LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00015", request.getInternalUserId(), header.getCorrelationId()));
-                throw new TscApplicationException();
+                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_PERSONALINFO_EMPTY));
             }
             List<PersonalInfoResponseDto.ContactDto> contactList = response.getContactList();
 
             // 送信要求
             sendRequest(contactList, request, header);
 
-            String resultCode = CommonUtil.getResultCode("SUCCESS");
+            String resultCode = CommonUtil.getResultCode("RESULT_SUCCESS");
 
             // 正常終了ログ
             LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
@@ -80,21 +94,21 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00007", e.getStatusCode(), CommonUtil.maskText(e.getAddress()),
                     e.getTitle(), header.getCorrelationId()));
-            throw new CustomException(e.getCause());
+            throw new CustomException();
 
         } catch (TscSMSException e) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00006", e.getStatusCode(), CommonUtil.maskPhoneNumber(e.getPhoneNo()),
                     header.getCorrelationId()));
-            throw new CustomException(e);
+            throw new CustomException();
 
         } catch (TscApplicationException e) {
-            throw new TscApplicationException();
+            throw new TscApplicationException(e.getResultCode());
 
         } catch (Exception e) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-            throw new CustomException(e);
+            throw new CustomException();
         }
     }
 
@@ -173,12 +187,12 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         if (missingField != null) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00012", missingField, header.getCorrelationId()));
-            throw new TscApplicationException();
+            throw new TscApplicationException(CommonUtil.getResultCode(RESULT_FIELD_MISSING));
         }
         if (!isValidBrdCd(request.getBrdCd())) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
-            throw new TscApplicationException();
+            throw new TscApplicationException(CommonUtil.getResultCode(RESULT_INVALID_BRAND));
         }
         return null;
     }

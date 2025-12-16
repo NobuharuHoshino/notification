@@ -6,11 +6,11 @@ import java.sql.SQLTransientException;
 import java.util.List;
 import java.util.concurrent.Callable;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import com.toyota.tsc.notificationhub.commons.ExtractSqlExceptionUtil;
+import com.toyota.tsc.notificationhub.commons.PropertiesUtil;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 
 /**
@@ -20,17 +20,12 @@ import com.toyota.tsc.notificationhub.exceptions.CustomException;
 @Profile("!local")
 public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
     private final NtfInfoMapper ntfInfoMapper;
-
-    @Value("${ntfinfo.upsert.retry.count:3}")
-    private int upsertRetryCount;
-    @Value("${ntfinfo.upsert.retry.base-interval:100}")
-    private long upsertRetryBaseInterval;
-    @Value("${ntfinfo.upsert.retry.max-interval:20000}")
-    private long upsertRetryMaxInterval;
+    private final PropertiesUtil propertiesUtil;
 
     @Autowired
-    public NtfInfoRepositoryImpl(NtfInfoMapper ntfInfoMapper) {
+    public NtfInfoRepositoryImpl(NtfInfoMapper ntfInfoMapper, PropertiesUtil propertiesUtil) {
         this.ntfInfoMapper = ntfInfoMapper;
+        this.propertiesUtil = propertiesUtil;
     }
 
     @Override
@@ -76,7 +71,8 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
      * @return 削除件数
      */
     public int delete(String internalUserId, String installationId) {
-        return executeWithRetry(() -> ntfInfoMapper.delete(internalUserId, installationId), upsertRetryCount);
+        return executeWithRetry(() -> ntfInfoMapper.delete(internalUserId, installationId),
+                propertiesUtil.getNtfinfoUpsertRetryCount());
     }
 
     @Override
@@ -87,7 +83,7 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
      * @return Upsert件数
      */
     public int upsert(NtfInfoEntity entity) {
-        return executeWithRetry(() -> ntfInfoMapper.upsert(entity), upsertRetryCount);
+        return executeWithRetry(() -> ntfInfoMapper.upsert(entity), propertiesUtil.getNtfinfoUpsertRetryCount());
     }
 
     @Override
@@ -150,8 +146,8 @@ public class NtfInfoRepositoryImpl implements NtfInfoRepositoryIF {
     }
 
     private long backoffMillis(int attempt) {
-        long base = (long) (upsertRetryBaseInterval * Math.pow(2, (double) attempt - 1));
-        return Math.min(base, upsertRetryMaxInterval);
+        long base = (long) (propertiesUtil.getNtfinfoUpsertRetryBaseInterval() * Math.pow(2, (double) attempt - 1));
+        return Math.min(base, propertiesUtil.getNtfinfoUpsertRetryMaxInterval());
     }
 
     private void sleep(long millis) {

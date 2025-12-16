@@ -1,0 +1,233 @@
+【CommonUtilTest】
+・toJson_01：正常系（オブジェクトを正常にJSONシリアライズできる）
+・toJson_02：正常系（引数がnullの場合に"null"が返る）
+・toJson_03：異常系（シリアライズ例外時にRuntimeExceptionへ変換）
+・getMessage_01：正常系（ResourceBundleに従い文字列整形される）
+・getResultCode_01：正常系（ResourceBundleの値が返る）
+・maskText_01：正常系（null/空文字のとき空文字が返る）
+・maskText_02：正常系（メールアドレスをマスクできる）
+・maskText_03：正常系（通常文字列（長さ>2）をマスクできる）
+・maskText_04：正常系（通常文字列（長さ<=2）をマスクできる）
+・normalizePhoneNumber_01：正常系（非数字を除去する）
+・normalizePhoneNumber_02：正常系（nullのとき空文字が返る）
+・maskPhoneNumber_01：正常系（null/長さ<4のとき固定マスクが返る）
+・maskPhoneNumber_02：正常系（正規化後に末尾4桁を残してマスクされる）
+・maskPhoneNumber_03：正常系（長さがちょうど4桁の場合にそのまま返る）
+・getPersonalInfoApiResponse_01：正常系（APIレスポンスが正常にパースされる）
+・getPersonalInfoApiResponse_02：異常系（APIレスポンスのパース失敗時にRuntimeExceptionとなる）
+・constructor_01：正常系（privateコンストラクタがインスタンス化できる）
+
+【GlobalExceptionHandlerTest】
+- CustomSqlException発生時のハンドリング（handleCustomSqlException）
+- TscApplicationException発生時のハンドリング（handleTscApplicationException）
+- RuntimeException発生時のハンドリング（handleRuntimeException）
+- Exception発生時のハンドリング（handleException）
+
+【ExtractSqlExceptionUtilTest】
+- SQL例外（SQLNonTransientConnectionException等）が接続例外か判定（isSqlConnectionError_01, _02）
+- SQLStateが"08"クラスの場合の接続例外判定（isSqlConnectionError_03）
+- SQLStateが"08S01"の場合の接続例外判定（isSqlConnectionError_04）
+- SQLStateが"08004"で始まる場合の接続例外判定（isSqlConnectionError_05）
+- SQLStateが"28"クラスの場合の接続例外判定（isSqlConnectionError_06）
+- SQLStateが"3D000"の場合の接続例外判定（isSqlConnectionError_07）
+- SQLStateが"53300"の場合の接続例外判定（isSqlConnectionError_08）
+- SQLStateが"57P01"の場合の接続例外判定（isSqlConnectionError_09）
+- SQLStateが"57P03"の場合の接続例外判定（isSqlConnectionError_10）
+- nextExceptionが接続例外の場合の判定（isSqlConnectionError_11）
+- causeが接続例外の場合の判定（isSqlConnectionError_12）
+- いずれにも該当しない場合falseを返す（isSqlConnectionError_13）
+- stateがnullの場合の判定（isSqlConnectionError_stateNull_false）
+- stateが空文字の場合の判定（isSqlConnectionError_stateEmpty_false）
+- state長1（最小ケース）の判定（isSqlConnectionError_stateLen1_false）
+- "08S01"以外のstateの判定（isSqlConnectionError_non08S01_false）
+- "08004"以外のstateの判定（isSqlConnectionError_non08004_false）
+- nextExceptionがselfの場合の判定（isSqlConnectionError_nextIsSelf_false）
+- nextExceptionが非接続系の場合の判定（isSqlConnectionError_nextNonConn_false）
+- causeが非SQLExceptionの場合の判定（isSqlConnectionError_causeNonSql_false）
+- causeがSQLExceptionだが非接続系の場合の判定（isSqlConnectionError_causeSqlNonConn_false）
+- cause分岐の全サブ条件が真の場合の判定（causeBranch_true_allSubcondsTrue）
+- cause分岐でcauseが非SQLExceptionの場合の判定（causeBranch_false_nonSqlCause）
+- cause分岐でcause==eの場合の判定（causeBranch_false_causeEqualsE）
+- cause分岐でcauseがSQLExceptionだが非接続系の場合の判定（causeBranch_false_sqlCauseNonConn）
+
+【LogUtilTest】
+・info_01：正常系（infoログが標準出力へ出る）
+・warn_01：正常系（warnログが標準出力へ出る）
+・error_01：正常系（errorログが標準出力へ出る）
+・debug_01：正常系（debugログが標準出力へ出る）
+・getLogger_01：正常系（getLoggerでLoggerFactoryが呼ばれる）
+・constructor_01：正常系（privateコンストラクタがインスタンス化できる）
+
+【NotificationHubUtilTest】
+・generateSasToken_01：正常系（TOYOTAブランドのSASトークン生成）
+・generateSasToken_02：正常系（LEXUSブランドのSASトークン生成）
+・generateSasToken_03：異常系（不正ブランド指定時にnullが返る）
+・generateSasToken_04：異常系（キー未設定時にRuntimeExceptionとなる）
+・upsertInstallation_01：正常系（Androidで登録が呼ばれる）
+・upsertInstallation_02：正常系（iOSで登録が呼ばれる）
+・upsertInstallation_03：異常系（不正ブランドで何も行われない）
+・upsertInstallation_04：異常系（不正プラットフォームでhub生成のみ・登録呼び出しなし）
+・upsertInstallation_05：異常系（Hub例外が伝播する）
+・deleteInstallation_01：正常系（正常に削除が呼ばれる）
+・deleteInstallation_02：異常系（不正ブランドで何も行われない）
+・deleteInstallation_03：異常系（Hub例外が伝播する）
+・postMessage_01：正常系（Androidへ通知送信される）
+・postMessage_02：正常系（iOSへ通知送信される）
+・postMessage_03：異常系（不正ブランドでnullが返る）
+・postMessage_04：異常系（不正プラットフォームでnullが返る）
+・postMessage_05：異常系（Hub例外が伝播する）
+・deleteInstallation_04：正常系（LEXUS分岐でHub生成・削除APIが1回呼ばれる）
+
+【SendGridUtilTest】
+・generateEmail_01：正常系（TOYOTAブランドのメール生成）
+・generateEmail_02：正常系（LEXUSブランドのメール生成）
+・generateEmail_03：異常系（不正ブランド指定時にnullが返る）
+・executeSendEmail_01：正常系（2xxレスポンス時に例外なく完了する）
+・executeSendEmail_02：異常系（非2xxレスポンス時にTscEMailExceptionとなる）
+・executeSendEmail_03：異常系（SendGrid側がTscEMailExceptionをスローした場合に再スローされる）
+・executeSendEmail_04：異常系（SendGrid#apiで予期せぬ例外発生時にRuntimeExceptionとなる）
+・executeSendEmail_05_status199_triggersExceptionLeftOperand：異常系（ステータスコード199でTscEMailExceptionとなる）
+・executeSendEmail_06_status300_triggersExceptionRightOperandBoundary：異常系（ステータスコード300でTscEMailExceptionとなる）
+
+【SmsCountryUtilTest】
+・createRequest_01：正常系（TOYOTAのSenderID/URLエンコード/Hex化パターンのリクエスト生成）
+・createRequest_02：正常系（LEXUSのSenderIDパターンのリクエスト生成）
+・createRequest_03：異常系（未知ブランド指定時にnullが返る）
+・sendSmsCountry_01：正常系（2xxレスポンス時に例外なく完了する）
+・sendSmsCountry_02：異常系（非2xxレスポンス時にTscSMSExceptionとなる）
+・sendSmsCountry_03：異常系（RestTemplate#postForEntityで一般例外発生時にRuntimeExceptionとなる）
+・createRequest_04：異常系（URLEncoder.encode等で例外発生時にRuntimeExceptionラップで再送出）
+
+【NotificationControllerTest】
+・registNotificationDeviceInfo_01：正常系（registNotificationDeviceInfoのサービス呼び出しが正常に完了する）
+・registNotificationDeviceInfo_02：異常系（registNotificationDeviceInfoでサービスがTscApplicationExceptionをスローする場合）
+・registNotificationDeviceInfo_03：例外系（registNotificationDeviceInfoでサービスがRuntimeExceptionをスローする場合）
+・sendPush_01：正常系（sendPushのサービス呼び出しが正常に完了する）
+・sendPush_02：異常系（sendPushでサービスがTscApplicationExceptionをスローする場合）
+・sendPush_03：例外系（sendPushでサービスがRuntimeExceptionをスローする場合）
+・sendPrimaryContact_01：正常系（sendPrimaryContactのサービス呼び出しが正常に完了する）
+・sendPrimaryContact_02：異常系（sendPrimaryContactでサービスがTscApplicationExceptionをスローする場合）
+・sendPrimaryContact_03：例外系（sendPrimaryContactでサービスがRuntimeExceptionをスローする場合）
+・sendMail_01：正常系（sendMailのサービス呼び出しが正常に完了する）
+・sendMail_02：異常系（sendMailでサービスがTscApplicationExceptionをスローする場合）
+・sendMail_03：例外系（sendMailでサービスがRuntimeExceptionをスローする場合）
+・sendSms_01：正常系（sendSmsのサービス呼び出しが正常に完了する）
+・sendSms_02：異常系（sendSmsでサービスがTscApplicationExceptionをスローする場合）
+・sendSms_03：例外系（sendSmsでサービスがRuntimeExceptionをスローする場合）
+
+【RegistNotificationDeviceInfoServiceImplTest】
+・registDeviceInfo_success_basic：正常系（新規トークン・端末数<=2・Azure成功で正常終了）
+・registDeviceInfo_skip_existingToken：正常系（既存トークン一致時にSKIPログ出力・正常終了）
+・registDeviceInfo_success_deleteOld：正常系（端末数>2で古いデータ削除・正常終了）
+・registDeviceInfo_fail_upsertCountZero：異常系（upsert=0時にRuntimeException）
+・registDeviceInfo_fail_deleteZero：異常系（delete=0時にRuntimeException）
+・registDeviceInfo_fail_sqlConnection_byCause：異常系（upsertでSQLException（接続系）が発生した場合にRuntimeException）
+・registDeviceInfo_fail_sqlTransient_byCause_toCustom：異常系（upsertでSQLTransientExceptionが発生した場合にCustomSqlException）
+・registDeviceInfo_fail_sqlNonTransient_byCause_toCustom：異常系（upsertでSQLNonTransientExceptionが発生した場合にCustomSqlException）
+・registDeviceInfo_fail_otherSQLException_byCause_toRuntime：異常系（upsertでその他SQLExceptionが発生した場合にRuntimeException）
+・registDeviceInfo_fail_invalidBrand：異常系（不正ブランドコード時にTscApplicationException）
+・registDeviceInfo_fail_invalidPlatform：異常系（不正プラットフォーム時にTscApplicationException）
+・registDeviceInfo_fail_notificationHub_nonTransient_toRuntime：異常系（NotificationHubUtil#upsertInstallationで非Transient例外発生時にRuntimeException）
+・registDeviceInfo_fail_delete_unexpectedRuntime：異常系（deleteInstallation中の一般例外でRuntimeException）
+・executeDeleteInstallation_retry_thenSuccess：正常系（deleteInstallationでTransient例外後にリトライ成功）
+・executeDeleteInstallation_retryExceeded_toTscException：異常系（deleteInstallationでTransient例外がリトライ上限到達でTscNotificationHubsException）
+
+【SendMailServiceImplTest】
+・sendMail_01：正常系（メール送信が正常に完了する場合の動作）
+・sendMail_02：異常系（SendGridUtil#executeSendEmailがTscEMailExceptionをスローし、RuntimeExceptionへ変換される場合）
+・sendMail_03：異常系（リクエストのbrdCdが未入力の場合にTscApplicationExceptionとなる）
+・sendMail_04：異常系（SendGridUtil#generateEmailがRuntimeExceptionをスローした場合にRuntimeExceptionへ変換される）
+・validate_01：異常系（validateで必須未入力時にTscApplicationExceptionとなる）
+・validate_02：正常系（validateで全項目正常時にnullが返る）
+・validateRequired_01：異常系（リクエストがnullの場合に"requestBody"が返る）
+・validateRequired_02：異常系（brdCd==nullの場合に"brdCd"が返る）
+・validateRequired_03：異常系（brdCd==""の場合に"brdCd"が返る）
+・validateRequired_04：異常系（to==nullの場合に"to"が返る）
+・validateRequired_05：異常系（to==""の場合に"to"が返る）
+・validateRequired_06：異常系（title==nullの場合に"title"が返る）
+・validateRequired_07：異常系（title==""の場合に"title"が返る）
+・validateRequired_08：異常系（body_text==nullの場合に"body_text"が返る）
+・validateRequired_09：異常系（body_text==""の場合に"body_text"が返る）
+・validateRequired_10：異常系（body_html==nullの場合に"body_html"が返る）
+・validateRequired_11：異常系（body_html==""の場合に"body_html"が返る）
+・validateRequired_12：正常系（全項目入力時にnullが返る）
+・isValidBrdCd_01：正常系（isValidBrdCdで"1"がtrueとなる）
+・isValidBrdCd_02：正常系（isValidBrdCdで"2"がtrueとなる）
+・isValidBrdCd_03：異常系（isValidBrdCdでその他値がfalseとなる）
+・validate_brdCdInvalid_throwsTscApplicationException_andLogs：異常系（brdCd不正時にTscApplicationException・エラーログ出力）
+・validate_brdCdValid_returnsNull：正常系（brdCd正常時にnullが返る）
+
+【SendPrimaryContactServiceImplTest】
+・sendPrimaryContact_01：正常系（電話primaryでSMS送信される）
+・sendPrimaryContact_02：正常系（メールprimaryでメール送信される）
+・sendPrimaryContact_03：正常系（primary=falseでスキップされる）
+・sendPrimaryContact_04：正常系（その他typeでスキップされる）
+・sendPrimaryContact_05：異常系（SMS送信時にTscSMSException発生でRuntimeExceptionへ変換）
+・sendPrimaryContact_06：異常系（メール送信時にTscEMailException発生でRuntimeExceptionへ変換）
+・sendPrimaryContact_07：異常系（brdCd不正時にTscApplicationExceptionとなる）
+・validate_01：異常系（validateで必須未入力時にTscApplicationExceptionとなる）
+・validate_02：正常系（validateで全項目正常時にnullが返る）
+・validateRequired_01：異常系（リクエストがnullの場合に"requestBody"が返る）
+・validateRequired_02：異常系（processId==nullの場合に"processId"が返る）
+・validateRequired_03：異常系（processId==""の場合に"processId"が返る）
+・validateRequired_04：異常系（internalUserId==nullの場合に"internalUserId"が返る）
+・validateRequired_05：異常系（internalUserId==""の場合に"internalUserId"が返る）
+・validateRequired_06：異常系（brdCd==nullの場合に"brdCd"が返る）
+・validateRequired_07：異常系（brdCd==""の場合に"brdCd"が返る）
+・validateRequired_08：正常系（全項目入力時にnullが返る）
+・isValidBrdCd_01：正常系（isValidBrdCdで"0"がtrueとなる）
+・isValidBrdCd_02：正常系（isValidBrdCdで"1"がtrueとなる）
+・isValidBrdCd_03：正常系（isValidBrdCdで"2"がtrueとなる）
+・isValidBrdCd_04：異常系（isValidBrdCdでその他値がfalseとなる）
+・sendPrimaryContact_SMS_catch_verifiesMaskingAndMessage：異常系（SMS送信時TscSMSException発生時に電話番号マスク・メッセージ生成・RuntimeException変換が行われることを検証）
+・sendRequest_phone_AND_leftTrue_rightFalse_branch：正常系（電話primaryでAND右項false時にSMS送信されない）
+・sendRequest_email_AND_leftTrue_rightFalse_branch：正常系（メールprimaryでAND右項false時にメール送信されない）
+・sendPrimaryContact_responseNull_throwsRuntimeAndLogs：異常系（個人情報APIがnull時にRuntimeException・エラーログ出力）
+
+【SendPushServiceImplTest】
+・sendPush_01：正常系（全データ取得・通知送信が正常に完了する場合の動作）
+・sendPush_02：異常系（selectAllByInternalUserIdでSQL接続エラー発生時にRuntimeExceptionとなる）
+・sendPush_03：異常系（SQLTransientException発生時にCustomSqlExceptionとなる）
+・sendPush_04：異常系（SQLNonTransientException発生時にCustomSqlExceptionとなる）
+・sendPush_05：異常系（その他SQLException発生時にRuntimeExceptionとなる）
+・sendPush_06：異常系（バリデーションエラー時にTscApplicationExceptionとなる）
+・sendPush_07：異常系（NotificationHubUtil#postMessageでTscNotificationHubsException発生時にRuntimeExceptionへ変換される）
+・sendPush_08：異常系（postMessageで予期せぬ例外発生時にRuntimeExceptionへ変換される）
+・operationPostMessage_01：正常系（operationPostMessageでpostMessageが正常に呼ばれる）
+・executePostMessage_01：正常系（executePostMessageが1回で成功する）
+・executePostMessage_02：正常系（一時エラー後にリトライ成功する）
+・executePostMessage_03：異常系（一時エラーがリトライ上限到達でTscNotificationHubsExceptionとなる）
+・executePostMessage_04：異常系（非一時エラーで即TscNotificationHubsExceptionとなる）
+・executePostMessage_05：異常系（一般例外が再throwされる）
+・executePostMessage_06：正常系（retryCount=0でループ不成立・API未呼び出し）
+・getAllDeviceData_01：正常系（getAllDeviceDataでRepository呼出結果が返る）
+・getLastData_01：正常系（getLastDataで最新データが取得される）
+・getLastData_02：異常系（getLastDataで空リスト時にnullが返る）
+・validate_01：異常系（validateで必須未入力時にTscApplicationExceptionとなる）
+・validate_02：正常系（validateで全項目正常時にnullが返る）
+・validateRequired_01：異常系（リクエストがnullの場合に"requestBody"が返る）
+・validateRequired_02：異常系（複数項目欠落時に両方検出される）
+・validateRequired_03：異常系（internalUserId==nullの場合に"internalUserId"が返る）
+・validateRequired_04：異常系（body==nullの場合に"body"が返る）
+・validateRequired_05：正常系（全項目入力時にnullが返る）
+・validateRequired_06：異常系（body==""の場合に"body"が返る）
+
+【SendSmsServiceImplTest】
+・sendSms_01：正常系（SMS送信が正常に完了する場合の動作）
+・sendSms_02：異常系（SmsCountryUtil#sendSmsCountryがTscSMSExceptionをスローし、RuntimeExceptionへ変換される場合）
+・sendSms_03：異常系（リクエストのbrdCdが不正な場合にTscApplicationExceptionとなる）
+・sendSms_04：異常系（SmsCountryUtil#createRequestがRuntimeExceptionをスローした場合にRuntimeExceptionへ変換される）
+・validate_01：異常系（validateで必須未入力時にTscApplicationExceptionとなる）
+・validate_02：正常系（validateで全項目正常時にnullが返る）
+・validateRequired_01：異常系（リクエストがnullの場合に"requestBody"が返る）
+・validateRequired_02：異常系（brdCd==nullの場合に"brdCd"が返る）
+・validateRequired_03：異常系（brdCd==""の場合に"brdCd"が返る）
+・validateRequired_04：異常系（mobileNumber==nullの場合に"mobileNumber"が返る）
+・validateRequired_05：異常系（mobileNumber==""の場合に"mobileNumber"が返る）
+・validateRequired_06：異常系（body_sms==nullの場合に"body_sms"が返る）
+・validateRequired_07：異常系（body_sms==""の場合に"body_sms"が返る）
+・validateRequired_08：正常系（全項目入力時にnullが返る）
+・isValidBrdCd_01：正常系（isValidBrdCdで"1"がtrueとなる）
+・isValidBrdCd_02：正常系（isValidBrdCdで"2"がtrueとなる）
+・isValidBrdCd_03：異常系（isValidBrdCdでその他値がfalseとなる）
+・sendSms_catchTscSMSException_verifiesMaskingAndMessage：異常系（TscSMSException発生時に電話番号マスク・メッセージ生成・RuntimeException変換が行われることを検証）

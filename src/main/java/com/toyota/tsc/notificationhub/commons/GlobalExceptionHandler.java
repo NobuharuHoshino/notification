@@ -4,8 +4,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
+
+import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
+import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
+import com.toyota.tsc.notificationhub.exceptions.TscPrimaryContactException;
 import com.toyota.tsc.notificationhub.models.ResponseDto;
 
 /**
@@ -16,18 +19,6 @@ public class GlobalExceptionHandler {
 
     private static final String EXCEPTION = "EXCEPTION";
 
-    @ExceptionHandler(CustomSqlException.class)
-    /**
-     * CustomSqlException発生時のハンドリング
-     * 
-     * @param ex CustomSqlException例外
-     * @return 400 Bad Requestレスポンス
-     */
-    public ResponseEntity<ResponseDto> handleCustomSqlException(CustomSqlException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ResponseDto(CommonUtil.getResultCode(EXCEPTION)));
-    }
-
     @ExceptionHandler(TscApplicationException.class)
     /**
      * TscApplicationException発生時のハンドリング
@@ -37,6 +28,37 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ResponseDto> handleTscApplicationException(TscApplicationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ResponseDto(ex.getResultCode()));
+    }
+
+    @ExceptionHandler(TscNotificationHubsException.class)
+
+    /**
+     * TscNotificationHubsException発生時のハンドリング
+     * 
+     * @param ex TscNotificationHubsException例外
+     * @return 500 Internal Server Errorレスポンス
+     */
+    public ResponseEntity<ResponseDto> handleTscNotificationHubsException(TscNotificationHubsException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ResponseDto(ex.getResultCode()));
+    }
+
+    @ExceptionHandler(TscPrimaryContactException.class)
+    public ResponseEntity<ResponseDto> handleTscPrimaryContactException(TscPrimaryContactException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ResponseDto(ex.getResultCode()));
+    }
+
+    @ExceptionHandler(CustomException.class)
+    /**
+     * CustomException発生時のハンドリング
+     * 
+     * @param ex CustomException例外
+     * @return 500 Internal Server Errorレスポンス
+     */
+    public ResponseEntity<ResponseDto> handleCustomException(CustomException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ResponseDto(CommonUtil.getResultCode(EXCEPTION)));
     }
 
