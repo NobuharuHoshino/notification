@@ -29,35 +29,50 @@ public class PersonalInfoUtil {
      */
     public PersonalInfoResponseDto getPersonalInfoApiResponse(String internalUserId, String colId) {
         try {
-            // テンプレート
-            RestTemplate restTemplate = new RestTemplate();
-            // ヘッダー設定
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
-            headers.set(HttpHeaders.CONNECTION, "keep-alive");
-            headers.set(HttpHeaders.ACCEPT_ENCODING, "gzip");
-            headers.set("x-api-key", propertiesUtil.getPersonalInfoApiKey());
-            headers.set("x-correlation-id", colId);
-            // ボディ設定
-            Map<String, Object> body = new HashMap<>();
-            body.put("internalUserId", internalUserId);
-            // エンティティセット
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            PersonalInfoResponseDto dto = new PersonalInfoResponseDto();
+            dto.setResultCode("0000");
+            PersonalInfoResponseDto.ContactDto con = new PersonalInfoResponseDto.ContactDto();
+            con.setDisplayOrder(1);
+            con.setContactType("1");
+            con.setContact("XXX");
+            con.setPrimaryContactFlag(true);
+            dto.setContactList(new java.util.ArrayList<PersonalInfoResponseDto.ContactDto>() {
+                {
+                    add(con);
+                }
+            });
+            return dto;
 
-            // 実行
-            ResponseEntity<String> response = restTemplate.exchange(
-                    propertiesUtil.getPersonalInfoApiUrl(),
-                    HttpMethod.POST,
-                    entity,
-                    String.class);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new CustomException("An error occurred whileretrievingpersonalinformation. Status:"
-                        + response.getStatusCode().value());
-            }
+            // // テンプレート
+            // RestTemplate restTemplate = new RestTemplate();
+            // // ヘッダー設定
+            // HttpHeaders headers = new HttpHeaders();
+            // headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
+            // headers.set(HttpHeaders.CONNECTION, "keep-alive");
+            // headers.set(HttpHeaders.ACCEPT_ENCODING, "gzip");
+            // headers.set("x-api-key", propertiesUtil.getPersonalInfoApiKey());
+            // headers.set("x-correlation-id", colId);
+            // // ボディ設定
+            // Map<String, Object> body = new HashMap<>();
+            // body.put("internalUserId", internalUserId);
+            // // エンティティセット
+            // HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
-            // レスポンスマッピング
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(response.getBody(), PersonalInfoResponseDto.class);
+            // // 実行
+            // ResponseEntity<String> response = restTemplate.exchange(
+            // propertiesUtil.getPersonalInfoApiUrl(),
+            // HttpMethod.POST,
+            // entity,
+            // String.class);
+            // if (!response.getStatusCode().is2xxSuccessful()) {
+            // throw new CustomException("An error occurred
+            // whileretrievingpersonalinformation. Status:"
+            // + response.getStatusCode().value());
+            // }
+
+            // // レスポンスマッピング
+            // ObjectMapper mapper = new ObjectMapper();
+            // return mapper.readValue(response.getBody(), PersonalInfoResponseDto.class);
         } catch (Exception e) {
             throw new CustomException(e);
         }

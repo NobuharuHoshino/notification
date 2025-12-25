@@ -151,7 +151,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
      * @return なし
      */
     private void executeSendSms(SendPrimaryContactRequestDto request, RequestHeaderDto header, String phoneNo) {
-        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                 "RS07I00009", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskPhoneNumber(phoneNo),
                 header.getCorrelationId()));
         ResponseEntity<String> smsResponse = smsCountryUtil.executeSendSms(
@@ -165,7 +165,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                 "RS07I00010", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskPhoneNumber(phoneNo),
                 header.getCorrelationId()));
-        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                 "RS99I99999", smsResponse.getStatusCode(), smsResponse.getBody()));
     }
 
@@ -178,7 +178,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
      * @return なし
      */
     private void executeSendEmail(SendPrimaryContactRequestDto request, RequestHeaderDto header, String email) {
-        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                 "RS07I00011", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskText(email), request.getTitle(),
                 header.getCorrelationId()));
         Mail mail = sendGridUtil.generateEmail(
@@ -194,7 +194,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                 "RS07I00012", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskText(email), request.getTitle(),
                 header.getCorrelationId()));
-        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                 "RS99I99999", response.getStatusCode(), response.getBody()));
     }
 
