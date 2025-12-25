@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.text.MessageFormat;
 import java.util.MissingResourceException;
+import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -87,38 +89,6 @@ class CommonUtilTest {
 
     /**
      * クラス：CommonUtil getMessage
-     * spring.profiles.activeにsaが含まれる場合にSaLogMessagesを使用することを確認するテストケース
-     */
-    @Test
-    void getMessage_002() {
-        // Arrange
-        System.setProperty("spring.profiles.active", "sa");
-
-        // Act
-        String msg = CommonUtil.getMessage("TEST001", "World");
-
-        // Assert
-        assertEquals("SA: Hello World", msg);
-    }
-
-    /**
-     * クラス：CommonUtil getMessage
-     * spring.profiles.activeに複数プロファイルがありsaが含まれる場合にSaLogMessagesを使用することを確認するテストケース
-     */
-    @Test
-    void getMessage_003() {
-        // Arrange
-        System.setProperty("spring.profiles.active", "dev, sa,  ");
-
-        // Act
-        String msg = CommonUtil.getMessage("TEST001", "World");
-
-        // Assert
-        assertEquals("SA: Hello World", msg);
-    }
-
-    /**
-     * クラス：CommonUtil getMessage
      * 存在しないメッセージIDの場合にMissingResourceExceptionが送出されることを確認するテストケース
      */
     @Test
@@ -129,6 +99,42 @@ class CommonUtilTest {
         // Act
         MissingResourceException ex = assertThrows(MissingResourceException.class,
                 () -> CommonUtil.getMessage("NOT_FOUND_ID"));
+
+        // Assert
+        assertNotNull(ex);
+    }
+
+    /**
+     * クラス：CommonUtil getSaMessage
+     * properties.SaLogMessages を使用してメッセージを組み立てることを確認するテストケース
+     */
+    @Test
+    void getSaMessage_001() {
+        // Arrange
+        String id = "TEST001";
+        Object[] params = new Object[] { "World" };
+        ResourceBundle bundleSa = ResourceBundle.getBundle("properties.SaLogMessages");
+        String expected = MessageFormat.format(bundleSa.getString(id), params);
+
+        // Act
+        String actual = CommonUtil.getSaMessage(id, params);
+
+        // Assert
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * クラス：CommonUtil getSaMessage
+     * 存在しないメッセージIDの場合に MissingResourceException が送出されることを確認するテストケース
+     */
+    @Test
+    void getSaMessage_002() {
+        // Arrange
+        String id = "NOT_FOUND_ID";
+
+        // Act
+        MissingResourceException ex = assertThrows(MissingResourceException.class,
+                () -> CommonUtil.getSaMessage(id));
 
         // Assert
         assertNotNull(ex);

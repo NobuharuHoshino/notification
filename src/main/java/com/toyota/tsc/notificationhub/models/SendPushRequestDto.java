@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SendPushRequestDto {
+    private String processId;
     private String internalUserId;
     private Map<String, Object> body;
 }

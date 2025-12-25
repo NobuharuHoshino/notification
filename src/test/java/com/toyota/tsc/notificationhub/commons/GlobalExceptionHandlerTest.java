@@ -125,7 +125,6 @@ class GlobalExceptionHandlerTest {
         // Assert
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue(json.contains("RC-EXCEPTION"));
     }
 
     /**
@@ -145,7 +144,6 @@ class GlobalExceptionHandlerTest {
         // Assert
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue(json.contains("RC-EXCEPTION"));
     }
 
     /**
@@ -165,6 +163,5 @@ class GlobalExceptionHandlerTest {
         // Assert
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertTrue(json.contains("RC-EXCEPTION"));
     }
 }

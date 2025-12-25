@@ -2,18 +2,17 @@ package com.toyota.tsc.notificationhub.commons;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
 
+@Component
 public class PersonalInfoUtil {
 
     private PropertiesUtil propertiesUtil;
@@ -34,7 +33,9 @@ public class PersonalInfoUtil {
             RestTemplate restTemplate = new RestTemplate();
             // ヘッダー設定
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
+            headers.set(HttpHeaders.CONNECTION, "keep-alive");
+            headers.set(HttpHeaders.ACCEPT_ENCODING, "gzip");
             headers.set("x-api-key", propertiesUtil.getPersonalInfoApiKey());
             headers.set("x-correlation-id", colId);
             // ボディ設定
@@ -50,14 +51,13 @@ public class PersonalInfoUtil {
                     entity,
                     String.class);
             if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new CustomException("An error occurred while retrieving personal information. Status:" +
-                        response.getStatusCode().value());
+                throw new CustomException("An error occurred whileretrievingpersonalinformation. Status:"
+                        + response.getStatusCode().value());
             }
 
             // レスポンスマッピング
             ObjectMapper mapper = new ObjectMapper();
             return mapper.readValue(response.getBody(), PersonalInfoResponseDto.class);
-
         } catch (Exception e) {
             throw new CustomException(e);
         }

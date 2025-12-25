@@ -1,6 +1,7 @@
 
 package com.toyota.tsc.notificationhub.services;
 
+import com.sendgrid.Response;
 import com.sendgrid.helpers.mail.Mail;
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
@@ -19,7 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.context.annotation.Profile;
-import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 /**
@@ -83,7 +85,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             // 送信要求
             sendRequest(contactList, request, header);
 
-            String resultCode = CommonUtil.getResultCode("RESULT_SUCCESS");
+            String resultCode = CommonUtil.getResultCode(RESULT_SUCCESS);
 
             // 正常終了ログ
             LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
@@ -91,16 +93,10 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             return new ResponseDto(resultCode);
 
         } catch (TscEMailException e) {
-            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                    "RS07E00007", e.getStatusCode(), CommonUtil.maskText(e.getAddress()),
-                    e.getTitle(), header.getCorrelationId()));
-            throw new CustomException();
+            throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
 
         } catch (TscSMSException e) {
-            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                    "RS07E00006", e.getStatusCode(), CommonUtil.maskPhoneNumber(e.getPhoneNo()),
-                    header.getCorrelationId()));
-            throw new CustomException();
+            throw new CustomException(e.getResultCode());
 
         } catch (TscApplicationException e) {
             throw new TscApplicationException(e.getResultCode());
@@ -108,7 +104,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         } catch (Exception e) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-            throw new CustomException();
+            throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
         }
     }
 
@@ -131,13 +127,13 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
                 LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                         "RS07I00013", request.getInternalUserId(), request.getBrdCd(), contact.getContact(),
                         request.getTitle(), header.getCorrelationId()));
-                executeSendSms(request, contact.getContact());
+                executeSendSms(request, header, contact.getContact());
             } else if (contact.getContactType().equals(CONTACT_EMAIL) && contact.isPrimaryContactFlag()) {
                 // メール送信要求
                 LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                         "RS07I00014", request.getInternalUserId(), request.getBrdCd(), contact.getContact(),
                         request.getTitle(), header.getCorrelationId()));
-                executeSendEmail(request, contact.getContact());
+                executeSendEmail(request, header, contact.getContact());
             } else {
                 return;
             }
@@ -152,11 +148,19 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
      * @param phoneNo 送信先電話番号
      * @return なし
      */
-    private void executeSendSms(SendPrimaryContactRequestDto request, String phoneNo) {
-        HttpEntity<String> entity = smsCountryUtil.createRequest(
-                CommonUtil.normalizePhoneNumber(phoneNo), request.getBodySms(),
-                request.getBrdCd());
-        smsCountryUtil.sendSmsCountry(entity, phoneNo);
+    private void executeSendSms(SendPrimaryContactRequestDto request, RequestHeaderDto header, String phoneNo) {
+        ResponseEntity<String> smsResponse = smsCountryUtil.executeSendSms(
+                phoneNo, request.getBodyText(), request.getBrdCd());
+        if (!smsResponse.getStatusCode().is2xxSuccessful()) {
+            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00006", smsResponse.getStatusCode(), CommonUtil.maskPhoneNumber(phoneNo),
+                    header.getCorrelationId()));
+            throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
+        }
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                "RS07I00010", request.getBrdCd(), phoneNo, header.getCorrelationId()));
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+                "RS99I99999", smsResponse.getStatusCode(), smsResponse.getBody()));
     }
 
     /**
@@ -167,11 +171,19 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
      * @param email   送信先メールアドレス
      * @return なし
      */
-    private void executeSendEmail(SendPrimaryContactRequestDto request, String email) {
+    private void executeSendEmail(SendPrimaryContactRequestDto request, RequestHeaderDto header, String email) {
         Mail mail = sendGridUtil.generateEmail(
                 email, request.getTitle(), request.getBodyText(),
                 request.getBodyHtml(), request.getBrdCd());
-        sendGridUtil.executeSendEmail(mail);
+        Response response = sendGridUtil.executeSendEmail(mail);
+        if (!HttpStatusCode.valueOf(response.getStatusCode()).is2xxSuccessful()) {
+            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                    "RS07E00007", response.getStatusCode(), CommonUtil.maskText(email),
+                    request.getTitle(), header.getCorrelationId()));
+            throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
+        }
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                "RS07I00012", request.getBrdCd(), email, header.getCorrelationId()));
     }
 
     // #region Validation Methods

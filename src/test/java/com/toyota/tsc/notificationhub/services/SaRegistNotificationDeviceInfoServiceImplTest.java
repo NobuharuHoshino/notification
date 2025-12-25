@@ -22,6 +22,7 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.sql.SQLException;
 
@@ -63,37 +64,42 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
          * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
          * 正常に成功コードが返ることを確認するテストケース
          */
+
         @Test
         void registDeviceInfo_001() throws Exception {
                 // Arrange
                 SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
                                 saNtfInfoRepository, jsapUtil);
+
                 RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
                 RequestHeaderDto header = header("cid");
 
                 when(saNtfInfoRepository.upsert(any())).thenReturn(1);
-                when(jsapUtil.executeGetUserId(eq("u"), eq("cid"))).thenReturn(ResponseEntity.ok("{json}"));
-                when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("1")))
+                when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
+                                .thenReturn(ResponseEntity.ok("{json}"));
+                when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString()))
                                 .thenReturn(ResponseEntity.ok("{json2}"));
 
                 GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
-                when(getUserIdDto.getResultCode()).thenReturn("NOT_SUCCESS"); // code上、SUCCESSならエラー扱いになる
+                // 実装：GetUserId 成功は "00001548B123"
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SaRegistNotificationDeviceInfoServiceImpl.java)
+                when(getUserIdDto.getResultCode()).thenReturn("00001548B123");
                 when(getUserIdDto.getUserId()).thenReturn("userId");
 
                 DvcLinkageResponseDto dvcDto = mock(DvcLinkageResponseDto.class);
+                // 実装：DvcLink 成功は "000000"
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SaRegistNotificationDeviceInfoServiceImpl.java)
                 when(dvcDto.getResultCode()).thenReturn("000000");
 
-                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class,
-                                (mock, ctx) -> {
-                                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class)))
-                                                        .thenReturn(getUserIdDto);
-                                        when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class)))
-                                                        .thenReturn(dvcDto);
-                                });
+                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
+                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
+                        when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class))).thenReturn(dvcDto);
+                });
                                 MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -104,7 +110,7 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
                         assertNotNull(resp);
                         verify(saNtfInfoRepository, times(1)).upsert(any());
                         verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
-                        verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("1"));
+                        verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString());
                 }
         }
 
@@ -122,7 +128,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -150,7 +157,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
 
                         // Act
                         assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
@@ -164,35 +172,44 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
          * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
          * getUserIdの結果コードがSUCCESSの場合にTscApplicationExceptionが送出されることを確認するテストケース
          */
+
         @Test
         void registDeviceInfo_004() throws Exception {
                 // Arrange
                 SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
                                 saNtfInfoRepository, jsapUtil);
+
                 RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
                 RequestHeaderDto header = header("cid");
 
                 when(saNtfInfoRepository.upsert(any())).thenReturn(1);
-                when(jsapUtil.executeGetUserId(eq("u"), eq("cid"))).thenReturn(ResponseEntity.ok("{json}"));
+                when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
+                                .thenReturn(ResponseEntity.ok("{json}"));
 
                 GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
-                when(getUserIdDto.getResultCode()).thenReturn("00001548B123"); // 実装上、これでエラー扱い
+                // 実装：成功コード以外なら GetUserId エラーで TscApplicationException
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SaRegistNotificationDeviceInfoServiceImpl.java)
+                when(getUserIdDto.getResultCode()).thenReturn("NOT_SUCCESS");
 
-                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class,
-                                (mock, ctx) -> when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class)))
-                                                .thenReturn(getUserIdDto));
+                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
+                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
+                });
                                 MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-                        // Act
+                        // Act & Assert
                         assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
 
-                        // Assert
+                        // Assert（GetUserId 失敗時は DvcLink
+                        // まで到達しない）[1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SaRegistNotificationDeviceInfoServiceImpl.java)
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
                         verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
+                        verify(jsapUtil, never()).executeDvcLink(anyString(), anyString(), anyString(), anyString());
                 }
         }
 
@@ -200,45 +217,53 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
          * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
          * dvcLinkage結果が非成功の場合にTscApplicationExceptionが送出されることを確認するテストケース
          */
+
         @Test
         void registDeviceInfo_005() throws Exception {
                 // Arrange
                 SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
                                 saNtfInfoRepository, jsapUtil);
+
                 RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
                 RequestHeaderDto header = header("cid");
 
                 when(saNtfInfoRepository.upsert(any())).thenReturn(1);
-                when(jsapUtil.executeGetUserId(eq("u"), eq("cid"))).thenReturn(ResponseEntity.ok("{json}"));
-                when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("1")))
+                when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
+                                .thenReturn(ResponseEntity.ok("{json}"));
+                when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString()))
                                 .thenReturn(ResponseEntity.ok("{json2}"));
 
                 GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
-                when(getUserIdDto.getResultCode()).thenReturn("NOT_SUCCESS");
+                // DvcLink の失敗を狙うので、GetUserId は成功させる
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SaRegistNotificationDeviceInfoServiceImpl.java)
+                when(getUserIdDto.getResultCode()).thenReturn("00001548B123");
                 when(getUserIdDto.getUserId()).thenReturn("userId");
 
                 DvcLinkageResponseDto dvcDto = mock(DvcLinkageResponseDto.class);
+                // 実装：成功は "000000"、それ以外は DvcLink エラーで TscApplicationException
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SaRegistNotificationDeviceInfoServiceImpl.java)
                 when(dvcDto.getResultCode()).thenReturn("999999");
 
-                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class,
-                                (mock, ctx) -> {
-                                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class)))
-                                                        .thenReturn(getUserIdDto);
-                                        when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class)))
-                                                        .thenReturn(dvcDto);
-                                });
+                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
+                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
+                        when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class))).thenReturn(dvcDto);
+                });
                                 MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-                        // Act
+                        // Act & Assert
                         assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
 
-                        // Assert
-                        verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("1"));
+                        // Assert（DvcLink
+                        // まで到達することを確認）[1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SaRegistNotificationDeviceInfoServiceImpl.java)
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                        verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
+                        verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString());
                 }
         }
 
@@ -264,7 +289,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
                                 MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
 
                         // Act
                         assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
@@ -291,7 +317,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
 
                         // Act
                         assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
@@ -318,7 +345,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
 
                         // Act
                         assertThrows(CustomSqlException.class, () -> sut.registDeviceInfo(request, header));
@@ -343,7 +371,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -370,7 +399,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -397,7 +427,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -414,37 +445,42 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
          * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
          * ブランド=2/プラットフォーム=2の有効値で正常に成功コードが返ることを確認するテストケース
          */
+
         @Test
         void registDeviceInfo_012() throws Exception {
                 // Arrange
                 SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
                                 saNtfInfoRepository, jsapUtil);
+
                 RegistNotificationDeviceInfoRequestDto request = req("u", "2", "tok", "dvc", "2");
                 RequestHeaderDto header = header("cid");
 
                 when(saNtfInfoRepository.upsert(any())).thenReturn(1);
-                when(jsapUtil.executeGetUserId(eq("u"), eq("cid"))).thenReturn(ResponseEntity.ok("{json}"));
-                when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("2")))
+                when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
+                                .thenReturn(ResponseEntity.ok("{json}"));
+                when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("2"), anyString()))
                                 .thenReturn(ResponseEntity.ok("{json2}"));
 
                 GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
-                when(getUserIdDto.getResultCode()).thenReturn("NOT_SUCCESS");
+                // 実装：GetUserId 成功は "00001548B123"
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SaRegistNotificationDeviceInfoServiceImpl.java)
+                when(getUserIdDto.getResultCode()).thenReturn("00001548B123");
                 when(getUserIdDto.getUserId()).thenReturn("userId");
 
                 DvcLinkageResponseDto dvcDto = mock(DvcLinkageResponseDto.class);
+                // 実装：DvcLink 成功は "000000"
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SaRegistNotificationDeviceInfoServiceImpl.java)
                 when(dvcDto.getResultCode()).thenReturn("000000");
 
-                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class,
-                                (mock, ctx) -> {
-                                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class)))
-                                                        .thenReturn(getUserIdDto);
-                                        when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class)))
-                                                        .thenReturn(dvcDto);
-                                });
+                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
+                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
+                        when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class))).thenReturn(dvcDto);
+                });
                                 MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -455,7 +491,7 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
                         assertNotNull(resp);
                         verify(saNtfInfoRepository, times(1)).upsert(any());
                         verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
-                        verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("2"));
+                        verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("2"), anyString());
                 }
         }
 
@@ -478,7 +514,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         // ★ getResultCode はこの経路では呼ばれないため stub しない（UnnecessaryStubbing回避）
 
                         // Act
@@ -506,7 +543,8 @@ class SaRegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         // ★ getResultCode はこの経路では呼ばれないため stub しない（UnnecessaryStubbing回避）
 
                         // Act

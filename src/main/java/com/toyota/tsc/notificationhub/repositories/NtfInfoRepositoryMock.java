@@ -2,7 +2,6 @@ package com.toyota.tsc.notificationhub.repositories;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -13,7 +12,11 @@ import java.util.List;
 public class NtfInfoRepositoryMock implements NtfInfoRepositoryIF {
     @Override
     public List<NtfInfoEntity> selectAllByInternalUserId(String internalUserId) {
-        return Collections.emptyList();
+        List<NtfInfoEntity> deviceList = new java.util.ArrayList<>();
+        NtfInfoEntity elem = new NtfInfoEntity("user001", "testInstallationID", "token001", "device001", "1", "1",
+                java.time.LocalDateTime.now(), java.time.LocalDateTime.now());
+        deviceList.add(elem);
+        return deviceList;
     }
 
     @Override

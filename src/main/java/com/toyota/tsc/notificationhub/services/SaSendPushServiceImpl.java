@@ -21,7 +21,6 @@ import com.toyota.tsc.notificationhub.repositories.SaNtfInfoRepositoryIF;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -73,7 +72,7 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
 
         try {
             // 開始ログ
-            LogUtil.info(SaSendPushServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
@@ -82,9 +81,9 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
             // プラットフォーム取得
             SaNtfInfoEntity userData = getData(request.getInternalUserId());
             if (userData == null) {
-                LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00007", request.getInternalUserId(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_PLATFORM_EMPTY));
             }
 
             // Body編集
@@ -99,7 +98,7 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
             String resultCode = CommonUtil.getResultCode(RESULT_SUCCESS);
 
             // 正常終了ログ
-            LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
 
             return new ResponseDto(resultCode);
@@ -115,22 +114,22 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
             if (sqlEx != null) {
                 if (ExtractSqlExceptionUtil.isSqlConnectionError(sqlEx)) {
                     // 接続エラー
-                    LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                    LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                             "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new CustomException();
+                    throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
-                    LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                    LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new CustomSqlException();
+                    throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
-                LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
             } else {
-                LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
             }
         }
     }
@@ -153,16 +152,16 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
             GetUserIdResponseDto getUserIdDto = mapper.readValue(getUserIdResponce.getBody(),
                     GetUserIdResponseDto.class);
             if (!getUserIdDto.getResultCode().equals(RES_GETUSERID_SUCCESS)) {
-                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00014", getUserIdDto.getResultCode(), request.getInternalUserId(),
                         header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_USERID_ERROR));
             }
-            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00009", request.getInternalUserId(), header.getCorrelationId()));
 
             // NotificationHub送信処理実行(JSAP実行)
-            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00005", request.getInternalUserId(), payload, userData.getPlatformType(),
                     header.getCorrelationId()));
             ResponseEntity<String> jsapNotificationResponce = jsapUtil.executePushRequest(
@@ -170,12 +169,12 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
             PushRequestResponseDto pushRequestDto = mapper.readValue(
                     jsapNotificationResponce.getBody(), PushRequestResponseDto.class);
             if (!pushRequestDto.getResultCode().equals(RES_JSAPPUSH_SUCCESS)) {
-                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00009", pushRequestDto.getResultCode(), request.getInternalUserId(), payload,
                         userData.getPlatformType(), header.getCorrelationId()));
                 throw new TscNotificationHubsException(CommonUtil.getResultCode(RESULT_PUSH_ERROR));
             }
-            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00006", request.getInternalUserId(), payload, userData.getPlatformType(),
                     header.getCorrelationId()));
 
@@ -203,9 +202,9 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
                     throw new CustomException(); // 1,2以外は登録されないので基本到達しない。
             }
         } catch (Exception e) {
-            LogUtil.info(SaSendPushServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07E00008", request.getInternalUserId(), request.getBody(), header.getCorrelationId()));
-            throw new CustomException();
+            throw new TscApplicationException(CommonUtil.getResultCode(RESULT_BODYEDIT_ERROR));
         }
 
     }
@@ -230,7 +229,7 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
     private String validate(SendPushRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
-            LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07E00003", missingField, header.getCorrelationId()));
             throw new TscApplicationException(CommonUtil.getResultCode(RESULT_FIELD_MISSING));
         }

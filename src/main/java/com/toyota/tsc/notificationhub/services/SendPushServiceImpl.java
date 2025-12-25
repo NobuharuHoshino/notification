@@ -1,4 +1,3 @@
-
 package com.toyota.tsc.notificationhub.services;
 
 import com.toyota.tsc.notificationhub.commons.CommonUtil;
@@ -85,7 +84,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             // プッシュ通知実行
             operationPostMessage(request, header, deviceData);
 
-            String resultCode = CommonUtil.getResultCode("SUCCESS");
+            String resultCode = CommonUtil.getResultCode(RESULT_SUCCESS);
 
             // 正常終了ログ
             LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
@@ -106,20 +105,20 @@ public class SendPushServiceImpl implements SendPushServiceIF {
                     // 接続エラー
                     LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new CustomException();
+                    throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
                     LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new CustomSqlException();
+                    throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
                 LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
             } else {
                 LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
             }
         }
     }

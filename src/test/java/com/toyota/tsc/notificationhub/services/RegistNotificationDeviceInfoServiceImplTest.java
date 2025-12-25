@@ -16,10 +16,14 @@ import com.toyota.tsc.notificationhub.repositories.NtfInfoEntity;
 import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
 import com.windowsazure.messaging.NotificationHubsException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.context.ActiveProfiles;
+
 import java.sql.SQLException;
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
@@ -127,7 +131,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -157,7 +162,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -185,7 +191,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -213,7 +220,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -356,7 +364,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 m.setAccessible(true);
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -393,7 +402,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -423,7 +433,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -491,7 +502,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -518,7 +530,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -549,7 +562,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -578,7 +592,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -630,7 +645,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -661,7 +677,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -713,7 +730,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -758,7 +776,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 m.setAccessible(true);
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -811,7 +830,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 m.setAccessible(true);
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
 
                         // Act
                         m.invoke(sut, request, header, "iidNew");
@@ -849,7 +869,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -878,7 +899,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -907,7 +929,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
                         common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
@@ -1042,7 +1065,8 @@ class RegistNotificationDeviceInfoServiceImplTest {
                 m.setAccessible(true);
 
                 try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
                         common.when(() -> CommonUtil.getResultCode(anyString()))
                                         .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 

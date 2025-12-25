@@ -112,16 +112,16 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                     // 操作エラー
                     LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new CustomSqlException();
+                    throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
                 LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
             } else {
                 // その他予期せぬエラー
                 LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
             }
         }
 
@@ -204,7 +204,8 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                     cnt++;
                     if (cnt >= propertiesUtil.getRetryCount()) {
                         LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
-                                "RS07E00003", ex.httpStatusCode(), request.getBrdCd(), request.getInternalUserId(),
+                                "RS07E00003", ex.httpStatusCode(), request.getBrdCd(),
+                                request.getInternalUserId(),
                                 entity.getInstallationId(), request.getPlatform(), request.getDeviceToken(),
                                 request.getDvcId(), header.getCorrelationId()));
                         throw new TscNotificationHubsException(

@@ -39,6 +39,7 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
     private static final String RESULT_GET_USERID_ERROR = "SA_PC_GET_USERID_ERROR";
     private static final String RESULT_GET_ALJ_ERROR = "SA_PC_GET_ALJ_ERROR";
     private static final String RESULT_SEND_ERROR = "SA_PC_SEND_ERROR";
+    private static final String RESULT_EXCEPTION = "SA_PC_EXCEPTION";
 
     private static final String RES_GETUSERID_SUCCESS = "00001548B123";
     private static final String RES_JSAPPUSH_SUCCESS = "000000";
@@ -62,7 +63,7 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
         try {
 
             // 開始ログ
-            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
@@ -77,7 +78,7 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
             String resultCode = CommonUtil.getResultCode(RESULT_SUCCESS);
 
             // 正常終了ログ
-            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
             return new ResponseDto(resultCode);
 
@@ -88,9 +89,9 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
             throw new TscApplicationException(e.getResultCode());
 
         } catch (Exception e) {
-            LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-            throw new CustomException();
+            throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
         }
     }
 
@@ -111,12 +112,12 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
             GetUserIdResponseDto getUserIdDto = mapper.readValue(getUserIdResponce.getBody(),
                     GetUserIdResponseDto.class);
             if (!getUserIdDto.getResultCode().equals(RES_GETUSERID_SUCCESS)) {
-                LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00014", getUserIdDto.getResultCode(), request.getInternalUserId(),
                         header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_USERID_ERROR));
             }
-            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00009", request.getInternalUserId(), header.getCorrelationId()));
 
             // ユーザー情報取得
@@ -125,11 +126,11 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
             GetUserInfoResponseDto getUserInfoDto = mapper.readValue(getUserInfoResponce.getBody(),
                     GetUserInfoResponseDto.class);
             if (!getUserInfoResponce.getStatusCode().is2xxSuccessful()) {
-                LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00014", request.getInternalUserId(), header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_ALJ_ERROR));
             }
-            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00010", request.getInternalUserId(), header.getCorrelationId()));
 
             // 送信実行
@@ -137,9 +138,7 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
                     getUserIdDto.getUserId(), token);
 
         } catch (Exception e) {
-            LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                    "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-            throw new CustomException();
+            throw new CustomException(e);
         }
     }
 
@@ -197,14 +196,14 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
             SendMessageResponseDto sendMessageDto = mapper.readValue(sendMessageResponse.getBody(),
                     SendMessageResponseDto.class);
             if (!sendMessageDto.getResultCode().equals(RES_JSAPPUSH_SUCCESS)) {
-                LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00010", sendMessageDto.getResultCode(),
                         hasUserId ? "内部UserID" : "プロセスID",
                         hasUserId ? request.getInternalUserId() : request.getProcessId(),
                         request.getBrdCd(), header.getCorrelationId()));
                 throw new TscPrimaryContactException(CommonUtil.getResultCode(RESULT_SEND_ERROR));
             }
-            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00008", hasUserId ? "内部UserID" : "プロセスID",
                     hasUserId ? request.getInternalUserId() : request.getProcessId(),
                     request.getBrdCd(), header.getCorrelationId()));
@@ -224,13 +223,13 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
     private String validate(SendPrimaryContactRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
-            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                    "RS07E00012", missingField, header.getCorrelationId()));
+            LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+                    "RS07E00003", missingField, header.getCorrelationId()));
             throw new TscApplicationException(CommonUtil.getResultCode(RESULT_FIELD_MISSING));
         }
         if (!isValidBrdCd(request.getBrdCd())) {
-            LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                    "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
+            LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+                    "RS07E00004", request.getBrdCd(), header.getCorrelationId()));
             throw new TscApplicationException(CommonUtil.getResultCode(RESULT_INVALID_BRAND));
         }
         return null;
@@ -247,11 +246,9 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
             return "requestBody";
         }
         List<String> missingFields = new ArrayList<>();
-        if (request.getProcessId() == null || request.getProcessId().isEmpty()) {
-            missingFields.add("processId");
-        }
-        if (request.getInternalUserId() == null || request.getInternalUserId().isEmpty()) {
-            missingFields.add("internalUserId");
+        if ((request.getInternalUserId() == null || request.getInternalUserId().isEmpty())
+                && (request.getProcessId() == null || request.getProcessId().isEmpty())) {
+            missingFields.add("internalUserId, processId");
         }
         if (request.getBrdCd() == null || request.getBrdCd().isEmpty()) {
             missingFields.add("brdCd");

@@ -16,7 +16,7 @@ import com.toyota.tsc.notificationhub.exceptions.CustomException;
  * 通知情報リポジトリ実装クラス
  */
 @Repository
-@Profile({ "!local", "sa" })
+@Profile("!local")
 public class SaNtfInfoRepositoryImpl implements SaNtfInfoRepositoryIF {
     private final SaNtfInfoMapper saNtfInfoMapper;
     private final PropertiesUtil propertiesUtil;

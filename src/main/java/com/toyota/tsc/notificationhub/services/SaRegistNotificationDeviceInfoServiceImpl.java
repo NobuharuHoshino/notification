@@ -52,6 +52,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
     private static final String RESULT_INVALID_PLATFORM = "SA_RND_INVALID_PLATFORM";
     private static final String RESULT_GET_USERID_ERROR = "SA_RND_GET_USERID_ERROR";
     private static final String RESULT_DVCLINKAGE_ERROR = "SA_RND_DVCLINKAGE_ERROR";
+    private static final String RESULT_EXCEPTION = "SA_RND_EXCEPTION";
 
     private static final String RES_GETUSERID_SUCCESS = "00001548B123";
     private static final String RES_DVCLINKAGE_SUCCESS = "000000";
@@ -70,7 +71,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
         try {
 
             // 開始ログ
-            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00001", PROCCESS_NAME, header.getCorrelationId(), CommonUtil.toJson(request)));
 
             // リクエスト検証
@@ -82,7 +83,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
             String resultCode = CommonUtil.getResultCode(RESULT_SUCCESS);
 
             // 正常終了ログ
-            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00002", PROCCESS_NAME, resultCode, header.getCorrelationId()));
 
             return new ResponseDto(resultCode);
@@ -95,23 +96,23 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
             if (sqlEx != null) {
                 if (ExtractSqlExceptionUtil.isSqlConnectionError(sqlEx)) {
                     // 接続エラー
-                    LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                    LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                             "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new CustomException();
+                    throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
-                    LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                    LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new CustomSqlException();
+                    throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
-                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
             } else {
                 // その他予期せぬエラー
-                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
             }
         }
 
@@ -125,12 +126,15 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
      */
     private void execRegistNotificationInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
         try {
+            // JSAPトークン取得
+            String token = "";
+
             // DB登録or更新
             int upsertCount = upsertDeviceInfo(request);
             if (upsertCount == 0) {
                 throw new CustomException();
             }
-            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07D00001", request.getInternalUserId(), request.getDvcId(), request.getBrdCd(),
                     request.getPlatform(), header.getCorrelationId()));
 
@@ -140,29 +144,29 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
             ObjectMapper mapper = new ObjectMapper();
             GetUserIdResponseDto getUserIdDto = mapper.readValue(getUserIdResponce.getBody(),
                     GetUserIdResponseDto.class);
-            if (getUserIdDto.getResultCode().equals(RES_GETUSERID_SUCCESS)) {
-                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            if (!getUserIdDto.getResultCode().equals(RES_GETUSERID_SUCCESS)) {
+                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00014", getUserIdDto.getResultCode(), request.getInternalUserId(),
                         header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_USERID_ERROR));
             }
-            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00009", request.getInternalUserId(), header.getCorrelationId()));
 
             // JSAP デバイス登録
-            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00003", request.getInternalUserId(), request.getDvcId(), request.getPlatform(),
                     header.getCorrelationId()));
             ResponseEntity<String> dvcLinkResponce = jsapUtil.executeDvcLink(
-                    getUserIdDto.getUserId(), request.getDeviceToken(), request.getPlatform());
+                    getUserIdDto.getUserId(), request.getDeviceToken(), request.getPlatform(), token);
             DvcLinkageResponseDto dvcLinkDto = mapper.readValue(dvcLinkResponce.getBody(), DvcLinkageResponseDto.class);
             if (!dvcLinkDto.getResultCode().equals(RES_DVCLINKAGE_SUCCESS)) {
-                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00006", dvcLinkDto.getResultCode(), request.getInternalUserId(),
                         request.getDvcId(), header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_DVCLINKAGE_ERROR));
             }
-            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00004", request.getInternalUserId(), request.getDvcId(), request.getPlatform(),
                     header.getCorrelationId()));
 
@@ -200,17 +204,17 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
     private String validate(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
         String missingField = validateRequired(request);
         if (missingField != null) {
-            LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07E00003", missingField, header.getCorrelationId()));
             throw new TscApplicationException(CommonUtil.getResultCode(RESULT_FIELD_MISSING));
         }
         if (!isValidBrdCd(request.getBrdCd())) {
-            LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07E00004", request.getBrdCd(), header.getCorrelationId()));
             throw new TscApplicationException(CommonUtil.getResultCode(RESULT_INVALID_BRAND));
         }
         if (!isValidPlatform(request.getPlatform())) {
-            LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
+            LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07E00005", request.getPlatform(), header.getCorrelationId()));
             throw new TscApplicationException(CommonUtil.getResultCode(RESULT_INVALID_PLATFORM));
         }

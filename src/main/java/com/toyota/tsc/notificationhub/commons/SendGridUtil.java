@@ -11,7 +11,6 @@ import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Email;
 import com.sendgrid.helpers.mail.objects.Personalization;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
-import com.toyota.tsc.notificationhub.exceptions.TscEMailException;
 
 /**
  * SendGridメール送信ユーティリティクラス
@@ -84,21 +83,14 @@ public class SendGridUtil {
      * @param mail 送信対象Mailオブジェクト
      * @return なし
      */
-    public void executeSendEmail(Mail mail) {
+    public Response executeSendEmail(Mail mail) {
         SendGrid sg = new SendGrid(propertiesUtil.getSendGridApiKey());
         Request sgRequest = new Request();
         try {
             sgRequest.setMethod(Method.POST);
             sgRequest.setEndpoint("mail/send");
             sgRequest.setBody(mail.build());
-            Response response = sg.api(sgRequest);
-            if (response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
-                throw new TscEMailException(response.getStatusCode(),
-                        mail.getPersonalization().get(0).getTos().get(0).getEmail(),
-                        mail.getSubject());
-            }
-        } catch (TscEMailException sgEx) {
-            throw new TscEMailException(sgEx.getStatusCode(), sgEx.getAddress(), sgEx.getTitle());
+            return sg.api(sgRequest);
         } catch (Exception ex) {
             throw new CustomException(ex);
         }

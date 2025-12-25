@@ -15,6 +15,7 @@ import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.models.SendPushRequestDto;
 import com.toyota.tsc.notificationhub.repositories.SaNtfInfoEntity;
 import com.toyota.tsc.notificationhub.repositories.SaNtfInfoRepositoryIF;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -23,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -157,7 +159,7 @@ class SaSendPushServiceImplTest {
                         lu.when(() -> LogUtil.error(any(), anyString())).thenAnswer(inv -> null);
 
                         // Act + Assert
-                        assertThrows(CustomException.class, () -> sut.sendPush(request, header));
+                        assertThrows(TscApplicationException.class, () -> sut.sendPush(request, header));
                 }
         }
 
@@ -194,7 +196,7 @@ class SaSendPushServiceImplTest {
                         lu.when(() -> LogUtil.error(any(), anyString())).thenAnswer(inv -> null);
 
                         // Act + Assert
-                        assertThrows(CustomException.class, () -> sut.sendPush(request, header));
+                        assertThrows(TscApplicationException.class, () -> sut.sendPush(request, header));
                 }
         }
 
@@ -504,7 +506,7 @@ class SaSendPushServiceImplTest {
                         lu.when(() -> LogUtil.info(any(), anyString())).thenAnswer(inv -> null);
 
                         // Act + Assert（InvocationTargetException の cause を投げ直す）
-                        assertThrows(CustomException.class, () -> {
+                        assertThrows(TscApplicationException.class, () -> {
                                 try {
                                         m.invoke(sut, request, header, userData);
                                 } catch (InvocationTargetException ex) {

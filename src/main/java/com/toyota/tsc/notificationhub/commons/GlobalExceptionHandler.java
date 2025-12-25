@@ -17,8 +17,6 @@ import com.toyota.tsc.notificationhub.models.ResponseDto;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final String EXCEPTION = "EXCEPTION";
-
     @ExceptionHandler(TscApplicationException.class)
     /**
      * TscApplicationException発生時のハンドリング
@@ -59,7 +57,7 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ResponseDto> handleCustomException(CustomException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ResponseDto(CommonUtil.getResultCode(EXCEPTION)));
+                .body(new ResponseDto(ex.getMessage()));
     }
 
     @ExceptionHandler(RuntimeException.class)
@@ -71,7 +69,7 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ResponseDto> handleRuntimeException(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ResponseDto(CommonUtil.getResultCode(EXCEPTION)));
+                .body(new ResponseDto(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
@@ -83,6 +81,6 @@ public class GlobalExceptionHandler {
      */
     public ResponseEntity<ResponseDto> handleException(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ResponseDto(CommonUtil.getResultCode(EXCEPTION)));
+                .body(new ResponseDto(ex.getMessage()));
     }
 }

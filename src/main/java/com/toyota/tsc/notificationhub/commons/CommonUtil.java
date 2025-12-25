@@ -3,8 +3,8 @@ package com.toyota.tsc.notificationhub.commons;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import java.text.MessageFormat;
-import java.util.Arrays;
 import java.util.ResourceBundle;
+
 import org.springframework.stereotype.Component;
 
 /**
@@ -44,13 +44,16 @@ public class CommonUtil {
      * @return フォーマット済みメッセージ
      */
     public static String getMessage(String id, Object... params) {
-        String profile = System.getProperty("spring.profiles.active", "");
-        String[] actProfile = Arrays.stream(profile.split("\\s*,\\s*"))
-                .filter(s -> !s.isBlank()).map(String::toLowerCase).toArray(String[]::new);
-        String useLogResource = Arrays.stream(actProfile).anyMatch("sa"::equals)
-                ? "properties.SaLogMessages"
-                : "properties.LogMessages";
-        ResourceBundle bundleLog = ResourceBundle.getBundle(useLogResource);
+        ResourceBundle bundleLog = ResourceBundle.getBundle("properties.LogMessages");
+        String pattern = bundleLog.getString(id);
+        return MessageFormat.format(pattern, params);
+    }
+
+    /**
+     * ログメッセージを取得します。
+     */
+    public static String getSaMessage(String id, Object... params) {
+        ResourceBundle bundleLog = ResourceBundle.getBundle("properties.SaLogMessages");
         String pattern = bundleLog.getString(id);
         return MessageFormat.format(pattern, params);
     }

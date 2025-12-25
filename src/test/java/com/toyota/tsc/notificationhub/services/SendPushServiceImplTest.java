@@ -18,11 +18,13 @@ import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
 import com.windowsazure.messaging.NotificationHubsException;
 import com.windowsazure.messaging.NotificationOutcome;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -124,7 +126,7 @@ class SendPushServiceImplTest {
                         assertNotNull(res);
                         // 実装は CommonUtil.getResultCode("SUCCESS") を呼ぶ
                         // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SendPushServiceImpl.java)
-                        assertEquals("SUCCESS", res.getResultCode());
+                        assertEquals("SP_SUCCESS", res.getResultCode());
                 }
         }
 
@@ -290,8 +292,8 @@ class SendPushServiceImplTest {
 
                         // Assert
                         assertNotNull(res);
-                        assertEquals("SUCCESS", res.getResultCode()); // 実装仕様
-                                                                      // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SendPushServiceImpl.java)
+                        assertEquals("SP_SUCCESS", res.getResultCode()); // 実装仕様
+                                                                         // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/SendPushServiceImpl.java)
                 }
         }
 

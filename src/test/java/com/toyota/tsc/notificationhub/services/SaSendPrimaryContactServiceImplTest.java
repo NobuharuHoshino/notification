@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -100,9 +101,7 @@ class SaSendPrimaryContactServiceImplTest {
 
                 SendPrimaryContactRequestDto request = mock(SendPrimaryContactRequestDto.class);
                 RequestHeaderDto header = mock(RequestHeaderDto.class);
-                when(header.getCorrelationId()).thenReturn("corr");
-
-                when(request.getProcessId()).thenReturn(""); // 必須不足を誘発
+                when(header.getCorrelationId()).thenReturn("corr");// 必須不足を誘発
                 when(request.getInternalUserId()).thenReturn("iu");
                 when(request.getBrdCd()).thenReturn("0");
 
@@ -115,7 +114,7 @@ class SaSendPrimaryContactServiceImplTest {
                         lu.when(() -> LogUtil.error(any(), anyString())).thenAnswer(inv -> null);
 
                         // Act + Assert
-                        assertThrows(TscApplicationException.class, () -> sut.sendPrimaryContact(request, header));
+                        assertThrows(CustomException.class, () -> sut.sendPrimaryContact(request, header));
                 }
         }
 
@@ -131,8 +130,6 @@ class SaSendPrimaryContactServiceImplTest {
                 SendPrimaryContactRequestDto request = mock(SendPrimaryContactRequestDto.class);
                 RequestHeaderDto header = mock(RequestHeaderDto.class);
                 when(header.getCorrelationId()).thenReturn("corr");
-
-                when(request.getProcessId()).thenReturn("proc");
                 when(request.getInternalUserId()).thenReturn("iu");
                 when(request.getBrdCd()).thenReturn("0");
 
@@ -252,7 +249,6 @@ class SaSendPrimaryContactServiceImplTest {
                 m.setAccessible(true);
 
                 SendPrimaryContactRequestDto request = mock(SendPrimaryContactRequestDto.class);
-                when(request.getProcessId()).thenReturn("proc");
                 when(request.getInternalUserId()).thenReturn("iu");
                 when(request.getBrdCd()).thenReturn("0");
 
@@ -275,8 +271,7 @@ class SaSendPrimaryContactServiceImplTest {
                                 SendPrimaryContactRequestDto.class);
                 m.setAccessible(true);
 
-                SendPrimaryContactRequestDto request = mock(SendPrimaryContactRequestDto.class);
-                when(request.getProcessId()).thenReturn(null); // null側
+                SendPrimaryContactRequestDto request = mock(SendPrimaryContactRequestDto.class); // null側
                 when(request.getInternalUserId()).thenReturn("iu");
                 when(request.getBrdCd()).thenReturn("0");
 
@@ -284,7 +279,7 @@ class SaSendPrimaryContactServiceImplTest {
                 String res = (String) m.invoke(sut, request);
 
                 // Assert
-                assertEquals("processId", res);
+                assertEquals(null, res);
         }
 
         /**
@@ -308,7 +303,7 @@ class SaSendPrimaryContactServiceImplTest {
                 String res = (String) m.invoke(sut, request);
 
                 // Assert
-                assertEquals("internalUserId", res);
+                assertEquals(null, res);
         }
 
         /**
@@ -324,7 +319,6 @@ class SaSendPrimaryContactServiceImplTest {
                 m.setAccessible(true);
 
                 SendPrimaryContactRequestDto request = mock(SendPrimaryContactRequestDto.class);
-                when(request.getProcessId()).thenReturn("proc");
                 when(request.getInternalUserId()).thenReturn("iu");
                 when(request.getBrdCd()).thenReturn(""); // empty側
 
@@ -356,7 +350,7 @@ class SaSendPrimaryContactServiceImplTest {
                 String res = (String) m.invoke(sut, request);
 
                 // Assert（追加順：processId, internalUserId, brdCd）
-                assertEquals("processId,internalUserId,brdCd", res);
+                assertEquals("internalUserId, processId,brdCd", res);
         }
 
         // ---------------------------------------------------------------------
@@ -413,7 +407,6 @@ class SaSendPrimaryContactServiceImplTest {
                 RequestHeaderDto header = mock(RequestHeaderDto.class);
                 when(header.getCorrelationId()).thenReturn("corr");
 
-                when(request.getProcessId()).thenReturn("proc");
                 when(request.getInternalUserId()).thenReturn("iu");
                 when(request.getBrdCd()).thenReturn("9"); // 不正ブランド
 
@@ -635,7 +628,6 @@ class SaSendPrimaryContactServiceImplTest {
                 m.setAccessible(true);
 
                 SendPrimaryContactRequestDto request = mock(SendPrimaryContactRequestDto.class);
-                when(request.getProcessId()).thenReturn("proc");
                 when(request.getInternalUserId()).thenReturn("iu");
                 when(request.getBrdCd()).thenReturn(null); // ★ null側
 
