@@ -125,13 +125,15 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             if (contact.getContactType().equals(CONTACT_PHONE) && contact.isPrimaryContactFlag()) {
                 // SMS送信要求
                 LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                        "RS07I00013", request.getInternalUserId(), request.getBrdCd(), contact.getContact(),
+                        "RS07I00013", request.getInternalUserId(), CommonUtil.getBrd(request.getBrdCd()),
+                        contact.getContact(),
                         request.getTitle(), header.getCorrelationId()));
                 executeSendSms(request, header, contact.getContact());
             } else if (contact.getContactType().equals(CONTACT_EMAIL) && contact.isPrimaryContactFlag()) {
                 // メール送信要求
                 LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                        "RS07I00014", request.getInternalUserId(), request.getBrdCd(), contact.getContact(),
+                        "RS07I00014", request.getInternalUserId(), CommonUtil.getBrd(request.getBrdCd()),
+                        contact.getContact(),
                         request.getTitle(), header.getCorrelationId()));
                 executeSendEmail(request, header, contact.getContact());
             } else {
@@ -149,6 +151,9 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
      * @return なし
      */
     private void executeSendSms(SendPrimaryContactRequestDto request, RequestHeaderDto header, String phoneNo) {
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+                "RS07I00009", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskPhoneNumber(phoneNo),
+                header.getCorrelationId()));
         ResponseEntity<String> smsResponse = smsCountryUtil.executeSendSms(
                 phoneNo, request.getBodyText(), request.getBrdCd());
         if (!smsResponse.getStatusCode().is2xxSuccessful()) {
@@ -158,7 +163,8 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
         }
         LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                "RS07I00010", request.getBrdCd(), phoneNo, header.getCorrelationId()));
+                "RS07I00010", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskPhoneNumber(phoneNo),
+                header.getCorrelationId()));
         LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                 "RS99I99999", smsResponse.getStatusCode(), smsResponse.getBody()));
     }
@@ -172,6 +178,9 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
      * @return なし
      */
     private void executeSendEmail(SendPrimaryContactRequestDto request, RequestHeaderDto header, String email) {
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+                "RS07I00011", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskText(email), request.getTitle(),
+                header.getCorrelationId()));
         Mail mail = sendGridUtil.generateEmail(
                 email, request.getTitle(), request.getBodyText(),
                 request.getBodyHtml(), request.getBrdCd());
@@ -183,7 +192,10 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
         }
         LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                "RS07I00012", request.getBrdCd(), email, header.getCorrelationId()));
+                "RS07I00012", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskText(email), request.getTitle(),
+                header.getCorrelationId()));
+        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+                "RS99I99999", response.getStatusCode(), response.getBody()));
     }
 
     // #region Validation Methods
@@ -203,7 +215,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         }
         if (!isValidBrdCd(request.getBrdCd())) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                    "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
+                    "RS07E00008", CommonUtil.getBrd(request.getBrdCd()), header.getCorrelationId()));
             throw new TscApplicationException(CommonUtil.getResultCode(RESULT_INVALID_BRAND));
         }
         return null;

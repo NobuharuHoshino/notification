@@ -116,4 +116,36 @@ public class CommonUtil {
             return "";
         return phoneNumber.replaceAll("\\D", "");
     }
+
+    /**
+     * ブランド区分からブランド名を返します。
+     * 
+     * @param brdCd ブランド区分
+     */
+    public static String getBrd(String brdCd) {
+        switch (brdCd) {
+            case "1":
+                return "TOYOTA";
+            case "2":
+                return "LEXUS";
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * プラットフォーム区分からプラットフォーム名を返します。
+     * 
+     * @param platform プラットフォーム区分
+     */
+    public static String getPlt(String platform) {
+        switch (platform) {
+            case "1":
+                return "Android";
+            case "2":
+                return "iOS";
+            default:
+                return "";
+        }
+    }
 }
