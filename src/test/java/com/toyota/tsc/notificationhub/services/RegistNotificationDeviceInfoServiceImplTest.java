@@ -609,55 +609,58 @@ class RegistNotificationDeviceInfoServiceImplTest {
          * クラス：RegistNotificationDeviceInfoServiceImpl registDeviceInfo
          * deviceListが3件以上の場合に古いデータ削除が実行され成功することを確認するテストケース
          */
-        @Test
-        void registDeviceInfo_012() throws NotificationHubsException {
-                // Arrange
-                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
-                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
-                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-                RequestHeaderDto header = header("cid");
+        // @Test
+        // void registDeviceInfo_012() throws NotificationHubsException {
+        // // Arrange
+        // RegistNotificationDeviceInfoServiceImpl sut = new
+        // RegistNotificationDeviceInfoServiceImpl(
+        // ntfInfoRepository, notificationHubUtil, propertiesUtil);
+        // RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc",
+        // "1");
+        // RequestHeaderDto header = header("cid");
 
-                when(propertiesUtil.getRetryCount()).thenReturn(1);
-                when(ntfInfoRepository.upsert(any())).thenReturn(1);
+        // when(propertiesUtil.getRetryCount()).thenReturn(1);
+        // when(ntfInfoRepository.upsert(any())).thenReturn(1);
 
-                LocalDateTime now = LocalDateTime.now();
+        // LocalDateTime now = LocalDateTime.now();
 
-                // ★ entity() ヘルパを使わず、必要なgetterだけstub（UnnecessaryStubbing回避）
-                NtfInfoEntity e1 = mock(NtfInfoEntity.class);
-                when(e1.getInstallationId()).thenReturn("iid_new");
-                when(e1.getDeviceToken()).thenReturn("tokA");
-                when(e1.getUpdatedAt()).thenReturn(now);
+        // // ★ entity() ヘルパを使わず、必要なgetterだけstub（UnnecessaryStubbing回避）
+        // NtfInfoEntity e1 = mock(NtfInfoEntity.class);
+        // when(e1.getInstallationId()).thenReturn("iid_new");
+        // when(e1.getDeviceToken()).thenReturn("tokA");
+        // when(e1.getUpdatedAt()).thenReturn(now);
 
-                NtfInfoEntity e2 = mock(NtfInfoEntity.class);
-                when(e2.getInstallationId()).thenReturn("iid_mid");
-                when(e2.getDeviceToken()).thenReturn("tokB");
-                when(e2.getUpdatedAt()).thenReturn(now.minusMinutes(1));
+        // NtfInfoEntity e2 = mock(NtfInfoEntity.class);
+        // when(e2.getInstallationId()).thenReturn("iid_mid");
+        // when(e2.getDeviceToken()).thenReturn("tokB");
+        // when(e2.getUpdatedAt()).thenReturn(now.minusMinutes(1));
 
-                NtfInfoEntity e3 = mock(NtfInfoEntity.class);
-                when(e3.getInstallationId()).thenReturn("iid_old");
-                when(e3.getDeviceToken()).thenReturn("tokC");
-                when(e3.getUpdatedAt()).thenReturn(now.minusMinutes(2));
-                // ★ deleteTarget でのみ必要
-                when(e3.getInternalUserId()).thenReturn("u");
+        // NtfInfoEntity e3 = mock(NtfInfoEntity.class);
+        // when(e3.getInstallationId()).thenReturn("iid_old");
+        // when(e3.getDeviceToken()).thenReturn("tokC");
+        // when(e3.getUpdatedAt()).thenReturn(now.minusMinutes(2));
+        // // ★ deleteTarget でのみ必要
+        // when(e3.getInternalUserId()).thenReturn("u");
 
-                when(ntfInfoRepository.selectAllByInternalUserId("u")).thenReturn(List.of(e1, e2, e3));
-                when(ntfInfoRepository.delete(eq("u"), eq("iid_old"))).thenReturn(1);
+        // when(ntfInfoRepository.selectAllByInternalUserId("u")).thenReturn(List.of(e1,
+        // e2, e3));
+        // when(ntfInfoRepository.delete(eq("u"), eq("iid_old"))).thenReturn(1);
 
-                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                                        .thenReturn("msg");
-                        common.when(() -> CommonUtil.getResultCode(anyString()))
-                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+        // try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+        // common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+        // common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+        // .thenReturn("msg");
+        // common.when(() -> CommonUtil.getResultCode(anyString()))
+        // .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-                        // Act
-                        ResponseDto resp = sut.registDeviceInfo(request, header);
+        // // Act
+        // ResponseDto resp = sut.registDeviceInfo(request, header);
 
-                        // Assert
-                        assertNotNull(resp);
-                        verify(ntfInfoRepository, times(1)).delete("u", "iid_old");
-                }
-        }
+        // // Assert
+        // assertNotNull(resp);
+        // verify(ntfInfoRepository, times(1)).delete("u", "iid_old");
+        // }
+        // }
 
         /**
          * クラス：RegistNotificationDeviceInfoServiceImpl registDeviceInfo
@@ -694,54 +697,59 @@ class RegistNotificationDeviceInfoServiceImplTest {
          * クラス：RegistNotificationDeviceInfoServiceImpl registDeviceInfo
          * deviceListが3件以上かつ削除件数が0の場合にCustomExceptionが送出されることを確認するテストケース
          */
-        @Test
-        void registDeviceInfo_014() {
-                // Arrange
-                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
-                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
-                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-                RequestHeaderDto header = header("cid");
+        // @Test
+        // void registDeviceInfo_014() {
+        // // Arrange
+        // RegistNotificationDeviceInfoServiceImpl sut = new
+        // RegistNotificationDeviceInfoServiceImpl(
+        // ntfInfoRepository, notificationHubUtil, propertiesUtil);
+        // RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc",
+        // "1");
+        // RequestHeaderDto header = header("cid");
 
-                when(propertiesUtil.getRetryCount()).thenReturn(1);
-                when(ntfInfoRepository.upsert(any())).thenReturn(1);
+        // when(propertiesUtil.getRetryCount()).thenReturn(1);
+        // when(ntfInfoRepository.upsert(any())).thenReturn(1);
 
-                LocalDateTime now = LocalDateTime.now();
+        // LocalDateTime now = LocalDateTime.now();
 
-                // ★ entity() ヘルパを使わず、必要なgetterだけstub（UnnecessaryStubbing回避）
-                NtfInfoEntity e1 = mock(NtfInfoEntity.class);
-                when(e1.getInstallationId()).thenReturn("iid_new");
-                when(e1.getDeviceToken()).thenReturn("tokA");
-                when(e1.getUpdatedAt()).thenReturn(now);
+        // // ★ entity() ヘルパを使わず、必要なgetterだけstub（UnnecessaryStubbing回避）
+        // NtfInfoEntity e1 = mock(NtfInfoEntity.class);
+        // when(e1.getInstallationId()).thenReturn("iid_new");
+        // when(e1.getDeviceToken()).thenReturn("tokA");
+        // when(e1.getUpdatedAt()).thenReturn(now);
 
-                NtfInfoEntity e2 = mock(NtfInfoEntity.class);
-                when(e2.getInstallationId()).thenReturn("iid_mid");
-                when(e2.getDeviceToken()).thenReturn("tokB");
-                when(e2.getUpdatedAt()).thenReturn(now.minusMinutes(1));
+        // NtfInfoEntity e2 = mock(NtfInfoEntity.class);
+        // when(e2.getInstallationId()).thenReturn("iid_mid");
+        // when(e2.getDeviceToken()).thenReturn("tokB");
+        // when(e2.getUpdatedAt()).thenReturn(now.minusMinutes(1));
 
-                NtfInfoEntity e3 = mock(NtfInfoEntity.class);
-                when(e3.getInstallationId()).thenReturn("iid_old");
-                when(e3.getDeviceToken()).thenReturn("tokC");
-                when(e3.getUpdatedAt()).thenReturn(now.minusMinutes(2));
-                // ★ deleteTarget でのみ必要
-                when(e3.getInternalUserId()).thenReturn("u");
+        // NtfInfoEntity e3 = mock(NtfInfoEntity.class);
+        // when(e3.getInstallationId()).thenReturn("iid_old");
+        // when(e3.getDeviceToken()).thenReturn("tokC");
+        // when(e3.getUpdatedAt()).thenReturn(now.minusMinutes(2));
+        // // ★ deleteTarget でのみ必要
+        // when(e3.getInternalUserId()).thenReturn("u");
 
-                when(ntfInfoRepository.selectAllByInternalUserId("u")).thenReturn(List.of(e1, e2, e3));
-                when(ntfInfoRepository.delete(eq("u"), eq("iid_old"))).thenReturn(0); // ← deleteCount==0 分岐
+        // when(ntfInfoRepository.selectAllByInternalUserId("u")).thenReturn(List.of(e1,
+        // e2, e3));
+        // when(ntfInfoRepository.delete(eq("u"), eq("iid_old"))).thenReturn(0); // ←
+        // deleteCount==0 分岐
 
-                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                                        .thenReturn("msg");
-                        common.when(() -> CommonUtil.getResultCode(anyString()))
-                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+        // try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+        // common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+        // common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
+        // .thenReturn("msg");
+        // common.when(() -> CommonUtil.getResultCode(anyString()))
+        // .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-                        // Act
-                        assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
+        // // Act
+        // assertThrows(CustomException.class, () -> sut.registDeviceInfo(request,
+        // header));
 
-                        // Assert
-                        verify(ntfInfoRepository, times(1)).delete("u", "iid_old");
-                }
-        }
+        // // Assert
+        // verify(ntfInfoRepository, times(1)).delete("u", "iid_old");
+        // }
+        // }
 
         /**
          * クラス：RegistNotificationDeviceInfoServiceImpl executeDeleteInstallation

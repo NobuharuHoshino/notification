@@ -126,14 +126,14 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
                 // SMS送信要求
                 LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                         "RS07I00013", request.getInternalUserId(), CommonUtil.getBrd(request.getBrdCd()),
-                        contact.getContact(),
+                        CommonUtil.maskPhoneNumber(contact.getContact()),
                         request.getTitle(), header.getCorrelationId()));
                 executeSendSms(request, header, contact.getContact());
             } else if (contact.getContactType().equals(CONTACT_EMAIL) && contact.isPrimaryContactFlag()) {
                 // メール送信要求
                 LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                         "RS07I00014", request.getInternalUserId(), CommonUtil.getBrd(request.getBrdCd()),
-                        contact.getContact(),
+                        CommonUtil.maskText(contact.getContact()),
                         request.getTitle(), header.getCorrelationId()));
                 executeSendEmail(request, header, contact.getContact());
             } else {
@@ -215,7 +215,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         }
         if (!isValidBrdCd(request.getBrdCd())) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                    "RS07E00008", CommonUtil.getBrd(request.getBrdCd()), header.getCorrelationId()));
+                    "RS07E00008", request.getBrdCd(), header.getCorrelationId()));
             throw new TscApplicationException(CommonUtil.getResultCode(RESULT_INVALID_BRAND));
         }
         return null;
