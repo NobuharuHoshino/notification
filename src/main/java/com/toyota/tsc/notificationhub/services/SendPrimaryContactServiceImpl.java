@@ -81,6 +81,11 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_PERSONALINFO_EMPTY));
             }
             List<PersonalInfoResponseDto.ContactDto> contactList = response.getContactList();
+            if (contactList == null || contactList.isEmpty()) {
+                LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
+                        "RS07E00015", request.getInternalUserId(), header.getCorrelationId()));
+                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_PERSONALINFO_EMPTY));
+            }
 
             // 送信要求
             sendRequest(contactList, request, header);
@@ -155,7 +160,7 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
                 "RS07I00009", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskPhoneNumber(phoneNo),
                 header.getCorrelationId()));
         ResponseEntity<String> smsResponse = smsCountryUtil.executeSendSms(
-                phoneNo, request.getBodyText(), request.getBrdCd());
+                phoneNo, request.getBodySms(), request.getBrdCd());
         if (!smsResponse.getStatusCode().is2xxSuccessful()) {
             LogUtil.error(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                     "RS07E00006", smsResponse.getStatusCode(), CommonUtil.maskPhoneNumber(phoneNo),
@@ -165,8 +170,6 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                 "RS07I00010", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskPhoneNumber(phoneNo),
                 header.getCorrelationId()));
-        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                "RS99I99999", smsResponse.getStatusCode(), smsResponse.getBody()));
     }
 
     /**
@@ -194,8 +197,6 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
         LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
                 "RS07I00012", CommonUtil.getBrd(request.getBrdCd()), CommonUtil.maskText(email), request.getTitle(),
                 header.getCorrelationId()));
-        LogUtil.info(SendPrimaryContactServiceImpl.class, CommonUtil.getMessage(
-                "RS99I99999", response.getStatusCode(), response.getBody()));
     }
 
     // #region Validation Methods
@@ -232,11 +233,9 @@ public class SendPrimaryContactServiceImpl implements SendPrimaryContactServiceI
             return "requestBody";
         }
         List<String> missingFields = new ArrayList<>();
-        if (request.getProcessId() == null || request.getProcessId().isEmpty()) {
-            missingFields.add("processId");
-        }
-        if (request.getInternalUserId() == null || request.getInternalUserId().isEmpty()) {
-            missingFields.add("internalUserId");
+        if ((request.getInternalUserId() == null || request.getInternalUserId().isEmpty())
+                && (request.getProcessId() == null || request.getProcessId().isEmpty())) {
+            missingFields.add("internalUserId, processId");
         }
         if (request.getBrdCd() == null || request.getBrdCd().isEmpty()) {
             missingFields.add("brdCd");

@@ -381,11 +381,12 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
      */
     private int deleteDeviceData(
             RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header, List<NtfInfoEntity> deviceList) {
+
         List<NtfInfoEntity> deleteTarget = deviceList.stream()
                 .sorted(Comparator.comparing(
                         NtfInfoEntity::getUpdatedAt,
-                        Comparator.nullsLast(Comparator.<LocalDateTime>naturalOrder())).reversed())
-                .skip(2)
+                        Comparator.nullsLast(Comparator.<LocalDateTime>naturalOrder())))
+                .limit(1)
                 .toList();
         int deleteCount = deleteTarget.stream()
                 .mapToInt(t -> ntfInfoRepository.delete(t.getInternalUserId(), t.getInstallationId()))

@@ -77,7 +77,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
             if (deviceList.isEmpty()) {
                 LogUtil.error(SendPushServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00013", request.getInternalUserId(), header.getCorrelationId()));
-                throw new CustomException();
+                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_DEVICE_EMPTY));
             }
             NtfInfoEntity deviceData = getLastData(deviceList);
 
@@ -136,7 +136,7 @@ public class SendPushServiceImpl implements SendPushServiceIF {
         // プッシュ通知開始ログ
         LogUtil.info(SendPushServiceImpl.class, CommonUtil.getMessage(
                 "RS07I00007", request.getInternalUserId(), request.getBody(),
-                deviceData.getBrdCd(), header.getCorrelationId()));
+                CommonUtil.getBrd(deviceData.getBrdCd()), header.getCorrelationId()));
         // 実行
         executePostMessage(request, header, deviceData);
         // プッシュ通知完了ログ

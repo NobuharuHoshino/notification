@@ -12,6 +12,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,7 +39,36 @@ public class JsapUtil {
     private static final String PLATFORM_IOS = "2"; // APNs
     private static final String X_API_KEY_HEADER = "x-api-key";
     private static final String USER_ID_BODY = "userId";
-    private static final String AUTH_TOKEN = "auth-token";
+    private static final String AUTH_TOKEN = "authorization";
+
+    public ResponseEntity<String> executeGetToken() {
+        try {
+            // テンプレート
+            RestTemplate restTemplate = new RestTemplate();
+            // ヘッダー設定
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+            // ボディ設定
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("grant_type", "client_credentials"); // TODO プロパティ化
+            body.add("client_id", "client_id");
+            body.add("client_secret", "client_secret");
+
+            // エンティティセット
+            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
+
+            // 実行
+            return restTemplate.exchange(
+                    "tokenUrl",
+                    HttpMethod.POST,
+                    entity,
+                    String.class);
+
+        } catch (Exception e) {
+            throw new CustomException(e);
+        }
+    }
 
     public ResponseEntity<String> executeGetUserId(String internalUserId, String colId) {
         // TODO
@@ -155,7 +186,7 @@ public class JsapUtil {
         // HttpHeaders headers = new HttpHeaders();
         // headers.setContentType(MediaType.APPLICATION_JSON);
         // headers.set(X_API_KEY_HEADER, propertiesUtil.getJsapDvcLinkApiKey());
-        // headers.set(AUTH_TOKEN, token);
+        // headers.set(AUTH_TOKEN, "bearer " + token);
         // // ボディ設定
         // Map<String, Object> body = new HashMap<>();
         // body.put(USER_ID_BODY, userId);

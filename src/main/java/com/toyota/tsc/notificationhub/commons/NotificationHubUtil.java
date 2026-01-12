@@ -13,11 +13,13 @@ import org.springframework.stereotype.Component;
 
 import com.windowsazure.messaging.NotificationHubsException;
 import com.windowsazure.messaging.NotificationOutcome;
+
 import com.windowsazure.messaging.NotificationHub;
 import com.windowsazure.messaging.FcmV1Installation;
 import com.windowsazure.messaging.FcmV1Notification;
 import com.windowsazure.messaging.Notification;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
@@ -231,37 +233,50 @@ public class NotificationHubUtil {
         // NotificationHub クライアント生成
         final String connectionString = String.format(propertiesUtil.getSdkConnectionStringTemplate(), namespace,
                 keyName, key);
+        LogUtil.info(getClass(), payload);
+        LogUtil.info(getClass(), connectionString);
         NotificationHub hub = new NotificationHub(connectionString, hubName);
         String tagExpr = String.format("$InstallationId:{%s}", installationId);
-        return hub.sendNotification(notification, tagExpr);
+
+        NotificationOutcome outcome = hub.sendNotification(notification, tagExpr);
+
+        String notificationId = outcome.getNotificationId(); // ← Java SDKのgetter名は実装に依存（概念は同じ）
+        String trackingId = outcome.getTrackingId(); // ← これも同様
+
+        LogUtil.info(getClass(), "notificationId=" + notificationId);
+        LogUtil.info(getClass(), "trackingId=" + trackingId);
+        LogUtil.info(getClass(), "installation=" + installationId);
+
+        return outcome;
     }
 
     /**
      * ペイロードを組み立てます。
-     * 
+     *
      * @param bodyData ペイロードデータマップ
      * @return FCM v1ペイロード文字列
      */
-    public String buildFcmV1Payload(Map<String, Object> bodyData) {
+    public String buildFcmV1Payload(String bodyData) {
+        Map<String, Object> bodyDataMap = toMap(bodyData);
         ObjectMapper mapper = new ObjectMapper();
         try {
             ObjectNode dataNode = mapper.createObjectNode();
-            Object pushInformationList = bodyData.get(PUSH_INFORMATION_LIST);
+            Object pushInformationList = bodyDataMap.get(PUSH_INFORMATION_LIST);
             if (pushInformationList != null) {
                 String json = mapper.writeValueAsString(pushInformationList);
                 dataNode.put(PUSH_INFORMATION_LIST, json);
             }
-            putAsStringIfPresent(dataNode, bodyData, LOC_KEY);
-            putAsStringIfPresent(dataNode, bodyData, LCS_SELECTED);
-            putAsStringIfPresent(dataNode, bodyData, PUSH_FLG);
-            putAsStringIfPresent(dataNode, bodyData, PUSH_DEEP_LINK);
-            putAsStringIfPresent(dataNode, bodyData, POPUP_BUTTON_DEEP_LINK);
-            Object popupInformationList = bodyData.get(POPUP_INFORMATION_LIST);
+            putAsStringIfPresent(dataNode, bodyDataMap, LOC_KEY);
+            putAsStringIfPresent(dataNode, bodyDataMap, LCS_SELECTED);
+            putAsStringIfPresent(dataNode, bodyDataMap, PUSH_FLG);
+            putAsStringIfPresent(dataNode, bodyDataMap, PUSH_DEEP_LINK);
+            putAsStringIfPresent(dataNode, bodyDataMap, POPUP_BUTTON_DEEP_LINK);
+            Object popupInformationList = bodyDataMap.get(POPUP_INFORMATION_LIST);
             if (popupInformationList != null) {
                 String json = mapper.writeValueAsString(popupInformationList);
                 dataNode.put(POPUP_INFORMATION_LIST, json);
             }
-            putAsStringIfPresent(dataNode, bodyData, NOTIFICATION_ID);
+            putAsStringIfPresent(dataNode, bodyDataMap, NOTIFICATION_ID);
             ObjectNode androidNode = mapper.createObjectNode();
             androidNode.set(DATA, dataNode);
             ObjectNode messageNode = mapper.createObjectNode();
@@ -287,7 +302,8 @@ public class NotificationHubUtil {
         }
     }
 
-    public String buildApnsPayload(Map<String, Object> bodyData) {
+    public String buildApnsPayload(String bodyData) {
+        Map<String, Object> bodyDataMap = toMap(bodyData);
         ObjectMapper mapper = new ObjectMapper();
         try {
             ObjectNode root = mapper.createObjectNode();
@@ -295,20 +311,20 @@ public class NotificationHubUtil {
             aps.put(ALERT, " ");
             aps.put(MUTABLE_CONTENT, 1);
             root.set(APS, aps);
-            Object pushInformationList = bodyData.get(PUSH_INFORMATION_LIST);
+            Object pushInformationList = bodyDataMap.get(PUSH_INFORMATION_LIST);
             if (pushInformationList != null) {
                 root.set(PUSH_INFORMATION_LIST, mapper.valueToTree(pushInformationList));
             }
-            Object popupInformationList = bodyData.get(POPUP_INFORMATION_LIST);
+            Object popupInformationList = bodyDataMap.get(POPUP_INFORMATION_LIST);
             if (popupInformationList != null) {
                 root.set(POPUP_INFORMATION_LIST, mapper.valueToTree(popupInformationList));
             }
-            putIfPresent(root, mapper, bodyData, LOC_KEY);
-            putIfPresent(root, mapper, bodyData, LCS_SELECTED);
-            putIfPresent(root, mapper, bodyData, PUSH_FLG);
-            putIfPresent(root, mapper, bodyData, PUSH_DEEP_LINK);
-            putIfPresent(root, mapper, bodyData, POPUP_BUTTON_DEEP_LINK);
-            putIfPresent(root, mapper, bodyData, NOTIFICATION_ID);
+            putIfPresent(root, mapper, bodyDataMap, LOC_KEY);
+            putIfPresent(root, mapper, bodyDataMap, LCS_SELECTED);
+            putIfPresent(root, mapper, bodyDataMap, PUSH_FLG);
+            putIfPresent(root, mapper, bodyDataMap, PUSH_DEEP_LINK);
+            putIfPresent(root, mapper, bodyDataMap, POPUP_BUTTON_DEEP_LINK);
+            putIfPresent(root, mapper, bodyDataMap, NOTIFICATION_ID);
             return mapper.writeValueAsString(root);
 
         } catch (JsonProcessingException e) {
@@ -327,4 +343,18 @@ public class NotificationHubUtil {
             root.set(key, mapper.valueToTree(val));
         }
     }
+
+    /**
+     * JSON形式の文字列を Map<String, Object> に変換するだけ（null/空チェック等は一切しない）
+     */
+    public static Map<String, Object> toMap(String json) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            return mapper.readValue(json, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (JsonProcessingException e) {
+            throw new CustomException(e);
+        }
+    }
+
 }
