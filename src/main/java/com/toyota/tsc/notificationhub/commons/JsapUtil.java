@@ -19,6 +19,7 @@ import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.models.DvcLinkageResponseDto;
+import com.toyota.tsc.notificationhub.models.GetAccessTokenResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserInfoResponseDto;
 import com.toyota.tsc.notificationhub.models.MailContextDto;
@@ -42,32 +43,51 @@ public class JsapUtil {
     private static final String AUTH_TOKEN = "authorization";
 
     public ResponseEntity<String> executeGetToken() {
+        GetAccessTokenResponseDto dto = new GetAccessTokenResponseDto();
+        dto.setAccess_token("sss");
+        dto.setToken_type("MOCK_TOKEN_TYPE");
+        dto.setExpires_in("MOCK_EXPIRES_IN");
+        dto.setScope("MOCK_SCOPE");
+        dto.setJti("MOCK_JTI");
+
         try {
-            // テンプレート
-            RestTemplate restTemplate = new RestTemplate();
-            // ヘッダー設定
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
-            // ボディ設定
-            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("grant_type", "client_credentials"); // TODO プロパティ化
-            body.add("client_id", "client_id");
-            body.add("client_secret", "client_secret");
-
-            // エンティティセット
-            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body, headers);
-
-            // 実行
-            return restTemplate.exchange(
-                    "tokenUrl",
-                    HttpMethod.POST,
-                    entity,
-                    String.class);
-
+            ObjectMapper mapper = new ObjectMapper();
+            String body = mapper.writeValueAsString(dto);
+            return ResponseEntity
+                    .ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body);
         } catch (Exception e) {
             throw new CustomException(e);
         }
+
+        // try {
+        // // テンプレート
+        // RestTemplate restTemplate = new RestTemplate();
+        // // ヘッダー設定
+        // HttpHeaders headers = new HttpHeaders();
+        // headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        // headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
+        // // ボディ設定
+        // MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        // body.add("grant_type", "client_credentials"); // TODO プロパティ化
+        // body.add("client_id", "client_id");
+        // body.add("client_secret", "client_secret");
+
+        // // エンティティセット
+        // HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body,
+        // headers);
+
+        // // 実行
+        // return restTemplate.exchange(
+        // "tokenUrl",
+        // HttpMethod.POST,
+        // entity,
+        // String.class);
+
+        // } catch (Exception e) {
+        // throw new CustomException(e);
+        // }
     }
 
     public ResponseEntity<String> executeGetUserId(String internalUserId, String colId) {
@@ -135,41 +155,41 @@ public class JsapUtil {
 
         // TODO
 
-        DvcLinkageResponseDto dto = new DvcLinkageResponseDto();
-        dto.setResultCode("000000");
-        dto.setResultMessage("TEST");
-
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            String body = mapper.writeValueAsString(dto);
-
-            return ResponseEntity
-                    .ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body);
-
-        } catch (Exception e) {
-            // とりあえず異常系も返す（必要ならログ出し）
-            return ResponseEntity
-                    .internalServerError()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body("{\"resultCode\":\"999999\",\"resultMessage\":\"JSON_SERIALIZE_ERROR\"}");
-        }
-
         // DvcLinkageResponseDto dto = new DvcLinkageResponseDto();
-        // dto.setResultCode("00001548B123");
-        // dto.setResultMessage("Mockです");
+        // dto.setResultCode("000000");
+        // dto.setResultMessage("TEST");
 
         // try {
         // ObjectMapper mapper = new ObjectMapper();
         // String body = mapper.writeValueAsString(dto);
+
         // return ResponseEntity
         // .ok()
         // .contentType(MediaType.APPLICATION_JSON)
         // .body(body);
+
         // } catch (Exception e) {
-        // throw new CustomException(e);
+        // // とりあえず異常系も返す（必要ならログ出し）
+        // return ResponseEntity
+        // .internalServerError()
+        // .contentType(MediaType.APPLICATION_JSON)
+        // .body("{\"resultCode\":\"999999\",\"resultMessage\":\"JSON_SERIALIZE_ERROR\"}");
         // }
+
+        DvcLinkageResponseDto dto = new DvcLinkageResponseDto();
+        dto.setResultCode("000000");
+        dto.setResultMessage("Mockです");
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            String body = mapper.writeValueAsString(dto);
+            return ResponseEntity
+                    .ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body);
+        } catch (Exception e) {
+            throw new CustomException(e);
+        }
 
         // try {
         // // プラットフォーム変換
@@ -239,7 +259,7 @@ public class JsapUtil {
 
         // TODO
         PushRequestResponseDto dto = new PushRequestResponseDto();
-        dto.setResultCode("000000eeee");
+        dto.setResultCode("000000");
         dto.setResultMessage("TEST");
 
         try {

@@ -10,6 +10,7 @@ import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.models.DvcLinkageResponseDto;
+import com.toyota.tsc.notificationhub.models.GetAccessTokenResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
 import com.toyota.tsc.notificationhub.models.RegistNotificationDeviceInfoRequestDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
@@ -44,7 +45,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
         this.jsapUtil = jsapUtil;
     }
 
-    private static final String PROCCESS_NAME = "通知端末情報登録";
+    private static final String PROCCESS_NAME = "デバイス情報登録";
 
     private static final String RESULT_SUCCESS = "SA_RND_SUCCESS";
     private static final String RESULT_FIELD_MISSING = "SA_RND_FIELD_MISSING";
@@ -53,6 +54,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
     private static final String RESULT_GET_USERID_ERROR = "SA_RND_GET_USERID_ERROR";
     private static final String RESULT_DVCLINKAGE_ERROR = "SA_RND_DVCLINKAGE_ERROR";
     private static final String RESULT_EXCEPTION = "SA_RND_EXCEPTION";
+    private static final String RESULT_TOKENFOUND_ERROR = "SA_RND_TOKENFOUND_ERROR";
 
     private static final String RES_GETUSERID_SUCCESS = "00001548B123";
     private static final String RES_DVCLINKAGE_SUCCESS = "000000";
@@ -102,7 +104,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
                     LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                            "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
+                            "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), sqlEx.getSQLState(), sqlEx.getErrorCode(), header.getCorrelationId()));
                     throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
                 LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
@@ -127,7 +129,16 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
     private void execRegistNotificationInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
         try {
             // JSAPトークン取得
-            String token = "";
+            ResponseEntity<String> getToken = jsapUtil.executeGetToken();
+            ObjectMapper mapper = new ObjectMapper();
+            GetAccessTokenResponseDto tokenDto = mapper.readValue(getToken.getBody(),
+                    GetAccessTokenResponseDto.class);
+            String token = tokenDto.getAccess_token();
+            if (token == null || token.isEmpty()) {
+                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
+                        "RS07E00013", tokenDto.getAccess_token(), request.getInternalUserId(), header.getCorrelationId()));
+                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
+            }
 
             // DB登録or更新
             int upsertCount = upsertDeviceInfo(request);
@@ -141,7 +152,6 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
             // 認証規約 UserID取得
             ResponseEntity<String> getUserIdResponce = jsapUtil.executeGetUserId(
                     request.getInternalUserId(), header.getCorrelationId());
-            ObjectMapper mapper = new ObjectMapper();
             GetUserIdResponseDto getUserIdDto = mapper.readValue(getUserIdResponce.getBody(),
                     GetUserIdResponseDto.class);
             if (!getUserIdDto.getResultCode().equals(RES_GETUSERID_SUCCESS)) {

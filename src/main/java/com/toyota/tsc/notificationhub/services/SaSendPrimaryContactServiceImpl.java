@@ -7,6 +7,7 @@ import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscPrimaryContactException;
+import com.toyota.tsc.notificationhub.models.GetAccessTokenResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserInfoResponseDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
@@ -40,6 +41,7 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
     private static final String RESULT_GET_ALJ_ERROR = "SA_PC_GET_ALJ_ERROR";
     private static final String RESULT_SEND_ERROR = "SA_PC_SEND_ERROR";
     private static final String RESULT_EXCEPTION = "SA_PC_EXCEPTION";
+    private static final String RESULT_TOKENFOUND_ERROR = "SA_PC_TOKENFOUND_ERROR";
 
     private static final String RES_GETUSERID_SUCCESS = "00001548B123";
     private static final String RES_JSAPPUSH_SUCCESS = "000000";
@@ -70,7 +72,16 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
             validate(request, header);
 
             // JSAPトークン取得
-            String token = "";
+            ResponseEntity<String> getToken = jsapUtil.executeGetToken();
+            ObjectMapper mapper = new ObjectMapper();
+            GetAccessTokenResponseDto tokenDto = mapper.readValue(getToken.getBody(),
+                    GetAccessTokenResponseDto.class);
+            String token = tokenDto.getAccess_token();
+            if (token == null || token.isEmpty()) {
+                LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
+                        "RS07E00013", tokenDto.getAccess_token(), request.getInternalUserId(), header.getCorrelationId()));
+                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
+            }
 
             // 送信要求
             sendRequest(token, request, header);
@@ -90,7 +101,7 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
 
         } catch (Exception e) {
             LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
-                    "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
+                    "RS07E00001", e.getMessage(), e, header.getCorrelationId()));
             throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
         }
     }
@@ -115,7 +126,7 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
                 LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00014", getUserIdDto.getResultCode(), request.getInternalUserId(),
                         header.getCorrelationId()));
-                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_USERID_ERROR));
+                throw new TscPrimaryContactException(CommonUtil.getResultCode(RESULT_GET_USERID_ERROR));
             }
             LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00009", request.getInternalUserId(), header.getCorrelationId()));
@@ -127,8 +138,8 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
                     GetUserInfoResponseDto.class);
             if (!getUserInfoResponce.getStatusCode().is2xxSuccessful()) {
                 LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
-                        "RS07E00014", request.getInternalUserId(), header.getCorrelationId()));
-                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_GET_ALJ_ERROR));
+                        "RS07E00015", request.getInternalUserId(), header.getCorrelationId()));
+                throw new TscPrimaryContactException(CommonUtil.getResultCode(RESULT_GET_ALJ_ERROR));
             }
             LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00010", request.getInternalUserId(), header.getCorrelationId()));
@@ -137,6 +148,8 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
             sendOperation(getUserInfoDto.getContactList(), request, header,
                     getUserIdDto.getUserId(), token);
 
+        } catch (TscPrimaryContactException e) {
+            throw new TscPrimaryContactException(e.getResultCode());
         } catch (Exception e) {
             throw new CustomException(e);
         }
@@ -207,6 +220,8 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
                     "RS07I00008", hasUserId ? "内部UserID" : "プロセスID",
                     hasUserId ? request.getInternalUserId() : request.getProcessId(),
                     request.getBrdCd(), header.getCorrelationId()));
+        } catch (TscPrimaryContactException e) {
+            throw new TscPrimaryContactException(e.getResultCode());
         } catch (Exception e) {
             throw new CustomException(e);
         }
