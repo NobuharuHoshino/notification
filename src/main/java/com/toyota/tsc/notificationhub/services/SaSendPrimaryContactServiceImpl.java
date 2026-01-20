@@ -213,13 +213,13 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
                         "RS07E00010", sendMessageDto.getResultCode(),
                         hasUserId ? "内部UserID" : "プロセスID",
                         hasUserId ? request.getInternalUserId() : request.getProcessId(),
-                        request.getBrdCd(), header.getCorrelationId()));
+                        CommonUtil.getBrd(request.getBrdCd()), header.getCorrelationId()));
                 throw new TscPrimaryContactException(CommonUtil.getResultCode(RESULT_SEND_ERROR));
             }
             LogUtil.info(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00008", hasUserId ? "内部UserID" : "プロセスID",
                     hasUserId ? request.getInternalUserId() : request.getProcessId(),
-                    request.getBrdCd(), header.getCorrelationId()));
+                    CommonUtil.getBrd(request.getBrdCd()), header.getCorrelationId()));
         } catch (TscPrimaryContactException e) {
             throw new TscPrimaryContactException(e.getResultCode());
         } catch (Exception e) {

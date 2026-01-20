@@ -146,8 +146,8 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
                 throw new CustomException();
             }
             LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                    "RS07D00001", request.getInternalUserId(), request.getDvcId(), request.getBrdCd(),
-                    request.getPlatform(), header.getCorrelationId()));
+                    "RS07D00001", request.getInternalUserId(), request.getDvcId(), CommonUtil.getBrd(request.getBrdCd()),
+                    CommonUtil.getPlt(request.getPlatform()), header.getCorrelationId()));
 
             // 認証規約 UserID取得
             ResponseEntity<String> getUserIdResponce = jsapUtil.executeGetUserId(
@@ -165,7 +165,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
 
             // JSAP デバイス登録
             LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                    "RS07I00003", request.getInternalUserId(), request.getDvcId(), request.getPlatform(),
+                    "RS07I00003", request.getInternalUserId(), request.getDvcId(), CommonUtil.getPlt(request.getPlatform()),
                     header.getCorrelationId()));
             ResponseEntity<String> dvcLinkResponce = jsapUtil.executeDvcLink(
                     getUserIdDto.getUserId(), request.getDeviceToken(), request.getPlatform(), token);
@@ -177,7 +177,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_DVCLINKAGE_ERROR));
             }
             LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                    "RS07I00004", request.getInternalUserId(), request.getDvcId(), request.getPlatform(),
+                    "RS07I00004", request.getInternalUserId(), request.getDvcId(), CommonUtil.getPlt(request.getPlatform()),
                     header.getCorrelationId()));
 
         } catch (JsonProcessingException e) {
