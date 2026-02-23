@@ -3,6 +3,7 @@ package com.toyota.tsc.notificationhub.commons;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import java.text.MessageFormat;
+import java.util.List;
 import java.util.ResourceBundle;
 
 import org.springframework.stereotype.Component;
@@ -147,5 +148,32 @@ public class CommonUtil {
             default:
                 return "";
         }
+    }
+
+    /**
+     * カンマ区切りの文字列をリストに変換します。
+     * 
+     * @param csv カンマ区切りの文字列
+     */
+    public static List<String> csvToList(String csv) {
+        String[] parts = csv.split(",");
+        List<String> list = new java.util.ArrayList<>();
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty())
+                list.add(trimmed);
+        }
+        return list;
+    }
+
+    /**
+     * リストに一致するデータが含まれるかチェックします。
+     * 
+     * @param list チェック対象リスト
+     * @param data チェック対象データ
+     * @return 一致するデータが含まれる場合はtrue、そうでない場合はfalse
+     */
+    public static boolean containsData(List<String> list, String data) {
+        return list.stream().anyMatch(item -> item.equals(data));
     }
 }

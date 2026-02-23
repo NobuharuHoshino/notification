@@ -28,6 +28,8 @@ public class PropertiesUtil {
     private String jsapNotificationApiKey;
     @Value("${sendgrid.api.key}")
     private String sendGridApiKey;
+    @Value("${ntf-silent-push-lockeys}")
+    private String silentPushLockeys;
     @Value("${sms-country.user}")
     private String smsCountryUser;
     @Value("${sms-country.pass}")
@@ -140,6 +142,10 @@ public class PropertiesUtil {
 
     public String getSendGridApiKey() {
         return sendGridApiKey;
+    }
+
+    public String getSilentPushLockeys() {
+        return silentPushLockeys;
     }
 
     public String getSmsCountryUser() {

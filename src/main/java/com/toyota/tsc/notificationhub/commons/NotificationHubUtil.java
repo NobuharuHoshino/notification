@@ -51,6 +51,7 @@ public class NotificationHubUtil {
     private static final String APS = "aps";
     private static final String ALERT = "alert";
     private static final String MUTABLE_CONTENT = "mutable-content";
+    private static final String AVAILABLE_CONTENT = "content-available";
 
     private PropertiesUtil propertiesUtil;
 
@@ -309,7 +310,14 @@ public class NotificationHubUtil {
             ObjectNode root = mapper.createObjectNode();
             ObjectNode aps = mapper.createObjectNode();
             aps.put(ALERT, " ");
-            aps.put(MUTABLE_CONTENT, 1);
+            // サイレントプッシュ用のデータ取得
+            String locKey = extractLocKey(bodyDataMap);
+            String silentLockKeys = propertiesUtil.getSilentPushLockeys();
+            if (CommonUtil.containsData(CommonUtil.csvToList(silentLockKeys), locKey)) {
+                aps.put(AVAILABLE_CONTENT, 1);
+            } else {
+                aps.put(MUTABLE_CONTENT, 1);
+            }
             root.set(APS, aps);
             Object pushInformationList = bodyDataMap.get(PUSH_INFORMATION_LIST);
             if (pushInformationList != null) {
@@ -330,6 +338,17 @@ public class NotificationHubUtil {
         } catch (JsonProcessingException e) {
             throw new CustomException(e);
         }
+    }
+
+    /**
+     * bodyDataからロケーションキー（LokKey）を取得します。
+     * 
+     * @param bodyData ペイロードデータマップ
+     * @return ロケーションキー（存在しない場合はnull）
+     */
+    public String extractLocKey(Map<String, Object> bodyDataMap) {
+        Object locKeyObj = bodyDataMap.get(LOC_KEY);
+        return locKeyObj != null ? String.valueOf(locKeyObj) : null;
     }
 
     /**
