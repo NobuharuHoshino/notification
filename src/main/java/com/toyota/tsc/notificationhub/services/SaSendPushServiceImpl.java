@@ -25,6 +25,7 @@ import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * プッシュ通知送信サービス実装クラス
@@ -70,6 +71,7 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
      * @param header  ヘッダーDTO
      * @return 結果コード
      */
+    @Transactional(rollbackFor = Exception.class)
     public ResponseDto sendPush(SendPushRequestDto request, RequestHeaderDto header) {
 
         try {
@@ -99,7 +101,8 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
             String token = tokenDto.getAccess_token();
             if (token == null || token.isEmpty()) {
                 LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
-                        "RS07E00013", tokenDto.getAccess_token(), request.getInternalUserId(), header.getCorrelationId()));
+                        "RS07E00013", tokenDto.getAccess_token(), request.getInternalUserId(),
+                        header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
             }
 
@@ -131,7 +134,8 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
                     LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
-                            "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), sqlEx.getSQLState(), sqlEx.getErrorCode(), header.getCorrelationId()));
+                            "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), sqlEx.getSQLState(),
+                            sqlEx.getErrorCode(), header.getCorrelationId()));
                     throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
                 LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(

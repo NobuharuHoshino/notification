@@ -1,4 +1,3 @@
-
 package com.toyota.tsc.notificationhub.services;
 
 import com.sendgrid.Response;

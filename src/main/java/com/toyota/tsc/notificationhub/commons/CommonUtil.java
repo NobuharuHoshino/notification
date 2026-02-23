@@ -60,6 +60,15 @@ public class CommonUtil {
     }
 
     /**
+     * ログメッセージを取得します。
+     */
+    public static String getBatMessage(String id, Object... params) {
+        ResourceBundle bundleLog = ResourceBundle.getBundle("properties.BatLogMessages");
+        String pattern = bundleLog.getString(id);
+        return MessageFormat.format(pattern, params);
+    }
+
+    /**
      * 結果コードを取得します。
      * 
      * @param code 結果コードキー

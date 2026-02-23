@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.toyota.tsc.notificationhub.repositories.NotificationVinListMapper">
+  <select id="select" resultType="com.toyota.tsc.notificationhub.repositories.NotificationVinListEntity" timeout="5">
+    SELECT
+      id,
+      region_code,
+      notification_id,
+      vin_list,
+      notification_send_list,
+      registration_serial_number,
+      sequence_number,
+      is_linked,
+      is_deleted,
+      created,
+      updated
+    FROM
+      notification_vin_list
+    WHERE
+      registration_serial_number = #{registrationSerialNumber} AND
+      is_linked = #{isLinked};
+  </select>
+  <update id="update" timeout="5">
+    UPDATE
+      notification_vin_list
+    SET
+      is_linked = #{isLinked},
+      updated = CURRENT_TIMESTAMP
+    WHERE
+      registration_serial_number = #{registrationSerialNumber} AND
+      sequence_number = #{sequenceNumber}
+  </update>
+</mapper>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.toyota.tsc.notificationhub.repositories.NtfBatchExecHistoryMapper">
+  <insert id="insert" parameterType="com.toyota.tsc.notificationhub.repositories.NtfBatchExecHistoryEntity" timeout="5">
+    INSERT INTO ntf_batch_exec_history (
+      registraion_serial_number,
+      sequence_number,
+      status,
+      scheduled_send_data,
+      started_at,
+      ended_at,
+      created_at,
+      updated_at
+    ) VALUES (
+      #{entity.registrationSerialNumber},
+      #{entity.sequenceNumber},
+      #{entity.status},
+      #{entity.scheduledSendData},
+      CURRENT_TIMESTAMP,
+      NULL,
+      CURRENT_TIMESTAMP,
+      CURRENT_TIMESTAMP
+    );
+  </insert>
+  <update id="updateStatus" timeout="5">
+    UPDATE
+      ntf_batch_exec_history
+    SET
+      status = #{status},
+      ended_at = CURRENT_TIMESTAMP,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE
+      registraion_serial_number = #{registrationSerialNumber} AND
+      sequence_number = #{sequenceNumber};
+  </update>
+</mapper>

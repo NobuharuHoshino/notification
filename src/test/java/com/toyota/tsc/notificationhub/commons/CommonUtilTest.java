@@ -355,6 +355,84 @@ class CommonUtilTest {
         assertEquals("819012345678", normalized);
     }
 
+    /** クラス：CommonUtil getBrd TOYOTAブランドの場合にTOYOTAが返ることを確認するテストケース */
+    @Test
+    void getBrd_001() {
+        // Arrange
+        String brdCd = "1";
+
+        // Act
+        String result = CommonUtil.getBrd(brdCd);
+
+        // Assert
+        assertEquals("TOYOTA", result);
+    }
+
+    /** クラス：CommonUtil getBrd LEXUSブランドの場合にLEXUSが返ることを確認するテストケース */
+    @Test
+    void getBrd_002() {
+        // Arrange
+        String brdCd = "2";
+
+        // Act
+        String result = CommonUtil.getBrd(brdCd);
+
+        // Assert
+        assertEquals("LEXUS", result);
+    }
+
+    /** クラス：CommonUtil getBrd 不明なブランドコードの場合に空文字が返ることを確認するテストケース */
+    @Test
+    void getBrd_003() {
+        // Arrange
+        String brdCd = "9";
+
+        // Act
+        String result = CommonUtil.getBrd(brdCd);
+
+        // Assert
+        assertEquals("", result);
+    }
+
+    /** クラス：CommonUtil getPlt Androidプラットフォームの場合にAndroidが返ることを確認するテストケース */
+    @Test
+    void getPlt_001() {
+        // Arrange
+        String platform = "1";
+
+        // Act
+        String result = CommonUtil.getPlt(platform);
+
+        // Assert
+        assertEquals("Android", result);
+    }
+
+    /** クラス：CommonUtil getPlt iOSプラットフォームの場合にiOSが返ることを確認するテストケース */
+    @Test
+    void getPlt_002() {
+        // Arrange
+        String platform = "2";
+
+        // Act
+        String result = CommonUtil.getPlt(platform);
+
+        // Assert
+        assertEquals("iOS", result);
+    }
+
+    /** クラス：CommonUtil getPlt 不明なプラットフォームの場合に空文字が返ることを確認するテストケース */
+    @Test
+    void getPlt_003() {
+        // Arrange
+        String platform = "9";
+
+        // Act
+        String result = CommonUtil.getPlt(platform);
+
+        // Assert
+        assertEquals("", result);
+    }
+
     // ----- テスト用DTO -----
     static class DummyDto {
         public int id;

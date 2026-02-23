@@ -20,6 +20,7 @@ import com.windowsazure.messaging.FcmV1Notification;
 import com.windowsazure.messaging.Notification;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
@@ -374,6 +375,53 @@ public class NotificationHubUtil {
         } catch (JsonProcessingException e) {
             throw new CustomException(e);
         }
+    }
+
+    /**
+     * platformに応じたパスのlcsSelectedを置換してJSON文字列を返す。
+     * ANDROID: message.android.data.lcsSelected
+     * IOS : (root).lcsSelected
+     */
+    public String replaceLcsSelected(String payload, String platform, String internalLicenseCode) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            JsonNode rootNode = mapper.readTree(payload);
+            ObjectNode root = (ObjectNode) rootNode;
+            switch (platform) {
+                case PLATFORM_ANDROID:
+                    ObjectNode dataNode = requireObject(root, MESSAGE, ANDROID, DATA);
+                    dataNode.put(LCS_SELECTED, internalLicenseCode);
+                    break;
+                case PLATFORM_IOS:
+                    root.put(LCS_SELECTED, internalLicenseCode);
+                    break;
+                default:
+                    return null;
+            }
+            return mapper.writeValueAsString(root);
+
+        } catch (JsonProcessingException e) {
+            throw new CustomException(e);
+        }
+    }
+
+    /**
+     * 指定パスのノードが「存在するObject」であることを保証して返す（無い/型違いなら例外）
+     */
+    private ObjectNode requireObject(ObjectNode root, String... path) {
+        JsonNode current = root;
+        StringBuilder p = new StringBuilder("$");
+        for (String key : path) {
+            p.append(".").append(key);
+            current = current.get(key);
+            if (current == null || current.isNull()) {
+                throw new CustomException();
+            }
+            if (!current.isObject()) {
+                throw new CustomException();
+            }
+        }
+        return (ObjectNode) current;
     }
 
 }

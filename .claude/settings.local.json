@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew compileTestJava:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(dir:*)",
+      "Bash(.gradlew.bat jacocoTestReport:*)",
+      "Bash(cmd.exe /c:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(Select-String 'class=\"\"nc|class=\"\"pc')",
+      "Bash(powershell -Command:*)",
+      "Bash(python3:*)"
+    ]
+  }
+}

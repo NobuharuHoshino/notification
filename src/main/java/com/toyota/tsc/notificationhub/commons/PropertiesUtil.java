@@ -18,6 +18,10 @@ public class PropertiesUtil {
     private String keyL;
     @Value("${personalinfo.api.key}")
     private String personalInfoApiKey;
+    @Value("${personalinfolist.api.key}")
+    private String personalInfoListApiKey;
+    @Value("${registernotification.api.key}")
+    private String registerNotificationApiKey;
     @Value("${jsap.getuserinfo.xapikey}")
     private String jsapGetUserInfoApiKey;
     @Value("${jsap.getuserid.xapikey}")
@@ -88,6 +92,10 @@ public class PropertiesUtil {
     private int ntfinfoUpsertRetryMaxInterval;
     @Value("${personalinfo.api.url}")
     private String personalInfoApiUrl;
+    @Value("${personalinfolist.api.url}")
+    private String personalInfoListApiUrl;
+    @Value("${registernotification.url}")
+    private String registerNotificationUrl;
     @Value("${sendgrid.from.address-T}")
     private String fromAddressToyota;
     @Value("${sendgrid.from.name-T}")
@@ -102,6 +110,8 @@ public class PropertiesUtil {
     private String senderIdLexus;
     @Value("${sms-country.api-url}")
     private String smsCountryApiUrl;
+    @Value("${parallel.current}")
+    private int parallelCurrent;
 
     // Secret Configuration
     public String getKeyNameT() {
@@ -122,6 +132,14 @@ public class PropertiesUtil {
 
     public String getPersonalInfoApiKey() {
         return personalInfoApiKey;
+    }
+
+    public String getPersonalInfoListApiKey() {
+        return personalInfoListApiKey;
+    }
+
+    public String getRegisterNotificationApiKey() {
+        return registerNotificationApiKey;
     }
 
     public String getJsapGetUserIdApiKey() {
@@ -261,6 +279,14 @@ public class PropertiesUtil {
         return personalInfoApiUrl;
     }
 
+    public String getPersonalInfoListApiUrl() {
+        return personalInfoListApiUrl;
+    }
+
+    public String getRegisterNotificationUrl() {
+        return registerNotificationUrl;
+    }
+
     public String getFromAddressToyota() {
         return fromAddressToyota;
     }
@@ -287,5 +313,9 @@ public class PropertiesUtil {
 
     public String getSmsCountryApiUrl() {
         return smsCountryApiUrl;
+    }
+
+    public int getParallelCurrent() {
+        return parallelCurrent;
     }
 }

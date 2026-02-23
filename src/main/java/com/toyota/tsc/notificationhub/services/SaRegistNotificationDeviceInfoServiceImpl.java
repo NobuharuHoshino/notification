@@ -104,7 +104,8 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラー
                     LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                            "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), sqlEx.getSQLState(), sqlEx.getErrorCode(), header.getCorrelationId()));
+                            "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), sqlEx.getSQLState(),
+                            sqlEx.getErrorCode(), header.getCorrelationId()));
                     throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
                 LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
@@ -136,7 +137,8 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
             String token = tokenDto.getAccess_token();
             if (token == null || token.isEmpty()) {
                 LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                        "RS07E00013", tokenDto.getAccess_token(), request.getInternalUserId(), header.getCorrelationId()));
+                        "RS07E00013", tokenDto.getAccess_token(), request.getInternalUserId(),
+                        header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
             }
 
@@ -146,7 +148,8 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
                 throw new CustomException();
             }
             LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                    "RS07D00001", request.getInternalUserId(), request.getDvcId(), CommonUtil.getBrd(request.getBrdCd()),
+                    "RS07D00001", request.getInternalUserId(), request.getDvcId(),
+                    CommonUtil.getBrd(request.getBrdCd()),
                     CommonUtil.getPlt(request.getPlatform()), header.getCorrelationId()));
 
             // 認証規約 UserID取得
@@ -165,7 +168,8 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
 
             // JSAP デバイス登録
             LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                    "RS07I00003", request.getInternalUserId(), request.getDvcId(), CommonUtil.getPlt(request.getPlatform()),
+                    "RS07I00003", request.getInternalUserId(), request.getDvcId(),
+                    CommonUtil.getPlt(request.getPlatform()),
                     header.getCorrelationId()));
             ResponseEntity<String> dvcLinkResponce = jsapUtil.executeDvcLink(
                     getUserIdDto.getUserId(), request.getDeviceToken(), request.getPlatform(), token);
@@ -173,12 +177,12 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
             if (!dvcLinkDto.getResultCode().equals(RES_DVCLINKAGE_SUCCESS)) {
                 LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00006", dvcLinkDto.getResultCode(), request.getInternalUserId(),
-                        request.getDvcId(), header.getCorrelationId()));
+                        dvcLinkResponce.getBody(), request.getInternalUserId(), header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_DVCLINKAGE_ERROR));
             }
             LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                    "RS07I00004", request.getInternalUserId(), request.getDvcId(), CommonUtil.getPlt(request.getPlatform()),
-                    header.getCorrelationId()));
+                    "RS07I00004", dvcLinkDto.getResultCode(), request.getInternalUserId(), request.getDvcId(),
+                    CommonUtil.getPlt(request.getPlatform()), header.getCorrelationId()));
 
         } catch (JsonProcessingException e) {
             throw new CustomException(e);

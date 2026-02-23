@@ -1,6 +1,3 @@
-
-// // ファイルパス:
-// src/test/java/com/toyota/tsc/notificationhub/commons/PersonalInfoUtilTest.java
 // package com.toyota.tsc.notificationhub.commons;
 
 // import com.toyota.tsc.notificationhub.exceptions.CustomException;

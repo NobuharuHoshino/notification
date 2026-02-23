@@ -2,10 +2,12 @@ package com.toyota.tsc.notificationhub.controllers;
 
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
 import com.toyota.tsc.notificationhub.models.ResponseDto;
+import com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto;
 import com.toyota.tsc.notificationhub.models.RegistNotificationDeviceInfoRequestDto;
 import com.toyota.tsc.notificationhub.models.SendPrimaryContactRequestDto;
 import com.toyota.tsc.notificationhub.models.SendPushRequestDto;
 import com.toyota.tsc.notificationhub.services.RegistNotificationDeviceInfoServiceIF;
+import com.toyota.tsc.notificationhub.services.SendMessageNotificationServiceIF;
 import com.toyota.tsc.notificationhub.services.SendPrimaryContactServiceIF;
 import com.toyota.tsc.notificationhub.services.SendPushServiceIF;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class NotificationController {
         private final RegistNotificationDeviceInfoServiceIF registService;
         private final SendPushServiceIF pushService;
         private final SendPrimaryContactServiceIF primaryContactService;
+        private final SendMessageNotificationServiceIF messageNotificationService;
 
         /**
          * デバイス情報登録API
@@ -107,6 +110,36 @@ public class NotificationController {
                 RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType, connection, acceptEncoding,
                                 correlationId, userAccessKey, xSmartgbook);
                 ResponseDto resultCode = primaryContactService.sendPrimaryContact(body, header);
+                return ResponseEntity.ok(resultCode);
+        }
+
+        /**
+         * お知らせ通知送信API
+         *
+         * @param apiKey         APIキー
+         * @param contentType    Content-Type
+         * @param connection     Connection
+         * @param acceptEncoding Accept-Encoding
+         * @param correlationId  コリレーションID
+         * @param userAccessKey  ユーザーアクセスキー
+         * @param xSmartgbook    x-smartgbook
+         * @param body           リクエストボディ
+         * @return 送信結果コード
+         */
+        @PostMapping("/sendMessageNotification")
+        public ResponseEntity<ResponseDto> sendMessageNotification(
+                        @RequestHeader(value = "x-api-key", required = false) String apiKey,
+                        @RequestHeader(value = "content-type", required = true) String contentType,
+                        @RequestHeader(value = "connection", required = false) String connection,
+                        @RequestHeader(value = "accept-encoding", required = false) String acceptEncoding,
+                        @RequestHeader(value = "x-correlation-id", required = true) String correlationId,
+                        @RequestHeader(value = "user-access-key", required = false) String userAccessKey,
+                        @RequestHeader(value = "x-smartgbook", required = false) String xSmartgbook,
+                        @RequestBody SendMessageNotificationRequestDto body) {
+                RequestHeaderDto header = new RequestHeaderDto(apiKey, contentType,
+                                connection, acceptEncoding,
+                                correlationId, userAccessKey, xSmartgbook);
+                ResponseDto resultCode = messageNotificationService.sendMessageNotification(body, header);
                 return ResponseEntity.ok(resultCode);
         }
 }
