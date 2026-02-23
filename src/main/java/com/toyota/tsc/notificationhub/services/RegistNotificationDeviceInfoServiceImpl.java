@@ -78,7 +78,8 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
 
             // Installation実行
             List<NtfInfoEntity> deviceList = getAllDeviceData(request.getInternalUserId());
-            if (!extractByDeviceToken(deviceList, request.getDeviceToken()).isEmpty()) {
+            NtfInfoEntity lastData = getLastData(deviceList);
+            if (request.getDeviceToken().equals(lastData.getDeviceToken())) {
                 LogUtil.info(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                         "RS07D00002", request.getDeviceToken(), "InstallationID生成SKIP",
                         CommonUtil.toJson(extractToDeviceTokenList(deviceList)), header.getCorrelationId()));
@@ -315,18 +316,6 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
 
     // #region Action DB/DO Methods
     /**
-     * デバイストークンで端末情報を抽出します。
-     * 
-     * @param deviceList  端末情報リスト
-     * @param deviceToken デバイストークン
-     * @return 抽出した端末情報リスト
-     */
-    private List<NtfInfoEntity> extractByDeviceToken(List<NtfInfoEntity> deviceList, String deviceToken) {
-        return deviceList.stream()
-                .filter(entity -> entity.getDeviceToken().equals(deviceToken)).toList();
-    }
-
-    /**
      * 端末情報リストからデバイストークンリストを抽出します。
      * 
      * @param deviceList 端末情報リスト
@@ -348,6 +337,19 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
         List<NtfInfoEntity> deviceList = new ArrayList<>();
         deviceList.addAll(ntfInfoRepository.selectAllByInternalUserId(internalUserId));
         return deviceList;
+    }
+
+    /**
+     * 端末情報リストから最新データを取得します。
+     * 
+     * @param deviceList 端末情報リスト
+     * @return 最新の端末情報エンティティ
+     */
+    private NtfInfoEntity getLastData(List<NtfInfoEntity> deviceList) {
+        return deviceList.stream()
+                .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
+                .findFirst()
+                .orElse(new NtfInfoEntity(null, null, null, null, null, null, null, null));
     }
 
     /**

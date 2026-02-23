@@ -1152,4 +1152,399 @@ class RegistNotificationDeviceInfoServiceImplTest {
                                 anyString(), anyString());
         }
 
+        // ============================================================================
+        // FIX: UnnecessaryStubbingException を潰すための「最小 stub」ヘルパー＆修正版テスト群
+        // ※ 末尾「}」の直前に貼り付け
+        // ※ 既存の ntfMin を使った追加テスト（*_minStub など）はコメントアウト/削除してから実行
+        // ============================================================================
+
+        /** updatedAt だけ必要なケース用（並び替え比較に必要） */
+        private static NtfInfoEntity ntfUpdatedAtOnly(LocalDateTime updatedAt) {
+                NtfInfoEntity e = mock(NtfInfoEntity.class);
+                when(e.getUpdatedAt()).thenReturn(updatedAt);
+                return e;
+        }
+
+        /** getDeleteTargetList の戻り値検証等で installationId が必要なケース用 */
+        private static NtfInfoEntity ntfIdAndUpdatedAt(String installationId, LocalDateTime updatedAt) {
+                NtfInfoEntity e = mock(NtfInfoEntity.class);
+                when(e.getInstallationId()).thenReturn(installationId);
+                when(e.getUpdatedAt()).thenReturn(updatedAt);
+                return e;
+        }
+
+        /** deleteDeviceData の delete 対象（最古1件）に必要な最小セット */
+        private static NtfInfoEntity ntfDbDeleteTarget(String internalUserId, String installationId,
+                        LocalDateTime updatedAt) {
+                NtfInfoEntity e = mock(NtfInfoEntity.class);
+                when(e.getInternalUserId()).thenReturn(internalUserId);
+                when(e.getInstallationId()).thenReturn(installationId);
+                when(e.getUpdatedAt()).thenReturn(updatedAt);
+                return e;
+        }
+
+        /** operationDeleteInstallation の削除対象（最新以外）に必要な最小セット */
+        private static NtfInfoEntity ntfHubDeleteTarget(String installationId, String deviceToken,
+                        LocalDateTime updatedAt) {
+                NtfInfoEntity e = mock(NtfInfoEntity.class);
+                when(e.getInstallationId()).thenReturn(installationId);
+                when(e.getDeviceToken()).thenReturn(deviceToken);
+                when(e.getUpdatedAt()).thenReturn(updatedAt);
+                return e;
+        }
+
+        /**
+         * deleteDeviceData:
+         * updatedAt 昇順 + limit(1) により「最古1件」だけ delete されることを検証
+         * ※ neu（削除されない側）には updatedAt だけを stub（ここが重要）
+         */
+        @Test
+        void deleteDeviceData_201_deletesOldestOne_noUnnecessaryStub() throws Exception {
+                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
+                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
+
+                RegistNotificationDeviceInfoRequestDto request = mock(RegistNotificationDeviceInfoRequestDto.class);
+                when(request.getInternalUserId()).thenReturn("u"); // ログ引数で使用
+                                                                   // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+
+                RequestHeaderDto header = mock(RequestHeaderDto.class);
+                when(header.getCorrelationId()).thenReturn("cid-dbdel-201");
+
+                LocalDateTime tOld = LocalDateTime.parse("2026-01-01T00:00:00");
+                LocalDateTime tNew = LocalDateTime.parse("2026-01-02T00:00:00");
+
+                // old(削除対象): internalUserId + installationId + updatedAt が必要
+                NtfInfoEntity old = ntfDbDeleteTarget("u", "iid_old", tOld);
+                // neu(削除されない): 並び替え比較のため updatedAt だけ必要（他は stub しない！）
+                NtfInfoEntity neu = ntfUpdatedAtOnly(tNew);
+
+                when(ntfInfoRepository.delete(eq("u"), eq("iid_old"))).thenReturn(1);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "deleteDeviceData",
+                                RegistNotificationDeviceInfoRequestDto.class,
+                                RequestHeaderDto.class,
+                                List.class);
+                m.setAccessible(true);
+
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg"); // ログ用
+                                                                                                                      // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+
+                        Object ret = m.invoke(sut, request, header, List.of(neu, old));
+
+                        assertEquals(1, ret);
+                        verify(ntfInfoRepository, times(1)).delete(eq("u"), eq("iid_old"));
+                        verify(ntfInfoRepository, never()).delete(eq("u"), eq("iid_new"));
+                }
+        }
+
+        /**
+         * getLastData:
+         * sorted((a,b)-> b.getUpdatedAt().compareTo(a.getUpdatedAt())) が比較され、最新が返ることを検証
+         * ※ old は updatedAt だけで良い（installationId を stub すると未使用になり得る）
+         */
+        @Test
+        void getLastData_201_sortedComparator_returnsNewest_noUnnecessaryStub() throws Exception {
+                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
+                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
+
+                LocalDateTime tOld = LocalDateTime.parse("2026-01-01T00:00:00");
+                LocalDateTime tNew = LocalDateTime.parse("2026-01-02T00:00:00");
+
+                NtfInfoEntity old = ntfUpdatedAtOnly(tOld);
+                // 返ってくる方（neu）だけ installationId を検証したいので stub
+                NtfInfoEntity neu = ntfIdAndUpdatedAt("iid_new", tNew);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod("getLastData", List.class);
+                m.setAccessible(true);
+
+                Object result = m.invoke(sut, List.of(old, neu));
+
+                assertTrue(result instanceof NtfInfoEntity);
+                assertEquals("iid_new", ((NtfInfoEntity) result).getInstallationId());
+        }
+
+        /**
+         * getDeleteTargetList:
+         * updatedAt 降順で並べた先頭(最新)を除いたリストが返る
+         * ※ newest は updatedAt だけで良い（installationId は未使用になり得る）
+         */
+        @Test
+        void getDeleteTargetList_201_returnsAllExceptNewest_noUnnecessaryStub() throws Exception {
+                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
+                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
+
+                LocalDateTime t1 = LocalDateTime.parse("2026-01-03T00:00:00"); // newest
+                LocalDateTime t2 = LocalDateTime.parse("2026-01-02T00:00:00"); // mid
+                LocalDateTime t3 = LocalDateTime.parse("2026-01-01T00:00:00"); // old
+
+                NtfInfoEntity newest = ntfUpdatedAtOnly(t1);
+                NtfInfoEntity mid = ntfIdAndUpdatedAt("iid_mid", t2);
+                NtfInfoEntity old = ntfIdAndUpdatedAt("iid_old", t3);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod("getDeleteTargetList",
+                                List.class);
+                m.setAccessible(true);
+
+                @SuppressWarnings("unchecked")
+                List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(sut, List.of(mid, newest, old));
+
+                assertEquals(2, result.size());
+                assertEquals("iid_mid", result.get(0).getInstallationId());
+                assertEquals("iid_old", result.get(1).getInstallationId());
+        }
+
+        /**
+         * getDeleteTargetList:
+         * nullsLast(...).reversed() の経路を踏むため updatedAt=null を含む
+         * ※ 検証はサイズだけでOK（installationId は不要stubになるので入れない）
+         */
+        @Test
+        void getDeleteTargetList_202_includesNullUpdatedAt_noUnnecessaryStub() throws Exception {
+                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
+                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
+
+                NtfInfoEntity hasTime = ntfUpdatedAtOnly(LocalDateTime.parse("2026-01-01T00:00:00"));
+                NtfInfoEntity nullTime = ntfUpdatedAtOnly(null);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod("getDeleteTargetList",
+                                List.class);
+                m.setAccessible(true);
+
+                @SuppressWarnings("unchecked")
+                List<NtfInfoEntity> result = (List<NtfInfoEntity>) m.invoke(sut, List.of(hasTime, nullTime));
+
+                assertEquals(1, result.size());
+        }
+
+        /**
+         * operationDeleteInstallation:
+         * size < 2 の場合は if に入らない（stub 不要）
+         */
+        @Test
+        void operationDeleteInstallation_201_size1_noDelete_noUnnecessaryStub() throws Exception {
+                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
+                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
+
+                RegistNotificationDeviceInfoRequestDto request = mock(RegistNotificationDeviceInfoRequestDto.class);
+                RequestHeaderDto header = mock(RequestHeaderDto.class);
+
+                // getter は一切呼ばれないので “素のmock” でOK
+                NtfInfoEntity only = mock(NtfInfoEntity.class);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "operationDeleteInstallation",
+                                RegistNotificationDeviceInfoRequestDto.class,
+                                RequestHeaderDto.class,
+                                List.class);
+                m.setAccessible(true);
+
+                m.invoke(sut, request, header, List.of(only));
+
+                verify(notificationHubUtil, never()).deleteInstallation(anyString(), anyString());
+        }
+
+        /**
+         * operationDeleteInstallation:
+         * size>=2 の場合、最新以外を deleteInstallation（3件→2件削除）
+         * ※ latest は updatedAt だけでOK（installationId/deviceToken は未使用になり得る）
+         */
+        @Test
+        void operationDeleteInstallation_202_size3_deleteTwoOldInstallations_noUnnecessaryStub() throws Exception {
+                when(propertiesUtil.getRetryCount()).thenReturn(1);
+
+                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
+                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
+
+                RegistNotificationDeviceInfoRequestDto request = mock(RegistNotificationDeviceInfoRequestDto.class);
+                when(request.getDeviceToken()).thenReturn("tok");
+                when(request.getBrdCd()).thenReturn("1");
+                when(request.getInternalUserId()).thenReturn("u");
+
+                RequestHeaderDto header = mock(RequestHeaderDto.class);
+                when(header.getCorrelationId()).thenReturn("cid-del-202");
+
+                LocalDateTime t1 = LocalDateTime.parse("2026-01-03T00:00:00"); // latest
+                LocalDateTime t2 = LocalDateTime.parse("2026-01-02T00:00:00"); // mid
+                LocalDateTime t3 = LocalDateTime.parse("2026-01-01T00:00:00"); // old
+
+                NtfInfoEntity latest = ntfUpdatedAtOnly(t1);
+                NtfInfoEntity mid = ntfHubDeleteTarget("iid_mid", "tok_mid", t2);
+                NtfInfoEntity old = ntfHubDeleteTarget("iid_old", "tok_old", t3);
+
+                doNothing().when(notificationHubUtil).deleteInstallation(anyString(), anyString());
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "operationDeleteInstallation",
+                                RegistNotificationDeviceInfoRequestDto.class,
+                                RequestHeaderDto.class,
+                                List.class);
+                m.setAccessible(true);
+
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getBrd(anyString())).thenReturn("BRD");
+
+                        m.invoke(sut, request, header, List.of(latest, mid, old));
+
+                        verify(notificationHubUtil, times(1)).deleteInstallation(eq("iid_mid"), eq("1"));
+                        verify(notificationHubUtil, times(1)).deleteInstallation(eq("iid_old"), eq("1"));
+                        verify(notificationHubUtil, times(2)).deleteInstallation(anyString(), eq("1"));
+                }
+        }
+
+        /**
+         * execRegistNotificationInfo:
+         * size>=2 分岐まで通して deleteInstallation + deleteDeviceData を両方実行
+         * ※ latest は updatedAt だけ、old は必要分だけ stub
+         */
+        @Test
+        void execRegistNotificationInfo_201_deviceListSize2_deletePathExecuted_noUnnecessaryStub() throws Exception {
+                when(propertiesUtil.getRetryCount()).thenReturn(1);
+
+                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
+                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
+
+                RegistNotificationDeviceInfoRequestDto request = mock(RegistNotificationDeviceInfoRequestDto.class);
+                when(request.getInternalUserId()).thenReturn("u");
+                when(request.getPlatform()).thenReturn("1");
+                when(request.getDeviceToken()).thenReturn("tokNew");
+                when(request.getBrdCd()).thenReturn("1");
+                // request.getDvcId は成功経路では不要（エラー時ログ用）
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+
+                RequestHeaderDto header = mock(RequestHeaderDto.class);
+                when(header.getCorrelationId()).thenReturn("cid-exec-201");
+
+                LocalDateTime tOld = LocalDateTime.parse("2026-01-01T00:00:00");
+                LocalDateTime tNew = LocalDateTime.parse("2026-01-02T00:00:00");
+
+                // latest: updatedAt だけ
+                NtfInfoEntity latest = ntfUpdatedAtOnly(tNew);
+
+                // old: deleteInstallation の対象＆deleteDeviceData の対象になり得るので必要最小限を stub
+                NtfInfoEntity old = mock(NtfInfoEntity.class);
+                when(old.getUpdatedAt()).thenReturn(tOld);
+                when(old.getInstallationId()).thenReturn("iid_old");
+                when(old.getDeviceToken()).thenReturn("tok_old");
+                when(old.getInternalUserId()).thenReturn("u");
+
+                when(ntfInfoRepository.upsert(any())).thenReturn(1);
+                doNothing().when(notificationHubUtil).deleteInstallation(anyString(), anyString());
+                doNothing().when(notificationHubUtil)
+                                .upsertInstallation(anyString(), anyString(), anyString(), anyString(), anyString());
+
+                // deleteDeviceData は最古(iid_old)を削除
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                when(ntfInfoRepository.delete(eq("u"), eq("iid_old"))).thenReturn(1);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "execRegistNotificationInfo",
+                                RegistNotificationDeviceInfoRequestDto.class,
+                                RequestHeaderDto.class,
+                                List.class);
+                m.setAccessible(true);
+
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getBrd(anyString())).thenReturn("BRD");
+                        common.when(() -> CommonUtil.getPlt(anyString())).thenReturn("PLT");
+
+                        m.invoke(sut, request, header, List.of(latest, old));
+
+                        verify(notificationHubUtil, times(1)).deleteInstallation(eq("iid_old"), eq("1"));
+                        verify(ntfInfoRepository, times(1)).delete(eq("u"), eq("iid_old"));
+                }
+        }
+
+        /**
+         * execRegistNotificationInfo:
+         * deviceList.size() >= 2 かつ deleteDeviceData の deleteCount == 0 の場合に
+         * throw new CustomException() となることを検証
+         * [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+         *
+         * ※UnnecessaryStubbingException回避のため、NtfInfoEntityは「実際に呼ばれるgetterだけ」stubする
+         */
+        @Test
+        void execRegistNotificationInfo_301_deleteCountZero_throwCustomException() throws Exception {
+                // Arrange
+                when(propertiesUtil.getRetryCount()).thenReturn(1); // delete/upsert installation の while に入るため
+                                                                    // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+
+                RegistNotificationDeviceInfoServiceImpl sut = new RegistNotificationDeviceInfoServiceImpl(
+                                ntfInfoRepository, notificationHubUtil, propertiesUtil);
+
+                // request はこの経路で getInternalUserId/getPlatform/getDeviceToken/getDvcId/getBrdCd
+                // が使われるため req() でOK
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)[2](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tokNew", "dvc", "1");
+                RequestHeaderDto header = header("cid-delcnt0");
+
+                // deviceList は size>=2 を満たす
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                LocalDateTime tOld = LocalDateTime.parse("2026-01-01T00:00:00");
+                LocalDateTime tNew = LocalDateTime.parse("2026-01-02T00:00:00");
+
+                // newest: ソート比較に必要な updatedAt だけ stub（他は不要＝stubしない）
+                NtfInfoEntity newest = mock(NtfInfoEntity.class);
+                when(newest.getUpdatedAt()).thenReturn(tNew);
+
+                // oldest: operationDeleteInstallation と deleteDeviceData 両方で参照される getter だけ
+                // stub
+                // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                NtfInfoEntity oldest = mock(NtfInfoEntity.class);
+                when(oldest.getUpdatedAt()).thenReturn(tOld);
+                when(oldest.getInstallationId()).thenReturn("iid_old"); // deleteInstallation / deleteDeviceData で必要
+                                                                        // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                when(oldest.getDeviceToken()).thenReturn("tok_old"); // operationDeleteInstallation のログで必要
+                                                                     // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                when(oldest.getInternalUserId()).thenReturn("u"); // deleteDeviceData の delete 引数で必要
+                                                                  // [1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+
+                // upsert
+                // は成功させる（0だと別分岐で落ちる）[1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                when(ntfInfoRepository.upsert(any())).thenReturn(1);
+
+                // Installation API
+                // は成功させる（例外系に行かない）[1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                doNothing().when(notificationHubUtil).deleteInstallation(anyString(), anyString());
+                doNothing().when(notificationHubUtil)
+                                .upsertInstallation(anyString(), anyString(), anyString(), anyString(), anyString());
+
+                // ★deleteDeviceData の deleteCount を 0 にする（delete が 0
+                // を返す）[1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                when(ntfInfoRepository.delete(eq("u"), eq("iid_old"))).thenReturn(0);
+
+                Method m = RegistNotificationDeviceInfoServiceImpl.class.getDeclaredMethod(
+                                "execRegistNotificationInfo",
+                                RegistNotificationDeviceInfoRequestDto.class,
+                                RequestHeaderDto.class,
+                                List.class);
+                m.setAccessible(true);
+
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        // この経路で呼ばれる static を最小限
+                        // stub（不要stub禁止）[1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                        common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+                        common.when(() -> CommonUtil.getBrd(anyString())).thenReturn("BRD");
+                        common.when(() -> CommonUtil.getPlt(anyString())).thenReturn("PLT");
+
+                        // Act + Assert（Reflection の cause を投げ直す）
+                        assertThrows(CustomException.class, () -> {
+                                try {
+                                        m.invoke(sut, request, header, List.of(newest, oldest));
+                                } catch (Exception ex) {
+                                        Throwable c = ex.getCause();
+                                        if (c instanceof RuntimeException)
+                                                throw (RuntimeException) c;
+                                        throw new RuntimeException(c);
+                                }
+                        });
+
+                        // delete
+                        // は実行されている（その結果が0だったので例外になる）[1](https://nttdatajpprod-my.sharepoint.com/personal/nobuharu_hoshino_bp_jp_nttdata_com/Documents/Microsoft%20Copilot%20Chat%20%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB/RegistNotificationDeviceInfoServiceImpl.java)
+                        verify(ntfInfoRepository, times(1)).delete(eq("u"), eq("iid_old"));
+                }
+        }
 }
