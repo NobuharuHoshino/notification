@@ -51,7 +51,7 @@ public class BatApisUtil {
     public ResponseEntity<String> executeRegisterNotification(RegisterNotificationRequestDto request) {
         String dummyJson = """
                 {
-                  "returnCode": "0000",
+                  "returnCode": "000000",
                   "notificationId": "TEST-NOTIF-001",
                   "message": "OK (dummy)"
                 }

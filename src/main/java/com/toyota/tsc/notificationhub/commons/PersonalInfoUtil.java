@@ -160,7 +160,7 @@ public class PersonalInfoUtil {
                     c.setContact(String.format("other_%03d", i + 1));
                 }
 
-                c.setPrimaryContactFlag(j == 1); // ★1件目だけtrue
+                c.setPrimaryContactFlag(j == 2); // ★2件目だけtrue
                 contacts.add(c);
             }
 

@@ -165,6 +165,7 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
             executeNotificationProcess(request, header, userInfo);
 
             // お知らせ情報連携フラグ更新
+            System.out.println("到達確認nf！！！！！！");
             this.notificationRepository.update(CNT_ME, request.getRegistrationSerialNumber());
 
             // 終了ログ
@@ -187,6 +188,7 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                             "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                     // 操作エラーログ出力
+                    System.out.println("Exception 非同期メイン！！！！！！");
                     LogUtil.error(getClass(), CommonUtil.getBatMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), sqlEx.getSQLState(),
                             sqlEx.getErrorCode(), header.getCorrelationId()));
@@ -359,17 +361,28 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                                     request, header, entity, personalInfoListResDto, notificationSendList);
                             // お知らせ通知処理履歴更新
                             if (errorFlag) {
+
+                                System.out.println("到達確認his！！！！！！");
                                 ntfBatchExecHistoryRepository.updateStatus(
                                         request.getRegistrationSerialNumber(),
                                         Integer.valueOf(entity.getSequenceNumber()),
                                         STATUS_ERR);
+                                LogUtil.info(getClass(), CommonUtil.getBatMessage("RS07D00007",
+                                        request.getRegistrationSerialNumber(), entity.getSequenceNumber(),
+                                        STATUS_ERR + "（処理終了）", header.getCorrelationId()));
                             } else {
+
+                                System.out.println("到達確認his！！！！！！");
                                 ntfBatchExecHistoryRepository.updateStatus(
                                         request.getRegistrationSerialNumber(),
                                         Integer.valueOf(entity.getSequenceNumber()),
                                         STATUS_DONE);
+                                LogUtil.info(getClass(), CommonUtil.getBatMessage("RS07D00007",
+                                        request.getRegistrationSerialNumber(), entity.getSequenceNumber(),
+                                        STATUS_DONE + "（処理終了）", header.getCorrelationId()));
                             }
                             // NotificationVinList連携フラグ更新
+                            System.out.println("到達確認vin！！！！！！");
                             this.updateNotificationVinList(request, entity, LINKTYPE_LINKED);
                         } catch (Exception e) {
                             // 非同期処理内で発生した例外はログ出力と履歴更新
@@ -382,6 +395,7 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                                             header.getCorrelationId()));
                                 } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                                     // 操作エラーログ出力
+                                    System.out.println("Exception 非同期内部！！！！！！");
                                     LogUtil.error(getClass(), CommonUtil.getBatMessage(
                                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(),
                                             sqlEx.getSQLState(), sqlEx.getErrorCode(), header.getCorrelationId()));
@@ -400,6 +414,7 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                                     request.getRegistrationSerialNumber(),
                                     Integer.valueOf(entity.getSequenceNumber()),
                                     STATUS_ERR);
+                            this.updateNotificationVinList(request, entity, LINKTYPE_LINKED);
                         }
                     }, executor));
 
@@ -409,12 +424,14 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                     SQLException sqlEx = ExtractSqlExceptionUtil.findSqlException(e);
                     if (sqlEx != null) {
                         if (ExtractSqlExceptionUtil.isSqlConnectionError(sqlEx)) {
+
                             // 接続エラーログ出力
                             LogUtil.error(getClass(), CommonUtil.getBatMessage(
                                     "RS07E00010", sqlEx.getMessage(), sqlEx.getStackTrace(),
                                     header.getCorrelationId()));
                         } else if (ExtractSqlExceptionUtil.isSqlOperationError(sqlEx)) {
                             // 操作エラーログ出力
+                            System.out.println("Exception 非同期外部！！！！！！");
                             LogUtil.error(getClass(), CommonUtil.getBatMessage(
                                     "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), sqlEx.getSQLState(),
                                     sqlEx.getErrorCode(), header.getCorrelationId()));
@@ -558,6 +575,9 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                         // API実行（synchronizedを利用してAPI呼出しのみ直列実行）
                         ResponseEntity<String> response;
                         synchronized (ONPREM_LOCK) {
+                            int index = notificationSendListChunkList.indexOf(notificationSendListChunk) + 1;
+                            System.out.println(
+                                    "直列実行確認：" + notificationSendListChunk.get(0).getInternalUserId() + " - " + index);
                             response = personalInfoUtil.getPersonalInfoListApiResponse(
                                     request, header.getCorrelationId());
                         }

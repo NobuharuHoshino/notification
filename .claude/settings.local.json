@@ -9,7 +9,8 @@
       "Bash(powershell.exe:*)",
       "Bash(Select-String 'class=\"\"nc|class=\"\"pc')",
       "Bash(powershell -Command:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(./gradlew clean test jacocoTestReport:*)"
     ]
   }
 }

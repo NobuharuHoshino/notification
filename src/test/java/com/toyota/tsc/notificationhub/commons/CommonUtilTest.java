@@ -433,6 +433,51 @@ class CommonUtilTest {
         assertEquals("", result);
     }
 
+    // ----- csvToList テスト -----
+
+    /** クラス：CommonUtil csvToList 正常なCSVをリストに変換できることを確認するテストケース */
+    @Test
+    void csvToList_001() {
+        java.util.List<String> result = CommonUtil.csvToList("a,b,c");
+        assertEquals(3, result.size());
+        assertEquals("a", result.get(0));
+        assertEquals("b", result.get(1));
+        assertEquals("c", result.get(2));
+    }
+
+    /** クラス：CommonUtil csvToList 空要素がスキップされることを確認するテストケース */
+    @Test
+    void csvToList_002() {
+        java.util.List<String> result = CommonUtil.csvToList("a, ,b, ,c");
+        assertEquals(3, result.size());
+        assertEquals("a", result.get(0));
+        assertEquals("b", result.get(1));
+        assertEquals("c", result.get(2));
+    }
+
+    /** クラス：CommonUtil csvToList トリム処理を確認するテストケース */
+    @Test
+    void csvToList_003() {
+        java.util.List<String> result = CommonUtil.csvToList(" x , y ");
+        assertEquals(2, result.size());
+        assertEquals("x", result.get(0));
+        assertEquals("y", result.get(1));
+    }
+
+    // ----- containsData テスト -----
+
+    /** クラス：CommonUtil containsData 一致データがある場合trueを返すことを確認するテストケース */
+    @Test
+    void containsData_001() {
+        assertTrue(CommonUtil.containsData(java.util.List.of("a", "b", "c"), "b"));
+    }
+
+    /** クラス：CommonUtil containsData 一致データがない場合falseを返すことを確認するテストケース */
+    @Test
+    void containsData_002() {
+        assertFalse(CommonUtil.containsData(java.util.List.of("a", "b", "c"), "d"));
+    }
+
     // ----- テスト用DTO -----
     static class DummyDto {
         public int id;

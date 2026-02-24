@@ -550,6 +550,7 @@ class NotificationHubUtilTest {
     @Test
     void buildApnsPayload_001() {
         // Arrange
+        when(propertiesUtil.getSilentPushLockeys()).thenReturn("");
         NotificationHubUtil sut = new NotificationHubUtil(propertiesUtil);
         String bodyData = "{\"LocKey\":\"L1\",\"notificationId\":123}";
         // Act
@@ -567,6 +568,7 @@ class NotificationHubUtilTest {
     @Test
     void buildApnsPayload_002() {
         // Arrange
+        when(propertiesUtil.getSilentPushLockeys()).thenReturn("");
         NotificationHubUtil sut = new NotificationHubUtil(propertiesUtil);
         String bodyData = "{\"pushInformationList\":[{\"a\":1}]}";
         // Act
@@ -580,6 +582,7 @@ class NotificationHubUtilTest {
     @Test
     void buildApnsPayload_003() {
         // Arrange
+        when(propertiesUtil.getSilentPushLockeys()).thenReturn("");
         NotificationHubUtil sut = new NotificationHubUtil(propertiesUtil);
         try (MockedStatic<NotificationHubUtil> staticMock = mockStatic(NotificationHubUtil.class);
              MockedConstruction<ObjectMapper> mockedOM = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
@@ -601,6 +604,7 @@ class NotificationHubUtilTest {
     @Test
     void buildApnsPayload_004() {
         // Arrange
+        when(propertiesUtil.getSilentPushLockeys()).thenReturn("");
         NotificationHubUtil sut = new NotificationHubUtil(propertiesUtil);
         try (MockedStatic<NotificationHubUtil> staticMock = mockStatic(NotificationHubUtil.class);
              MockedConstruction<ObjectMapper> mockedOM = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
@@ -622,6 +626,7 @@ class NotificationHubUtilTest {
     @Test
     void buildApnsPayload_005() {
         // Arrange
+        when(propertiesUtil.getSilentPushLockeys()).thenReturn("");
         NotificationHubUtil sut = new NotificationHubUtil(propertiesUtil);
         String bodyData = "{\"popupInformationList\":[{\"b\":2}]}";
         // Act
@@ -630,6 +635,21 @@ class NotificationHubUtilTest {
         assertNotNull(json);
         assertTrue(json.contains("\"popupInformationList\""));
         assertTrue(json.contains("["));
+    }
+
+    /** クラス：NotificationHubUtil buildApnsPayload サイレントプッシュのLocKeyに一致する場合content-availableが設定されることを確認するテストケース */
+    @Test
+    void buildApnsPayload_006() {
+        // Arrange
+        when(propertiesUtil.getSilentPushLockeys()).thenReturn("SILENT1,SILENT2");
+        NotificationHubUtil sut = new NotificationHubUtil(propertiesUtil);
+        String bodyData = "{\"LocKey\":\"SILENT1\",\"notificationId\":456}";
+        // Act
+        String json = sut.buildApnsPayload(bodyData);
+        // Assert
+        assertNotNull(json);
+        assertTrue(json.contains("\"content-available\":1"));
+        assertFalse(json.contains("\"mutable-content\""));
     }
 
     /** クラス：NotificationHubUtil putAsStringIfPresent 値が存在する場合にdataNodeへ文字列設定されることを確認するテストケース */
