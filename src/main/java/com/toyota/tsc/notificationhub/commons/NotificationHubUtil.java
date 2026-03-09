@@ -310,13 +310,13 @@ public class NotificationHubUtil {
         try {
             ObjectNode root = mapper.createObjectNode();
             ObjectNode aps = mapper.createObjectNode();
-            aps.put(ALERT, " ");
             // サイレントプッシュ用のデータ取得
             String locKey = extractLocKey(bodyDataMap);
             String silentLockKeys = propertiesUtil.getSilentPushLockeys();
             if (CommonUtil.containsData(CommonUtil.csvToList(silentLockKeys), locKey)) {
                 aps.put(AVAILABLE_CONTENT, 1);
             } else {
+                aps.put(ALERT, " ");
                 aps.put(MUTABLE_CONTENT, 1);
             }
             root.set(APS, aps);

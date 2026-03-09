@@ -252,25 +252,39 @@ class PersonalInfoUtilTest {
 
     /**
      * クラス：PersonalInfoUtil getPersonalInfoListApiResponse
-     * 正常にダミーレスポンスが返ることを確認するテストケース
+     * 正常にレスポンスが返ることを確認するテストケース
      */
     @Test
     void getPersonalInfoListApiResponse_001() {
         // Arrange
+        when(propertiesUtil.getPersonalInfoListApiKey()).thenReturn("PIL-KEY");
+        when(propertiesUtil.getPersonalInfoListApiUrl()).thenReturn("https://example/personalinfolist");
+
         PersonalInfoUtil sut = new PersonalInfoUtil(propertiesUtil);
         PersonalInfoListRequestDto request = new PersonalInfoListRequestDto(
                 "2", "", "", List.of("user001", "user002", "user003", "user004", "user005"));
 
-        // Act
-        ResponseEntity<String> response = sut.getPersonalInfoListApiResponse(request, "col-1");
+        String json = "{\"resultList\":[{\"internalUserId\":\"user001\"},{\"internalUserId\":\"user005\"}]}";
+        ResponseEntity<String> expectedResponse = ResponseEntity.ok(json);
 
-        // Assert
-        assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertTrue(response.getBody().contains("00001581U000"));
-        assertTrue(response.getBody().contains("user001"));
-        assertTrue(response.getBody().contains("user005"));
+        try (MockedConstruction<RestTemplate> mocked =
+        mockConstruction(RestTemplate.class,
+        (mock, ctx) -> when(mock.exchange(
+                eq("https://example/personalinfolist"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                eq(String.class))).thenReturn(expectedResponse))) {
+
+            // Act
+            ResponseEntity<String> response = sut.getPersonalInfoListApiResponse(request, "col-1");
+
+            // Assert
+            assertNotNull(response);
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertNotNull(response.getBody());
+            assertTrue(response.getBody().contains("user001"));
+            assertTrue(response.getBody().contains("user005"));
+        }
     }
 
     /**
@@ -280,16 +294,29 @@ class PersonalInfoUtilTest {
     @Test
     void getPersonalInfoListApiResponse_002() {
         // Arrange
+        when(propertiesUtil.getPersonalInfoListApiKey()).thenReturn("PIL-KEY");
+        when(propertiesUtil.getPersonalInfoListApiUrl()).thenReturn("https://example/personalinfolist");
+
         PersonalInfoUtil sut = new PersonalInfoUtil(propertiesUtil);
         PersonalInfoListRequestDto request = new PersonalInfoListRequestDto(
                 "2", "", "", List.of("user001"));
 
-        // Act
-        ResponseEntity<String> response = sut.getPersonalInfoListApiResponse(request, "col-1");
+        String json = "{\"resultList\":[{\"internalUserId\":\"user001\"}]}";
+        ResponseEntity<String> expectedResponse = ResponseEntity.ok(json);
 
-        // Assert
-        assertNotNull(response);
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+        try (MockedConstruction<RestTemplate> mocked =
+        mockConstruction(RestTemplate.class,
+        (mock, ctx) -> when(mock.exchange(anyString(), any(), any(HttpEntity.class),
+        eq(String.class)))
+                .thenReturn(expectedResponse))) {
+
+            // Act
+            ResponseEntity<String> response = sut.getPersonalInfoListApiResponse(request, "col-1");
+
+            // Assert
+            assertNotNull(response);
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+        }
     }
 
     /**

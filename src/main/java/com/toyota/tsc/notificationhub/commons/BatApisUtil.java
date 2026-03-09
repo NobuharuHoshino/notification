@@ -22,45 +22,48 @@ public class BatApisUtil {
 
     private static final String X_API_KEY_HEADER = "x-api-key";
 
-    // TODO IT1用Mock
-    // public ResponseEntity<String> executeRegisterNotification(
-    // RegisterNotificationRequestDto request) {
-
-    // try {
-    // // テンプレート
-    // RestTemplate restTemplate = new RestTemplate();
-    // // ヘッダー設定
-    // HttpHeaders headers = new HttpHeaders();
-    // headers.set(X_API_KEY_HEADER,
-    // propertiesUtil.getRegisterNotificationApiKey());
-    // // エンティティセット
-    // HttpEntity<RegisterNotificationRequestDto> entity = new HttpEntity<>(request,
-    // headers);
-    // // 実行
-    // return restTemplate.exchange(
-    // propertiesUtil.getRegisterNotificationUrl(),
-    // HttpMethod.POST,
-    // entity,
-    // String.class);
-
-    // } catch (Exception e) {
-    // throw new CustomException(e);
-    // }
-    // }
-
-    public ResponseEntity<String> executeRegisterNotification(RegisterNotificationRequestDto request) {
-        String dummyJson = """
-                {
-                  "returnCode": "000000",
-                  "notificationId": "TEST-NOTIF-001",
-                  "message": "OK (dummy)"
-                }
-                """;
-
-        return ResponseEntity
-                .ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(dummyJson);
-
+    /**
+     * APIを呼び出す
+     * 
+     * @param request
+     * @return
+     */
+    public ResponseEntity<String> executeRegisterNotification(
+            RegisterNotificationRequestDto request) {
+        try {
+            // テンプレート
+            RestTemplate restTemplate = new RestTemplate();
+            // ヘッダー設定
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(X_API_KEY_HEADER,
+                    propertiesUtil.getRegisterNotificationApiKey());
+            // エンティティセット
+            HttpEntity<RegisterNotificationRequestDto> entity = new HttpEntity<>(request,
+                    headers);
+            // 実行
+            return restTemplate.exchange(
+                    propertiesUtil.getRegisterNotificationUrl(),
+                    HttpMethod.POST,
+                    entity,
+                    String.class);
+        } catch (Exception e) {
+            throw new CustomException(e);
+        }
     }
+
+    // @@@@@@@@@@@@@@@@@@@@@@ IT1用Mock @@@@@@@@@@@@@@@@@@@@@@
+    // public ResponseEntity<String>
+    // executeRegisterNotification(RegisterNotificationRequestDto request) {
+    // String dummyJson = """
+    // {
+    // "returnCode": "000000",
+    // "notificationId": "TEST-NOTIF-001",
+    // "message": "OK (dummy)"
+    // }
+    // """;
+    // return ResponseEntity
+    // .ok()
+    // .contentType(MediaType.APPLICATION_JSON)
+    // .body(dummyJson);
+    // }
 }

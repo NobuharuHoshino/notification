@@ -68,7 +68,7 @@ class SendPushServiceImplTest {
                 .thenReturn(outcome);
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -100,7 +100,7 @@ class SendPushServiceImplTest {
                 .thenReturn(outcome);
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -124,7 +124,7 @@ class SendPushServiceImplTest {
         RequestHeaderDto header = buildHeader("corr-003");
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -143,7 +143,7 @@ class SendPushServiceImplTest {
         RequestHeaderDto header = buildHeader("corr-004");
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -162,7 +162,7 @@ class SendPushServiceImplTest {
         RequestHeaderDto header = buildHeader("corr-005");
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -181,7 +181,7 @@ class SendPushServiceImplTest {
         RequestHeaderDto header = buildHeader("corr-006");
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -200,7 +200,7 @@ class SendPushServiceImplTest {
         RequestHeaderDto header = buildHeader("corr-007");
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -225,7 +225,7 @@ class SendPushServiceImplTest {
                 .thenReturn(Collections.emptyList());
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -250,7 +250,7 @@ class SendPushServiceImplTest {
                 .thenThrow(new TscApplicationException("TEST_CODE"));
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -282,7 +282,7 @@ class SendPushServiceImplTest {
                 .thenThrow(nhEx);
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -304,7 +304,7 @@ class SendPushServiceImplTest {
                 .thenThrow(new RuntimeException(sqlEx));
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -326,7 +326,7 @@ class SendPushServiceImplTest {
                 .thenThrow(new RuntimeException(sqlEx));
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -348,7 +348,7 @@ class SendPushServiceImplTest {
                 .thenThrow(new RuntimeException(sqlEx));
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -369,7 +369,7 @@ class SendPushServiceImplTest {
                 .thenThrow(new RuntimeException("Unexpected error"));
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -406,7 +406,7 @@ class SendPushServiceImplTest {
                 .thenReturn(outcome);
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -440,7 +440,7 @@ class SendPushServiceImplTest {
                 .thenThrow(nhEx);
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -508,7 +508,7 @@ class SendPushServiceImplTest {
         Method m = getPrivateMethod("createPayload", SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
 
             // Act & Assert
             assertThrows(CustomException.class, () -> invokeUnwrap(m, sut, request, header, device));
@@ -529,7 +529,7 @@ class SendPushServiceImplTest {
         Method m = getPrivateMethod("createPayload", SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
 
             // Act & Assert
             assertThrows(CustomException.class, () -> invokeUnwrap(m, sut, request, header, device));
@@ -740,7 +740,7 @@ class SendPushServiceImplTest {
         when(properties.getRetryCount()).thenReturn(0);
 
         try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class))).thenReturn("msg");
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
             common.when(() -> CommonUtil.getResultCode(anyString())).thenAnswer(inv -> inv.getArgument(0));
             common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
 
@@ -750,6 +750,35 @@ class SendPushServiceImplTest {
             // Assert
             assertNotNull(result);
             assertEquals("SP_SUCCESS", result.getResultCode());
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // private: executePostMessage
+    // -----------------------------------------------------------------------
+
+    /** クラス：SendPushServiceImpl createPayloadが例外をスローした場合executePostMessageのcatch(Exception)で再スローされることを確認するテストケース */
+    @Test
+    void executePostMessage_001() throws Exception {
+        // Arrange
+        SendPushRequestDto request = new SendPushRequestDto();
+        request.setInternalUserId("iu-ep1");
+        request.setBody("{\"key\":\"value\"}");
+        RequestHeaderDto header = buildHeader("corr-ep1");
+        NtfInfoEntity device = buildDevice("inst-ep1", "brd-1", "1", LocalDateTime.now());
+
+        when(notificationHubUtil.buildFcmV1Payload(anyString()))
+                .thenThrow(new RuntimeException("build error"));
+        when(properties.getRetryCount()).thenReturn(1);
+
+        Method m = getPrivateMethod("executePostMessage",
+                SendPushRequestDto.class, RequestHeaderDto.class, NtfInfoEntity.class);
+
+        try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+            common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("msg");
+
+            // Act & Assert（createPayloadがCustomExceptionをスロー → catch(Exception e){throw e;}で再スロー）
+            assertThrows(CustomException.class, () -> invokeUnwrap(m, sut, request, header, device));
         }
     }
 

@@ -10,7 +10,6 @@ import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.models.DvcLinkageResponseDto;
-import com.toyota.tsc.notificationhub.models.GetAccessTokenResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
 import com.toyota.tsc.notificationhub.models.RegistNotificationDeviceInfoRequestDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
@@ -18,6 +17,7 @@ import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.repositories.SaNtfInfoEntity;
 import com.toyota.tsc.notificationhub.repositories.SaNtfInfoRepositoryIF;
 
+import jp.toyota.res.common.auth.GetALJTokenResultDto;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -106,7 +106,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
                     LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), sqlEx.getSQLState(),
                             sqlEx.getErrorCode(), header.getCorrelationId()));
-                    throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
+                    throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
                 LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));
@@ -128,19 +128,23 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
      * @param header
      */
     private void execRegistNotificationInfo(RegistNotificationDeviceInfoRequestDto request, RequestHeaderDto header) {
+
+        final ObjectMapper mapper = new ObjectMapper();
         try {
-            // JSAPトークン取得
-            ResponseEntity<String> getToken = jsapUtil.executeGetToken();
-            ObjectMapper mapper = new ObjectMapper();
-            GetAccessTokenResponseDto tokenDto = mapper.readValue(getToken.getBody(),
-                    GetAccessTokenResponseDto.class);
-            String token = tokenDto.getAccess_token();
-            if (token == null || token.isEmpty()) {
-                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
-                        "RS07E00013", tokenDto.getAccess_token(), request.getInternalUserId(),
-                        header.getCorrelationId()));
+
+            // ALJトークン取得
+            GetALJTokenResultDto resToken = jsapUtil.executeGetToken();
+            if (resToken == null) {
+                LogUtil.error(getClass(), CommonUtil.getSaMessage("RS07E00013",
+                        "resToken is null", request.getInternalUserId(), header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
             }
+            if (!resToken.getResult()) {
+                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
+                        "RS07E00013", resToken.getAljToken(), request.getInternalUserId(), header.getCorrelationId()));
+                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
+            }
+            String token = resToken.getAljToken();
 
             // DB登録or更新
             int upsertCount = upsertDeviceInfo(request);
@@ -166,7 +170,7 @@ public class SaRegistNotificationDeviceInfoServiceImpl implements RegistNotifica
             LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00009", request.getInternalUserId(), header.getCorrelationId()));
 
-            // JSAP デバイス登録
+            // ALJデバイス登録
             LogUtil.info(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
                     "RS07I00003", request.getInternalUserId(), request.getDvcId(),
                     CommonUtil.getPlt(request.getPlatform()),

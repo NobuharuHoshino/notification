@@ -113,7 +113,7 @@ public class RegistNotificationDeviceInfoServiceImpl implements RegistNotificati
                     // 操作エラー
                     LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), header.getCorrelationId()));
-                    throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
+                    throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
                 LogUtil.error(RegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));

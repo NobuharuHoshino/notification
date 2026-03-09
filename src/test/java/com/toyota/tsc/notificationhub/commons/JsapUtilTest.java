@@ -3,6 +3,9 @@ package com.toyota.tsc.notificationhub.commons;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.models.MailContextDto;
 import com.toyota.tsc.notificationhub.models.SmsContextDto;
+
+import jp.toyota.res.common.utils.ALJToken;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -28,15 +31,16 @@ class JsapUtilTest {
 
     @Mock
     private PropertiesUtil propertiesUtil;
+    @Mock
+    private ALJToken aljToken;
 
     /** クラス：JsapUtil executeGetUserId 正常にPOSTが実行されレスポンスが返ることを確認するテストケース */
     @Test
     void executeGetUserId_001() {
         // Arrange
-        when(propertiesUtil.getJsapGetUserIdApiKey()).thenReturn("APIKEY");
         when(propertiesUtil.getJsapGetUserIdApiUrl()).thenReturn("https://example/jsap/userid");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         ResponseEntity<String> expected = ResponseEntity.ok("OK");
 
@@ -63,8 +67,6 @@ class JsapUtilTest {
             assertNotNull(entity);
 
             HttpHeaders headers = entity.getHeaders();
-            assertEquals(MediaType.APPLICATION_JSON, headers.getContentType());
-            assertEquals("APIKEY", headers.getFirst("x-api-key"));
             assertEquals("col-1", headers.getFirst("x-correlation-id"));
 
             @SuppressWarnings("unchecked")
@@ -80,10 +82,9 @@ class JsapUtilTest {
     @Test
     void executeGetUserId_002() {
         // Arrange
-        when(propertiesUtil.getJsapGetUserIdApiKey()).thenReturn("APIKEY");
         when(propertiesUtil.getJsapGetUserIdApiUrl()).thenReturn("https://example/jsap/userid");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
                 (mock, context) -> when(mock.exchange(anyString(), any(),
@@ -105,10 +106,9 @@ class JsapUtilTest {
     @Test
     void executeDvcLink_001() {
         // Arrange
-        when(propertiesUtil.getJsapDvcLinkApiKey()).thenReturn("DVCKEY");
         when(propertiesUtil.getJsapDvcLinkApiUrl()).thenReturn("https://example/jsap/dvclink");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
         ResponseEntity<String> expected = ResponseEntity.ok("OK");
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
@@ -133,12 +133,12 @@ class JsapUtilTest {
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) entityCaptor.getValue().getBody();
             assertEquals("user-1", body.get("userId"));
-            assertEquals("token-1", body.get("dvcToken"));
-            assertEquals("android", body.get("platform"));
+            assertEquals("token-1", body.get("deviceToken"));
+            assertEquals("android", body.get("osType"));
 
             HttpHeaders headers = entityCaptor.getValue().getHeaders();
             assertEquals(MediaType.APPLICATION_JSON, headers.getContentType());
-            assertEquals("DVCKEY", headers.getFirst("x-api-key"));
+            assertEquals("bearer test-token", headers.getFirst("authorization"));
         }
     }
 
@@ -149,10 +149,9 @@ class JsapUtilTest {
     @Test
     void executeDvcLink_002() {
         // Arrange
-        when(propertiesUtil.getJsapDvcLinkApiKey()).thenReturn("DVCKEY");
         when(propertiesUtil.getJsapDvcLinkApiUrl()).thenReturn("https://example/jsap/dvclink");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
         ResponseEntity<String> expected = ResponseEntity.ok("OK");
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
@@ -176,7 +175,7 @@ class JsapUtilTest {
 
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) entityCaptor.getValue().getBody();
-            assertEquals("ios", body.get("platform"));
+            assertEquals("ios", body.get("osType"));
         }
     }
 
@@ -186,7 +185,7 @@ class JsapUtilTest {
     @Test
     void executeDvcLink_003() {
         // Arrange
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class)) {
 
@@ -206,10 +205,9 @@ class JsapUtilTest {
     @Test
     void executeDvcLink_004() {
         // Arrange
-        when(propertiesUtil.getJsapDvcLinkApiKey()).thenReturn("DVCKEY");
         when(propertiesUtil.getJsapDvcLinkApiUrl()).thenReturn("https://example/jsap/dvclink");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
                 (mock, context) -> when(mock.exchange(anyString(), any(),
@@ -231,10 +229,9 @@ class JsapUtilTest {
     @Test
     void executePushRequest_001() {
         // Arrange
-        when(propertiesUtil.getJsapNotificationApiKey()).thenReturn("NKEY");
         when(propertiesUtil.getJsapNotificationApiUrl()).thenReturn("https://example/jsap/notify");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
         ResponseEntity<String> expected = ResponseEntity.ok("OK");
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
@@ -258,13 +255,12 @@ class JsapUtilTest {
                     entityCaptor.capture(), eq(String.class));
 
             HttpHeaders headers = entityCaptor.getValue().getHeaders();
-            assertEquals("NKEY", headers.getFirst("x-api-key"));
-            assertEquals("AUTH", headers.getFirst("authorization"));
+            assertEquals("bearer AUTH", headers.getFirst("authorization"));
 
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) entityCaptor.getValue().getBody();
             assertEquals("user-1", body.get("userId"));
-            assertEquals("0", body.get("noticeMethod"));
+            assertEquals("0", body.get("sendMethod"));
             assertEquals("{\"a\":1}", body.get("payload"));
         }
     }
@@ -276,10 +272,9 @@ class JsapUtilTest {
     @Test
     void executePushRequest_002() {
         // Arrange
-        when(propertiesUtil.getJsapNotificationApiKey()).thenReturn("NKEY");
         when(propertiesUtil.getJsapNotificationApiUrl()).thenReturn("https://example/jsap/notify");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
                 (mock, context) -> when(mock.exchange(anyString(), any(),
@@ -299,10 +294,9 @@ class JsapUtilTest {
     @Test
     void executeSendMessage_001() {
         // Arrange
-        when(propertiesUtil.getJsapNotificationApiKey()).thenReturn("NKEY");
         when(propertiesUtil.getJsapNotificationApiUrl()).thenReturn("https://example/jsap/notify");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
         ResponseEntity<String> expected = ResponseEntity.ok("OK");
 
         Object context = Map.of("k", "v");
@@ -330,13 +324,12 @@ class JsapUtilTest {
             Map<String, Object> body = (Map<String, Object>) entityCaptor.getValue().getBody();
             assertEquals("proc-1", body.get("processID"));
             assertEquals("user-1", body.get("userId"));
-            assertEquals("1", body.get("noticeMethod "));
+            assertEquals("1", body.get("sendMethod "));
             assertEquals("title", body.get("title"));
             assertSame(context, body.get("context"));
 
             HttpHeaders headers = entityCaptor.getValue().getHeaders();
-            assertEquals("NKEY", headers.getFirst("x-api-key"));
-            assertEquals("AUTH", headers.getFirst("authorization"));
+            assertEquals("bearer AUTH", headers.getFirst("authorization"));
         }
     }
 
@@ -347,10 +340,9 @@ class JsapUtilTest {
     @Test
     void executeSendMessage_002() {
         // Arrange
-        when(propertiesUtil.getJsapNotificationApiKey()).thenReturn("NKEY");
         when(propertiesUtil.getJsapNotificationApiUrl()).thenReturn("https://example/jsap/notify");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
                 (mock, c) -> when(mock.exchange(anyString(), any(), any(HttpEntity.class),
@@ -366,24 +358,61 @@ class JsapUtilTest {
         }
     }
 
-    /** クラス：JsapUtil executeGetUserInfo 正常にPOSTが実行されることを確認するテストケース */
+    /** クラス：JsapUtil executeGetToken 正常にALJTokenが取得されることを確認するテストケース */
+    @Test
+    void executeGetToken_001() throws Exception {
+        // Arrange
+        jp.toyota.res.common.auth.GetALJTokenResultDto expected =
+                mock(jp.toyota.res.common.auth.GetALJTokenResultDto.class);
+        when(aljToken.getALJToken()).thenReturn(expected);
+
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
+
+        // Act
+        jp.toyota.res.common.auth.GetALJTokenResultDto actual = sut.executeGetToken();
+
+        // Assert
+        assertSame(expected, actual);
+        verify(aljToken, times(1)).getALJToken();
+    }
+
+    /**
+     * クラス：JsapUtil executeGetToken
+     * ALJToken例外時にCustomExceptionが送出されることを確認するテストケース
+     */
+    @Test
+    void executeGetToken_002() throws Exception {
+        // Arrange
+        when(aljToken.getALJToken()).thenThrow(new RuntimeException("alj-error"));
+
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
+
+        // Act
+        CustomException ex = assertThrows(CustomException.class, () -> sut.executeGetToken());
+
+        // Assert
+        assertNotNull(ex.getCause());
+        verify(aljToken, times(1)).getALJToken();
+    }
+
+    /** クラス：JsapUtil executeGetUserInfo 正常にPOSTが実行されレスポンスが返ることを確認するテストケース */
     @Test
     void executeGetUserInfo_001() {
         // Arrange
-        when(propertiesUtil.getJsapGetUserInfoApiKey()).thenReturn("UIKEY");
         when(propertiesUtil.getJsapGetUserInfoApiUrl()).thenReturn("https://example/jsap/userinfo");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
         ResponseEntity<String> expected = ResponseEntity.ok("OK");
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
-                (mock, c) -> when(mock.exchange(eq("https://example/jsap/userinfo"),
+                (mock, context) -> when(mock.exchange(
+                        eq("https://example/jsap/userinfo"),
                         eq(HttpMethod.POST),
-                        any(HttpEntity.class), eq(String.class)))
-                        .thenReturn(expected))) {
+                        any(HttpEntity.class),
+                        eq(String.class))).thenReturn(expected))) {
 
             // Act
-            ResponseEntity<String> actual = sut.executeGetUserInfo("user-1");
+            ResponseEntity<String> actual = sut.executeGetUserInfo("user-1", "AUTH");
 
             // Assert
             assertSame(expected, actual);
@@ -395,7 +424,8 @@ class JsapUtilTest {
                     entityCaptor.capture(), eq(String.class));
 
             HttpHeaders headers = entityCaptor.getValue().getHeaders();
-            assertEquals("UIKEY", headers.getFirst("x-api-key"));
+            assertEquals(MediaType.APPLICATION_JSON, headers.getContentType());
+            assertEquals("bearer AUTH", headers.getFirst("authorization"));
 
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) entityCaptor.getValue().getBody();
@@ -410,18 +440,18 @@ class JsapUtilTest {
     @Test
     void executeGetUserInfo_002() {
         // Arrange
-        when(propertiesUtil.getJsapGetUserInfoApiKey()).thenReturn("UIKEY");
         when(propertiesUtil.getJsapGetUserInfoApiUrl()).thenReturn("https://example/jsap/userinfo");
 
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
-                (mock, c) -> when(mock.exchange(anyString(), any(), any(HttpEntity.class),
-                        eq(String.class)))
+                (mock, context) -> when(mock.exchange(anyString(), any(),
+                        any(HttpEntity.class), eq(String.class)))
                         .thenThrow(new RuntimeException("boom")))) {
 
             // Act
-            CustomException ex = assertThrows(CustomException.class, () -> sut.executeGetUserInfo("user-1"));
+            CustomException ex = assertThrows(CustomException.class,
+                    () -> sut.executeGetUserInfo("user-1", "AUTH"));
 
             // Assert
             assertNotNull(ex.getCause());
@@ -432,7 +462,7 @@ class JsapUtilTest {
     @Test
     void createSmsContext_001() {
         // Arrange
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         // Act
         SmsContextDto dto = sut.createSmsContext("body");
@@ -447,7 +477,7 @@ class JsapUtilTest {
     @Test
     void createSmsContext_002() {
         // Arrange
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         // Act
         SmsContextDto dto = sut.createSmsContext(null);
@@ -462,7 +492,7 @@ class JsapUtilTest {
     @Test
     void createMailContext_001() {
         // Arrange
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         // Act
         List<MailContextDto> list = sut.createMailContext("text", "<b>html</b>");
@@ -481,7 +511,7 @@ class JsapUtilTest {
     @Test
     void createMailContext_002() {
         // Arrange
-        JsapUtil sut = new JsapUtil(propertiesUtil);
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
 
         // Act
         List<MailContextDto> list = sut.createMailContext(null, null);

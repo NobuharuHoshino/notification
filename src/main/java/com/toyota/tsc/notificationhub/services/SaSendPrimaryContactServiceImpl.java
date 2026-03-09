@@ -7,17 +7,15 @@ import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscPrimaryContactException;
-import com.toyota.tsc.notificationhub.models.GetAccessTokenResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserInfoResponseDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
 import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.models.SendMessageResponseDto;
 import com.toyota.tsc.notificationhub.models.SendPrimaryContactRequestDto;
-
+import jp.toyota.res.common.auth.GetALJTokenResultDto;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -72,16 +70,18 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
             validate(request, header);
 
             // JSAPトークン取得
-            ResponseEntity<String> getToken = jsapUtil.executeGetToken();
-            ObjectMapper mapper = new ObjectMapper();
-            GetAccessTokenResponseDto tokenDto = mapper.readValue(getToken.getBody(),
-                    GetAccessTokenResponseDto.class);
-            String token = tokenDto.getAccess_token();
-            if (token == null || token.isEmpty()) {
-                LogUtil.error(SaSendPrimaryContactServiceImpl.class, CommonUtil.getSaMessage(
-                        "RS07E00013", tokenDto.getAccess_token(), request.getInternalUserId(), header.getCorrelationId()));
+            GetALJTokenResultDto resToken = jsapUtil.executeGetToken();
+            if (resToken == null) {
+                LogUtil.error(getClass(), CommonUtil.getSaMessage("RS07E00013",
+                        "resToken is null", request.getInternalUserId(), header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
             }
+            if (!resToken.getResult()) {
+                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
+                        "RS07E00013", resToken.getAljToken(), request.getInternalUserId(), header.getCorrelationId()));
+                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
+            }
+            String token = resToken.getAljToken();
 
             // 送信要求
             sendRequest(token, request, header);
@@ -133,7 +133,7 @@ public class SaSendPrimaryContactServiceImpl implements SendPrimaryContactServic
 
             // ユーザー情報取得
             ResponseEntity<String> getUserInfoResponce = jsapUtil.executeGetUserInfo(
-                    getUserIdDto.getUserId());
+                    getUserIdDto.getUserId(), token);
             GetUserInfoResponseDto getUserInfoDto = mapper.readValue(getUserInfoResponce.getBody(),
                     GetUserInfoResponseDto.class);
             if (!getUserInfoResponce.getStatusCode().is2xxSuccessful()) {

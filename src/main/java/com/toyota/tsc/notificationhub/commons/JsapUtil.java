@@ -11,21 +11,30 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
+import com.toyota.tsc.notificationhub.models.DvcLinkageResponseDto;
+import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
+import com.toyota.tsc.notificationhub.models.GetUserInfoResponseDto;
 import com.toyota.tsc.notificationhub.models.MailContextDto;
+import com.toyota.tsc.notificationhub.models.PushRequestResponseDto;
+import com.toyota.tsc.notificationhub.models.SendMessageResponseDto;
 import com.toyota.tsc.notificationhub.models.SmsContextDto;
+
+import jp.toyota.res.common.auth.GetALJTokenResultDto;
+import jp.toyota.res.common.utils.ALJToken;
 
 @Component
 public class JsapUtil {
 
     private PropertiesUtil propertiesUtil;
+    private ALJToken aljToken;
 
-    public JsapUtil(PropertiesUtil propertiesUtil) {
+    public JsapUtil(PropertiesUtil propertiesUtil, ALJToken aljToken) {
         this.propertiesUtil = propertiesUtil;
+        this.aljToken = aljToken;
     }
 
     private static final String PLATFORM_ANDROID = "1"; // FCM v1
@@ -34,54 +43,18 @@ public class JsapUtil {
     private static final String USER_ID_BODY = "userId";
     private static final String AUTH_TOKEN = "authorization";
 
-    public ResponseEntity<String> executeGetToken() {
+    public GetALJTokenResultDto executeGetToken() {
 
         try {
-            // テンプレート
-            RestTemplate restTemplate = new RestTemplate();
-            // ヘッダー設定
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
-            // ボディ設定
-            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("grant_type", "client_credentials");
-            body.add("client_id", "client_id");
-            body.add("client_secret", "client_secret");
-
-            // エンティティセット
-            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(body,
-                    headers);
-
-            // 実行
-            return restTemplate.exchange(
-                    "tokenUrl",
-                    HttpMethod.POST,
-                    entity,
-                    String.class);
-
+            return aljToken.getALJToken();
         } catch (Exception e) {
             throw new CustomException(e);
         }
-
         // @@@@@@@@@@@@@@@@@@@@@@@@@@ TEST MOCK @@@@@@@@@@@@@@@@@@@@@@@@@@@@
-        // GetAccessTokenResponseDto dto = new GetAccessTokenResponseDto();
-        // dto.setAccess_token("sss");
-        // dto.setToken_type("MOCK_TOKEN_TYPE");
-        // dto.setExpires_in("MOCK_EXPIRES_IN");
-        // dto.setScope("MOCK_SCOPE");
-        // dto.setJti("MOCK_JTI");
-
-        // try {
-        // ObjectMapper mapper = new ObjectMapper();
-        // String body = mapper.writeValueAsString(dto);
-        // return ResponseEntity
-        // .ok()
-        // .contentType(MediaType.APPLICATION_JSON)
-        // .body(body);
-        // } catch (Exception e) {
-        // throw new CustomException(e);
-        // }
+        // GetALJTokenResultDto dto = new GetALJTokenResultDto();
+        // dto.setResult(true);
+        // dto.setAljToken("TEST_ALJ_TOKEN");
+        // return dto;
     }
 
     public ResponseEntity<String> executeGetUserId(String internalUserId, String colId) {
@@ -91,15 +64,12 @@ public class JsapUtil {
             RestTemplate restTemplate = new RestTemplate();
             // ヘッダー設定
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(X_API_KEY_HEADER, propertiesUtil.getJsapGetUserIdApiKey());
             headers.set("x-correlation-id", colId);
             // ボディ設定
             Map<String, Object> body = new HashMap<>();
             body.put("internalUserId", internalUserId);
             // エンティティセット
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
             // 実行
             return restTemplate.exchange(
                     propertiesUtil.getJsapGetUserIdApiUrl(),
@@ -110,13 +80,11 @@ public class JsapUtil {
         } catch (Exception e) {
             throw new CustomException(e);
         }
-
         // @@@@@@@@@@@@@@@@@@@@@@@@@@ TEST MOCK @@@@@@@@@@@@@@@@@@@@@@@@@@@@
         // GetUserIdResponseDto dto = new GetUserIdResponseDto();
         // dto.setResultCode("00001548B123");
         // dto.setUserId("DEV_USER_ID");
         // dto.setInternalUserId("DEV_INTUSER_ID");
-
         // try {
         // ObjectMapper mapper = new ObjectMapper();
         // String body = mapper.writeValueAsString(dto);
@@ -145,13 +113,12 @@ public class JsapUtil {
             // ヘッダー設定
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(X_API_KEY_HEADER, propertiesUtil.getJsapDvcLinkApiKey());
             headers.set(AUTH_TOKEN, "bearer " + token);
             // ボディ設定
             Map<String, Object> body = new HashMap<>();
             body.put(USER_ID_BODY, userId);
-            body.put("dvcToken", dvcToken);
-            body.put("platform", platform);
+            body.put("deviceToken", dvcToken);
+            body.put("osType", platform);
             // エンティティセット
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
 
@@ -193,12 +160,11 @@ public class JsapUtil {
             // ヘッダー設定
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(X_API_KEY_HEADER, propertiesUtil.getJsapNotificationApiKey());
-            headers.set(AUTH_TOKEN, token);
+            headers.set(AUTH_TOKEN, "bearer " + token);
             // ボディ設定
             Map<String, Object> body = new HashMap<>();
             body.put(USER_ID_BODY, userId);
-            body.put("noticeMethod", method);
+            body.put("sendMethod", method);
             body.put("payload", payload);
             // エンティティセット
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
@@ -213,7 +179,6 @@ public class JsapUtil {
         } catch (Exception e) {
             throw new CustomException(e);
         }
-
         // @@@@@@@@@@@@@@@@@@@@@@@@@@ TEST MOCK @@@@@@@@@@@@@@@@@@@@@@@@@@@@
         // PushRequestResponseDto dto = new PushRequestResponseDto();
         // dto.setResultCode("000000");
@@ -246,13 +211,12 @@ public class JsapUtil {
             // ヘッダー設定
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(X_API_KEY_HEADER, propertiesUtil.getJsapNotificationApiKey());
-            headers.set(AUTH_TOKEN, token);
+            headers.set(AUTH_TOKEN, "bearer " + token);
             // ボディ設定
             Map<String, Object> body = new HashMap<>();
             body.put("processID", proccessId);
             body.put(USER_ID_BODY, userId);
-            body.put("noticeMethod ", contactType);
+            body.put("sendMethod ", contactType);
             body.put("title", title);
             body.put("context", context);
             // エンティティセット
@@ -288,7 +252,7 @@ public class JsapUtil {
         // }
     }
 
-    public ResponseEntity<String> executeGetUserInfo(String userId) {
+    public ResponseEntity<String> executeGetUserInfo(String userId, String token) {
 
         try {
             // テンプレート
@@ -296,7 +260,7 @@ public class JsapUtil {
             // ヘッダー設定
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set(X_API_KEY_HEADER, propertiesUtil.getJsapGetUserInfoApiKey());
+            headers.set(AUTH_TOKEN, "bearer " + token);
             // ボディ設定
             Map<String, Object> body = new HashMap<>();
             body.put(USER_ID_BODY, userId);
@@ -323,12 +287,12 @@ public class JsapUtil {
         // dto.setDateOfBirth("1990-01-01"); // 文字列仕様に合わせる
         // GetUserInfoResponseDto.ContactDto contact = new
         // GetUserInfoResponseDto.ContactDto();
-        // contact.setContactType("1");
+        // contact.setContactType("2");
         // contact.setContact("taro.yamada@example.com");
         // contact.setPrimaryContactFlag(true);
         // GetUserInfoResponseDto.ContactDto contact2 = new
         // GetUserInfoResponseDto.ContactDto();
-        // contact2.setContactType("0");
+        // contact2.setContactType("1");
         // contact2.setContact("818067582835");
         // contact2.setPrimaryContactFlag(false);
         // List<GetUserInfoResponseDto.ContactDto> contactList = new ArrayList<>();
@@ -340,8 +304,8 @@ public class JsapUtil {
         // String body = objectMapper.writeValueAsString(dto);
         // return ResponseEntity.ok(body);
         // } catch (Exception e) {
-        // throw new IllegalStateException("Failed to serialize GetUserInfoResponseDto
-        // to JSON", e);
+        // throw new IllegalStateException("Failed to serialize GetUserInfoResponseDtoto
+        // JSON", e);
         // }
     }
 

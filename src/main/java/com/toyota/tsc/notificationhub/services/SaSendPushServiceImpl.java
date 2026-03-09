@@ -11,7 +11,6 @@ import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
-import com.toyota.tsc.notificationhub.models.GetAccessTokenResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
 import com.toyota.tsc.notificationhub.models.PushRequestResponseDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
@@ -19,6 +18,9 @@ import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.models.SendPushRequestDto;
 import com.toyota.tsc.notificationhub.repositories.SaNtfInfoEntity;
 import com.toyota.tsc.notificationhub.repositories.SaNtfInfoRepositoryIF;
+
+import jp.toyota.res.common.auth.GetALJTokenResultDto;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -93,18 +95,19 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
             // Body編集
             String payload = createPayload(request, header, userData);
 
-            // JSAPトークン取得
-            ResponseEntity<String> getToken = jsapUtil.executeGetToken();
-            ObjectMapper mapper = new ObjectMapper();
-            GetAccessTokenResponseDto tokenDto = mapper.readValue(getToken.getBody(),
-                    GetAccessTokenResponseDto.class);
-            String token = tokenDto.getAccess_token();
-            if (token == null || token.isEmpty()) {
-                LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
-                        "RS07E00013", tokenDto.getAccess_token(), request.getInternalUserId(),
-                        header.getCorrelationId()));
+            // ALJトークン取得
+            GetALJTokenResultDto resToken = jsapUtil.executeGetToken();
+            if (resToken == null) {
+                LogUtil.error(getClass(), CommonUtil.getSaMessage("RS07E00013",
+                        "resToken is null", request.getInternalUserId(), header.getCorrelationId()));
                 throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
             }
+            if (!resToken.getResult()) {
+                LogUtil.error(SaRegistNotificationDeviceInfoServiceImpl.class, CommonUtil.getSaMessage(
+                        "RS07E00013", resToken.getAljToken(), request.getInternalUserId(), header.getCorrelationId()));
+                throw new TscApplicationException(CommonUtil.getResultCode(RESULT_TOKENFOUND_ERROR));
+            }
+            String token = resToken.getAljToken();
 
             // Push通知送信処理実行
             operationPostMessage(request, header, userData, payload, token);
@@ -136,7 +139,7 @@ public class SaSendPushServiceImpl implements SendPushServiceIF {
                     LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                             "RS07E00011", sqlEx.getMessage(), sqlEx.getStackTrace(), sqlEx.getSQLState(),
                             sqlEx.getErrorCode(), header.getCorrelationId()));
-                    throw new CustomSqlException(CommonUtil.getResultCode(RESULT_EXCEPTION));
+                    throw new CustomException(CommonUtil.getResultCode(RESULT_EXCEPTION));
                 }
                 LogUtil.error(SaSendPushServiceImpl.class, CommonUtil.getSaMessage(
                         "RS07E00001", e.getMessage(), e.getStackTrace(), header.getCorrelationId()));

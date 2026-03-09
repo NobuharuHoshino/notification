@@ -94,65 +94,65 @@ class PropertiesUtilTest {
         assertEquals("v", actual);
     }
 
-    /** クラス：PropertiesUtil getJsapGetUserIdApiKey 設定値が返ることを確認するテストケース */
+    /** クラス：PropertiesUtil getPersonalInfoListApiKey 設定値が返ることを確認するテストケース */
     @Test
-    void getJsapGetUserIdApiKey_001() throws Exception {
+    void getPersonalInfoListApiKey_001() throws Exception {
         // Arrange
         PropertiesUtil sut = new PropertiesUtil();
-        Field f = PropertiesUtil.class.getDeclaredField("jsapGetUserIdApiKey");
+        Field f = PropertiesUtil.class.getDeclaredField("personalInfoListApiKey");
         f.setAccessible(true);
         f.set(sut, "v");
 
         // Act
-        String actual = sut.getJsapGetUserIdApiKey();
+        String actual = sut.getPersonalInfoListApiKey();
 
         // Assert
         assertEquals("v", actual);
     }
 
-    /** クラス：PropertiesUtil getJsapGetUserInfoApiKey 設定値が返ることを確認するテストケース */
+    /** クラス：PropertiesUtil getRegisterNotificationApiKey 設定値が返ることを確認するテストケース */
     @Test
-    void getJsapGetUserInfoApiKey_001() throws Exception {
+    void getRegisterNotificationApiKey_001() throws Exception {
         // Arrange
         PropertiesUtil sut = new PropertiesUtil();
-        Field f = PropertiesUtil.class.getDeclaredField("jsapGetUserInfoApiKey");
+        Field f = PropertiesUtil.class.getDeclaredField("registerNotificationApiKey");
         f.setAccessible(true);
         f.set(sut, "v");
 
         // Act
-        String actual = sut.getJsapGetUserInfoApiKey();
+        String actual = sut.getRegisterNotificationApiKey();
 
         // Assert
         assertEquals("v", actual);
     }
 
-    /** クラス：PropertiesUtil getJsapDvcLinkApiKey 設定値が返ることを確認するテストケース */
+    /** クラス：PropertiesUtil getSilentPushLockeys 設定値が返ることを確認するテストケース */
     @Test
-    void getJsapDvcLinkApiKey_001() throws Exception {
+    void getSilentPushLockeys_001() throws Exception {
         // Arrange
         PropertiesUtil sut = new PropertiesUtil();
-        Field f = PropertiesUtil.class.getDeclaredField("jsapDvcLinkApiKey");
+        Field f = PropertiesUtil.class.getDeclaredField("silentPushLockeys");
         f.setAccessible(true);
         f.set(sut, "v");
 
         // Act
-        String actual = sut.getJsapDvcLinkApiKey();
+        String actual = sut.getSilentPushLockeys();
 
         // Assert
         assertEquals("v", actual);
     }
 
-    /** クラス：PropertiesUtil getJsapNotificationApiKey 設定値が返ることを確認するテストケース */
+    /** クラス：PropertiesUtil getRegisterNotificationUrl 設定値が返ることを確認するテストケース */
     @Test
-    void getJsapNotificationApiKey_001() throws Exception {
+    void getRegisterNotificationUrl_001() throws Exception {
         // Arrange
         PropertiesUtil sut = new PropertiesUtil();
-        Field f = PropertiesUtil.class.getDeclaredField("jsapNotificationApiKey");
+        Field f = PropertiesUtil.class.getDeclaredField("registerNotificationUrl");
         f.setAccessible(true);
         f.set(sut, "v");
 
         // Act
-        String actual = sut.getJsapNotificationApiKey();
+        String actual = sut.getRegisterNotificationUrl();
 
         // Assert
         assertEquals("v", actual);
@@ -249,22 +249,6 @@ class PropertiesUtilTest {
 
         // Act
         String actual = sut.getDatasourcePassword();
-
-        // Assert
-        assertEquals("v", actual);
-    }
-
-    /** クラス：PropertiesUtil getDatasourceDriverClassName 設定値が返ることを確認するテストケース */
-    @Test
-    void getDatasourceDriverClassName_001() throws Exception {
-        // Arrange
-        PropertiesUtil sut = new PropertiesUtil();
-        Field f = PropertiesUtil.class.getDeclaredField("datasourceDriverClassName");
-        f.setAccessible(true);
-        f.set(sut, "v");
-
-        // Act
-        String actual = sut.getDatasourceDriverClassName();
 
         // Assert
         assertEquals("v", actual);
@@ -462,36 +446,36 @@ class PropertiesUtilTest {
         assertEquals("v", actual);
     }
 
-    /** クラス：PropertiesUtil getInstallationPayloadTemplate 設定値が返ることを確認するテストケース */
+    /** クラス：PropertiesUtil getPersonalInfoListApiUrl 設定値が返ることを確認するテストケース */
     @Test
-    void getInstallationPayloadTemplate_001() throws Exception {
+    void getPersonalInfoListApiUrl_001() throws Exception {
         // Arrange
         PropertiesUtil sut = new PropertiesUtil();
-        Field f = PropertiesUtil.class.getDeclaredField("installationPayloadTemplate");
+        Field f = PropertiesUtil.class.getDeclaredField("personalInfoListApiUrl");
         f.setAccessible(true);
         f.set(sut, "v");
 
         // Act
-        String actual = sut.getInstallationPayloadTemplate();
+        String actual = sut.getPersonalInfoListApiUrl();
 
         // Assert
         assertEquals("v", actual);
     }
 
-    /** クラス：PropertiesUtil getPayloadTemplate 設定値が返ることを確認するテストケース */
+    /** クラス：PropertiesUtil getParallelCurrent 設定値が返ることを確認するテストケース */
     @Test
-    void getPayloadTemplate_001() throws Exception {
+    void getParallelCurrent_001() throws Exception {
         // Arrange
         PropertiesUtil sut = new PropertiesUtil();
-        Field f = PropertiesUtil.class.getDeclaredField("payloadTemplate");
+        Field f = PropertiesUtil.class.getDeclaredField("parallelCurrent");
         f.setAccessible(true);
-        f.set(sut, "v");
+        f.setInt(sut, 5);
 
         // Act
-        String actual = sut.getPayloadTemplate();
+        int actual = sut.getParallelCurrent();
 
         // Assert
-        assertEquals("v", actual);
+        assertEquals(5, actual);
     }
 
     /** クラス：PropertiesUtil getJsapGetUserIdApiUrl 設定値が返ることを確認するテストケース */
@@ -732,5 +716,37 @@ class PropertiesUtilTest {
 
         // Assert
         assertEquals("v", actual);
+    }
+
+    /** クラス：PropertiesUtil getThreadPool 設定値が返ることを確認するテストケース */
+    @Test
+    void getThreadPool_001() throws Exception {
+        // Arrange
+        PropertiesUtil sut = new PropertiesUtil();
+        Field f = PropertiesUtil.class.getDeclaredField("threadPool");
+        f.setAccessible(true);
+        f.setInt(sut, 10);
+
+        // Act
+        int actual = sut.getThreadPool();
+
+        // Assert
+        assertEquals(10, actual);
+    }
+
+    /** クラス：PropertiesUtil getThreadQueue 設定値が返ることを確認するテストケース */
+    @Test
+    void getThreadQueue_001() throws Exception {
+        // Arrange
+        PropertiesUtil sut = new PropertiesUtil();
+        Field f = PropertiesUtil.class.getDeclaredField("threadQueue");
+        f.setAccessible(true);
+        f.setInt(sut, 20);
+
+        // Act
+        int actual = sut.getThreadQueue();
+
+        // Assert
+        assertEquals(20, actual);
     }
 }

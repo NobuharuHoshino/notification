@@ -86,7 +86,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_SUCCESS");
 
@@ -140,7 +140,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_SUCCESS");
 
@@ -177,7 +177,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_GET_PERSONALINFO_EMPTY");
 
@@ -203,7 +203,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_FIELD_MISSING");
 
@@ -232,7 +232,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_INVALID_BRAND");
 
@@ -277,7 +277,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_EXCEPTION");
 
@@ -319,7 +319,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_EXCEPTION");
 
@@ -351,7 +351,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
 
             // Act + Assert
@@ -383,7 +383,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_GET_PERSONALINFO_EMPTY");
 
@@ -416,7 +416,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_GET_PERSONALINFO_EMPTY");
 
@@ -458,7 +458,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_EXCEPTION");
 
@@ -506,7 +506,7 @@ class SendPrimaryContactServiceImplTest {
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
             cu.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
             cu.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("PC_EXCEPTION");
 
@@ -773,7 +773,7 @@ class SendPrimaryContactServiceImplTest {
         RequestHeaderDto header = mock(RequestHeaderDto.class);
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
 
             // Act
@@ -816,7 +816,7 @@ class SendPrimaryContactServiceImplTest {
                 .thenReturn(ResponseEntity.ok("ok"));
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
 
             // Act
@@ -865,7 +865,7 @@ class SendPrimaryContactServiceImplTest {
         when(sendGridUtil.executeSendEmail(eq(mail))).thenReturn(sgResponse);
 
         try (MockedStatic<CommonUtil> cu = mockStatic(CommonUtil.class)) {
-            cu.when(() -> CommonUtil.getMessage(anyString(),
+            cu.when(() -> CommonUtil.getLogsMessage(anyString(),
                     org.mockito.Mockito.<Object[]>any())).thenReturn("msg");
 
             // Act

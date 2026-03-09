@@ -16,36 +16,34 @@ public class PropertiesUtil {
     private String keyNameL;
     @Value("${azure.notification-hub.shared-access-key-l}")
     private String keyL;
+
     @Value("${personalinfo.api.key}")
     private String personalInfoApiKey;
     @Value("${personalinfolist.api.key}")
     private String personalInfoListApiKey;
     @Value("${registernotification.api.key}")
     private String registerNotificationApiKey;
-    @Value("${jsap.getuserinfo.xapikey}")
-    private String jsapGetUserInfoApiKey;
-    @Value("${jsap.getuserid.xapikey}")
-    private String jsapGetUserIdApiKey;
-    @Value("${jsap.dvclink.xapikey}")
-    private String jsapDvcLinkApiKey;
-    @Value("${jsap.notification.xapikey}")
-    private String jsapNotificationApiKey;
     @Value("${sendgrid.api.key}")
     private String sendGridApiKey;
+
     @Value("${ntf-silent-push-lockeys}")
     private String silentPushLockeys;
+
     @Value("${sms-country.user}")
     private String smsCountryUser;
     @Value("${sms-country.pass}")
     private String smsCountryPass;
+
     @Value("${spring.datasource.url}")
     private String datasourceUrl;
     @Value("${spring.datasource.username}")
     private String datasourceUsername;
     @Value("${spring.datasource.password}")
     private String datasourcePassword;
-    @Value("${spring.datasource.driver-class-name}")
-    private String datasourceDriverClassName;
+    @Value("${thread.pool}")
+    private int threadPool;
+    @Value("${thread.queue}")
+    private int threadQueue;
 
     // ===== Runtime Configuration =====
     @Value("${azure.notification-hub.retry-count}")
@@ -72,10 +70,6 @@ public class PropertiesUtil {
     private String sasTemplate;
     @Value("${azure.notification-hub.sdk.connection-string}")
     private String sdkConnectionStringTemplate;
-    @Value("${azure.notification-hub.installation.payload.template}")
-    private String installationPayloadTemplate;
-    @Value("${azure.notification-hub.payload.template}")
-    private String payloadTemplate;
     @Value("${jsap.getuserid.api.url}")
     private String jsapGetUserIdApiUrl;
     @Value("${jsap.getuserinfo.api.url}")
@@ -142,22 +136,6 @@ public class PropertiesUtil {
         return registerNotificationApiKey;
     }
 
-    public String getJsapGetUserIdApiKey() {
-        return jsapGetUserIdApiKey;
-    }
-
-    public String getJsapGetUserInfoApiKey() {
-        return jsapGetUserInfoApiKey;
-    }
-
-    public String getJsapDvcLinkApiKey() {
-        return jsapDvcLinkApiKey;
-    }
-
-    public String getJsapNotificationApiKey() {
-        return jsapNotificationApiKey;
-    }
-
     public String getSendGridApiKey() {
         return sendGridApiKey;
     }
@@ -184,10 +162,6 @@ public class PropertiesUtil {
 
     public String getDatasourcePassword() {
         return datasourcePassword;
-    }
-
-    public String getDatasourceDriverClassName() {
-        return datasourceDriverClassName;
     }
 
     // Runtime Configuration
@@ -237,14 +211,6 @@ public class PropertiesUtil {
 
     public String getSdkConnectionStringTemplate() {
         return sdkConnectionStringTemplate;
-    }
-
-    public String getInstallationPayloadTemplate() {
-        return installationPayloadTemplate;
-    }
-
-    public String getPayloadTemplate() {
-        return payloadTemplate;
     }
 
     public String getJsapGetUserIdApiUrl() {
@@ -317,5 +283,13 @@ public class PropertiesUtil {
 
     public int getParallelCurrent() {
         return parallelCurrent;
+    }
+
+    public int getThreadPool() {
+        return threadPool;
+    }
+
+    public int getThreadQueue() {
+        return threadQueue;
     }
 }

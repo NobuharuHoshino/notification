@@ -3,7 +3,7 @@
   PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.toyota.tsc.notificationhub.repositories.NotificationVinListMapper">
-  <select id="select" resultType="com.toyota.tsc.notificationhub.repositories.NotificationVinListEntity">
+  <select id="select" resultType="com.toyota.tsc.notificationhub.repositories.NotificationVinListEntity" timeout="10">
     SELECT
       id,
       region_code,
@@ -22,7 +22,7 @@
       registration_serial_number = #{registrationSerialNumber} AND
       is_linked = #{isLinked};
   </select>
-  <update id="update">
+  <update id="update" timeout="10">
     UPDATE
       notification_vin_list
     SET

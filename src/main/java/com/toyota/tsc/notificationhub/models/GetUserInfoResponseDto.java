@@ -14,6 +14,7 @@ public class GetUserInfoResponseDto {
 
     @Data
     public static class ContactDto {
+        private Integer contactNumber;
         private String contactType;
         private String contact;
         private boolean primaryContactFlag;

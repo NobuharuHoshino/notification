@@ -519,6 +519,165 @@ class NotificationControllerTest {
     }
 
     // ----------------------------------------------------------------------
+    // sendMessageNotification
+    // ----------------------------------------------------------------------
+
+    /** クラス：NotificationController 正常系（全ヘッダ指定）で200 OKとService呼び出しを確認するテストケース */
+    @Test
+    void sendMessageNotification_001() {
+        // 準備
+        String apiKey = "apiKey";
+        String contentType = "application/json";
+        String connection = "keep-alive";
+        String acceptEncoding = "gzip";
+        String correlationId = "corr-301";
+        String userAccessKey = "uak";
+        String xSmartgbook = "xsgb";
+        com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto body =
+                mock(com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto.class);
+
+        ResponseDto expected = mock(ResponseDto.class);
+        when(messageNotificationService.sendMessageNotification(eq(body),
+                any(RequestHeaderDto.class))).thenReturn(expected);
+
+        ArgumentCaptor<RequestHeaderDto> headerCaptor = ArgumentCaptor.forClass(RequestHeaderDto.class);
+
+        // 実行
+        ResponseEntity<ResponseDto> actual = target.sendMessageNotification(
+                apiKey, contentType, connection, acceptEncoding, correlationId,
+                userAccessKey,
+                xSmartgbook, body);
+
+        // 確認
+        assertEquals(200, actual.getStatusCode().value());
+        assertSame(expected, actual.getBody());
+
+        verify(messageNotificationService, times(1)).sendMessageNotification(eq(body),
+                headerCaptor.capture());
+        RequestHeaderDto header = headerCaptor.getValue();
+
+        assertEquals(apiKey, readField(header, "apiKey"));
+        assertEquals(contentType, readField(header, "contentType"));
+        assertEquals(connection, readField(header, "connection"));
+        assertEquals(acceptEncoding, readField(header, "acceptEncoding"));
+        assertEquals(correlationId, readField(header, "correlationId"));
+        assertEquals(userAccessKey, readField(header, "userAccessKey"));
+        assertEquals(xSmartgbook, readField(header, "xSmartgbook"));
+        verifyNoMoreInteractions(messageNotificationService);
+    }
+
+    /**
+     * クラス：NotificationController 準正常系（任意ヘッダnull）でもServiceへnullが渡ることを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_002() {
+        // 準備
+        String apiKey = null;
+        String contentType = "application/json";
+        String connection = null;
+        String acceptEncoding = null;
+        String correlationId = "corr-302";
+        String userAccessKey = null;
+        String xSmartgbook = null;
+        com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto body =
+                mock(com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto.class);
+
+        ResponseDto expected = mock(ResponseDto.class);
+        when(messageNotificationService.sendMessageNotification(eq(body),
+                any(RequestHeaderDto.class))).thenReturn(expected);
+
+        ArgumentCaptor<RequestHeaderDto> headerCaptor = ArgumentCaptor.forClass(RequestHeaderDto.class);
+
+        // 実行
+        ResponseEntity<ResponseDto> actual = target.sendMessageNotification(
+                apiKey, contentType, connection, acceptEncoding, correlationId,
+                userAccessKey,
+                xSmartgbook, body);
+
+        // 確認
+        assertEquals(200, actual.getStatusCode().value());
+        assertSame(expected, actual.getBody());
+
+        verify(messageNotificationService, times(1)).sendMessageNotification(eq(body),
+                headerCaptor.capture());
+        RequestHeaderDto header = headerCaptor.getValue();
+
+        assertNull(readField(header, "apiKey"));
+        assertEquals(contentType, readField(header, "contentType"));
+        assertNull(readField(header, "connection"));
+        assertNull(readField(header, "acceptEncoding"));
+        assertEquals(correlationId, readField(header, "correlationId"));
+        assertNull(readField(header, "userAccessKey"));
+        assertNull(readField(header, "xSmartgbook"));
+        verifyNoMoreInteractions(messageNotificationService);
+    }
+
+    /** クラス：NotificationController 異常系（Service例外throw）で例外が伝播することを確認するテストケース */
+    @Test
+    void sendMessageNotification_003() {
+        // 準備
+        String apiKey = "apiKey";
+        String contentType = "application/json";
+        String connection = null;
+        String acceptEncoding = null;
+        String correlationId = "corr-303";
+        String userAccessKey = null;
+        String xSmartgbook = null;
+        com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto body =
+                mock(com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto.class);
+
+        RuntimeException expectedEx = new RuntimeException("boom");
+        when(messageNotificationService.sendMessageNotification(eq(body),
+                any(RequestHeaderDto.class))).thenThrow(expectedEx);
+
+        // 実行
+        RuntimeException actualEx = assertThrows(RuntimeException.class,
+                () -> target.sendMessageNotification(
+                        apiKey, contentType, connection, acceptEncoding, correlationId,
+                        userAccessKey, xSmartgbook, body));
+
+        // 確認
+        assertSame(expectedEx, actualEx);
+        verify(messageNotificationService, times(1)).sendMessageNotification(eq(body),
+                any(RequestHeaderDto.class));
+        verifyNoMoreInteractions(messageNotificationService);
+    }
+
+    /**
+     * クラス：NotificationController 異常系（Service戻り値null）で200
+     * OKかつbodyがnullになることを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_004() {
+        // 準備
+        String apiKey = "apiKey";
+        String contentType = "application/json";
+        String connection = null;
+        String acceptEncoding = null;
+        String correlationId = "corr-304";
+        String userAccessKey = null;
+        String xSmartgbook = null;
+        com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto body =
+                mock(com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto.class);
+
+        when(messageNotificationService.sendMessageNotification(eq(body),
+                any(RequestHeaderDto.class))).thenReturn(null);
+
+        // 実行
+        ResponseEntity<ResponseDto> actual = target.sendMessageNotification(
+                apiKey, contentType, connection, acceptEncoding, correlationId,
+                userAccessKey,
+                xSmartgbook, body);
+
+        // 確認
+        assertEquals(200, actual.getStatusCode().value());
+        assertNull(actual.getBody());
+        verify(messageNotificationService, times(1)).sendMessageNotification(eq(body),
+                any(RequestHeaderDto.class));
+        verifyNoMoreInteractions(messageNotificationService);
+    }
+
+    // ----------------------------------------------------------------------
     // helper
     // ----------------------------------------------------------------------
 

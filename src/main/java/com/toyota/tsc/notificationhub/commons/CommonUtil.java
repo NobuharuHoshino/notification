@@ -62,8 +62,8 @@ public class CommonUtil {
     /**
      * ログメッセージを取得します。
      */
-    public static String getBatMessage(String id, Object... params) {
-        ResourceBundle bundleLog = ResourceBundle.getBundle("properties.BatLogMessages");
+    public static String getLogsMessage(String id, Object... params) {
+        ResourceBundle bundleLog = ResourceBundle.getBundle("properties.Logs");
         String pattern = bundleLog.getString(id);
         return MessageFormat.format(pattern, params);
     }

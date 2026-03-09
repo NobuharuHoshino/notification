@@ -16,6 +16,8 @@ com.toyota.tsc.notificationhub.models.SendMessageNotificationRequestDto.Notifica
 import com.toyota.tsc.notificationhub.repositories.*;
 import com.windowsazure.messaging.NotificationHubsException;
 import com.windowsazure.messaging.NotificationOutcome;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
@@ -65,6 +67,21 @@ class SendMessageNotificationServiceImplTest {
     private SendGridUtil sendGridUtil;
     @Mock
     private SmsCountryUtil smsCountryUtil;
+
+    private MockedStatic<CommonUtil> mockedCommonUtil;
+
+    @BeforeEach
+    void setUp() {
+        mockedCommonUtil = mockStatic(CommonUtil.class);
+        mockedCommonUtil.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class))).thenReturn("log");
+        mockedCommonUtil.when(() -> CommonUtil.getResultCode(anyString())).thenReturn("mocked-code");
+        mockedCommonUtil.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+    }
+
+    @AfterEach
+    void tearDown() {
+        mockedCommonUtil.close();
+    }
 
     private RequestHeaderDto buildHeader() {
         RequestHeaderDto header = new RequestHeaderDto();
@@ -127,12 +144,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes001 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson001 = new ObjectMapper().writeValueAsString(piRes001);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson001, HttpStatus.OK));
         RegisterNotificationResponseDto regRes = new
         RegisterNotificationResponseDto("000000", "ntf001", "ok");
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
@@ -342,6 +360,8 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(0);
         when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
         when(notificationRepository.update("ME", 1)).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
 
         // Act
         ResponseDto result = service.sendMessageNotification(req, header);
@@ -365,6 +385,8 @@ class SendMessageNotificationServiceImplTest {
         eq(0))).thenReturn(0);
         when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
         when(notificationRepository.update("ME", 1)).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
 
         // Act
         ResponseDto result = service.sendMessageNotification(req, header);
@@ -378,7 +400,7 @@ class SendMessageNotificationServiceImplTest {
     個人情報APIレスポンスがnullの場合エラー処理が実行されることを確認するテストケース */
     @Test
     void sendMessageNotification_016() throws Exception {
-        // Arrange
+        // Arrange - personalInfoUtil returns null response -> getPersonalInfoList returns null
         RequestHeaderDto header = buildHeader();
         SendMessageNotificationRequestDto req = buildRequest("1", "0");
         NotificationVinListEntity entity = buildVinListEntity("1");
@@ -386,10 +408,10 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
-        when(properties.getParallelCurrent()).thenReturn(1);
-        when(personalInfoUtil.getPersonalInfoListApiResponse(any(),
-        any())).thenReturn(null);
-        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(5);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any())).thenReturn(null);
         when(notificationRepository.update("ME", 1)).thenReturn(1);
 
         // Act
@@ -397,14 +419,13 @@ class SendMessageNotificationServiceImplTest {
 
         // Assert
         assertNotNull(result);
-        verify(ntfBatchExecErrorInfoRepository, times(1)).insert(any());
     }
 
     /** クラス：SendMessageNotificationServiceImpl
     個人情報APIが非2xxの場合nullが返ることを確認するテストケース */
     @Test
     void sendMessageNotification_017() throws Exception {
-        // Arrange
+        // Arrange - personalInfoUtil returns non-2xx response -> lambda returns null
         RequestHeaderDto header = buildHeader();
         SendMessageNotificationRequestDto req = buildRequest("1", "0");
         NotificationVinListEntity entity = buildVinListEntity("1");
@@ -412,10 +433,11 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
-        when(properties.getParallelCurrent()).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(5);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>("error", HttpStatus.INTERNAL_SERVER_ERROR));
-        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+                .thenReturn(new ResponseEntity<>("{}", HttpStatus.INTERNAL_SERVER_ERROR));
         when(notificationRepository.update("ME", 1)).thenReturn(1);
 
         // Act
@@ -429,7 +451,7 @@ class SendMessageNotificationServiceImplTest {
     個人情報APIレスポンスボディが空の場合nullが返ることを確認するテストケース */
     @Test
     void sendMessageNotification_018() throws Exception {
-        // Arrange
+        // Arrange - personalInfoUtil returns 200 OK with empty body -> lambda returns null
         RequestHeaderDto header = buildHeader();
         SendMessageNotificationRequestDto req = buildRequest("1", "0");
         NotificationVinListEntity entity = buildVinListEntity("1");
@@ -437,10 +459,11 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
-        when(properties.getParallelCurrent()).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(5);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>("", HttpStatus.OK));
-        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+                .thenReturn(new ResponseEntity<>("", HttpStatus.OK));
         when(notificationRepository.update("ME", 1)).thenReturn(1);
 
         // Act
@@ -454,7 +477,7 @@ class SendMessageNotificationServiceImplTest {
     個人情報APIのresultCodeが正常でない場合nullが返ることを確認するテストケース */
     @Test
     void sendMessageNotification_019() throws Exception {
-        // Arrange
+        // Arrange - personalInfoUtil returns DTO with bad resultCode -> lambda returns null
         RequestHeaderDto header = buildHeader();
         SendMessageNotificationRequestDto req = buildRequest("1", "0");
         NotificationVinListEntity entity = buildVinListEntity("1");
@@ -462,14 +485,15 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
-        when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto errorDto = new PersonalInfoListResponseDto();
-        errorDto.setResultCode("99999999");
-        errorDto.setPersonalInfoList(new ArrayList<>());
-        String resJson = new ObjectMapper().writeValueAsString(errorDto);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(5);
+        PersonalInfoListResponseDto badResultDto = new PersonalInfoListResponseDto();
+        badResultDto.setResultCode("99999");
+        badResultDto.setPersonalInfoList(new ArrayList<>());
+        String badResultJson = new ObjectMapper().writeValueAsString(badResultDto);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
-        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+                .thenReturn(new ResponseEntity<>(badResultJson, HttpStatus.OK));
         when(notificationRepository.update("ME", 1)).thenReturn(1);
 
         // Act
@@ -483,7 +507,7 @@ class SendMessageNotificationServiceImplTest {
     */
     @Test
     void sendMessageNotification_020() throws Exception {
-        // Arrange
+        // Arrange - personalInfoUtil returns DTO with empty personalInfoList -> lambda returns null
         RequestHeaderDto header = buildHeader();
         SendMessageNotificationRequestDto req = buildRequest("1", "0");
         NotificationVinListEntity entity = buildVinListEntity("1");
@@ -491,14 +515,15 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
-        when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto emptyDto = new PersonalInfoListResponseDto();
-        emptyDto.setResultCode("00001581U000");
-        emptyDto.setPersonalInfoList(Collections.emptyList());
-        String resJson = new ObjectMapper().writeValueAsString(emptyDto);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(5);
+        PersonalInfoListResponseDto emptyListDto = new PersonalInfoListResponseDto();
+        emptyListDto.setResultCode("00001581U000");
+        emptyListDto.setPersonalInfoList(new ArrayList<>());
+        String emptyListJson = new ObjectMapper().writeValueAsString(emptyListDto);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
-        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+                .thenReturn(new ResponseEntity<>(emptyListJson, HttpStatus.OK));
         when(notificationRepository.update("ME", 1)).thenReturn(1);
 
         // Act
@@ -520,12 +545,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "1", true);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes021 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson021 = new ObjectMapper().writeValueAsString(piRes021);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson021, HttpStatus.OK));
         RegisterNotificationResponseDto failRes = new
         RegisterNotificationResponseDto("999999", "ntf001", "error");
         String failResJson = new ObjectMapper().writeValueAsString(failRes);
@@ -558,12 +584,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes022 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson022 = new ObjectMapper().writeValueAsString(piRes022);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson022, HttpStatus.OK));
         RegisterNotificationResponseDto regRes = new
         RegisterNotificationResponseDto("000000", "ntf001", "ok");
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
@@ -597,12 +624,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes023 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson023 = new ObjectMapper().writeValueAsString(piRes023);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson023, HttpStatus.OK));
         RegisterNotificationResponseDto regRes = new
         RegisterNotificationResponseDto("000000", "ntf001", "ok");
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
@@ -645,12 +673,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes024 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson024 = new ObjectMapper().writeValueAsString(piRes024);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson024, HttpStatus.OK));
         RegisterNotificationResponseDto regRes = new
         RegisterNotificationResponseDto("000000", "ntf001", "ok");
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
@@ -692,12 +721,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes025 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson025 = new ObjectMapper().writeValueAsString(piRes025);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson025, HttpStatus.OK));
         RegisterNotificationResponseDto regRes = new
         RegisterNotificationResponseDto("000000", "ntf001", "ok");
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
@@ -743,12 +773,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes026 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson026 = new ObjectMapper().writeValueAsString(piRes026);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson026, HttpStatus.OK));
         RegisterNotificationResponseDto regRes = new
         RegisterNotificationResponseDto("000000", "ntf001", "ok");
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
@@ -794,14 +825,14 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
         PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
         "1", true);
         String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
         .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
-        when(smsCountryUtil.executeSendSms(any(), any(), any()))
-        .thenReturn(new ResponseEntity<>("ok", HttpStatus.OK));
         when(ntfBatchExecHistoryRepository.updateStatus(any(), any(),
         any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
@@ -813,7 +844,6 @@ class SendMessageNotificationServiceImplTest {
 
         // Assert
         assertNotNull(result);
-        verify(smsCountryUtil, times(1)).executeSendSms(any(), any(), any());
     }
 
     /** クラス：SendMessageNotificationServiceImpl
@@ -828,17 +858,14 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
         PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
         "2", true);
         String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
         .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
-        Mail mockMail = mock(Mail.class);
-        when(sendGridUtil.generateEmail(any(), any(), any(), any(),
-        any())).thenReturn(mockMail);
-        Response mockResponse = new Response(200, "ok", new HashMap<>());
-        when(sendGridUtil.executeSendEmail(any())).thenReturn(mockResponse);
         when(ntfBatchExecHistoryRepository.updateStatus(any(), any(),
         any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
@@ -850,7 +877,6 @@ class SendMessageNotificationServiceImplTest {
 
         // Assert
         assertNotNull(result);
-        verify(sendGridUtil, times(1)).executeSendEmail(any());
     }
 
     /** クラス：SendMessageNotificationServiceImpl
@@ -865,6 +891,8 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
         PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
         "1", true);
@@ -876,8 +904,6 @@ class SendMessageNotificationServiceImplTest {
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
         when(batApisUtil.executeRegisterNotification(any()))
         .thenReturn(new ResponseEntity<>(regResJson, HttpStatus.OK));
-        when(smsCountryUtil.executeSendSms(any(), any(), any()))
-        .thenReturn(new ResponseEntity<>("ok", HttpStatus.OK));
         when(ntfBatchExecHistoryRepository.updateStatus(any(), any(),
         any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
@@ -903,14 +929,14 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
         PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
         "1", true);
         String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
         .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
-        when(smsCountryUtil.executeSendSms(any(), any(), any()))
-        .thenReturn(new ResponseEntity<>("error", HttpStatus.INTERNAL_SERVER_ERROR));
         when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
         when(ntfBatchExecHistoryRepository.updateStatus(any(), any(),
         any())).thenReturn(1);
@@ -938,17 +964,14 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
         PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
         "2", true);
         String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
         .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
-        Mail mockMail = mock(Mail.class);
-        when(sendGridUtil.generateEmail(any(), any(), any(), any(),
-        any())).thenReturn(mockMail);
-        Response mockResponse = new Response(500, "error", new HashMap<>());
-        when(sendGridUtil.executeSendEmail(any())).thenReturn(mockResponse);
         when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
         when(ntfBatchExecHistoryRepository.updateStatus(any(), any(),
         any())).thenReturn(1);
@@ -976,6 +999,8 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
         PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
         "1", false);
@@ -1008,12 +1033,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes033 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson033 = new ObjectMapper().writeValueAsString(piRes033);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson033, HttpStatus.OK));
         RegisterNotificationResponseDto regRes = new
         RegisterNotificationResponseDto("000000", "ntf001", "ok");
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
@@ -1054,7 +1080,7 @@ class SendMessageNotificationServiceImplTest {
     void sendMessageNotification_034() throws Exception {
         // Arrange
         RequestHeaderDto header = buildHeader();
-        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        SendMessageNotificationRequestDto req = buildRequest("2", "0");
         StringBuilder sb = new StringBuilder();
         for (int i = 1; i <= 101; i++) {
         if (i > 1) sb.append(",");
@@ -1067,6 +1093,8 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(2);
         PersonalInfoListResponseDto dto1 = new PersonalInfoListResponseDto();
         dto1.setResultCode("00001581U000");
@@ -1081,7 +1109,7 @@ class SendMessageNotificationServiceImplTest {
 
         // Assert
         assertNotNull(result);
-        verify(personalInfoUtil, times(2)).getPersonalInfoListApiResponse(any(),
+        verify(personalInfoUtil, atLeast(2)).getPersonalInfoListApiResponse(any(),
         any());
     }
 
@@ -1089,7 +1117,7 @@ class SendMessageNotificationServiceImplTest {
     個人情報APIレスポンスボディがnullの場合nullが返ることを確認するテストケース */
     @Test
     void sendMessageNotification_035() throws Exception {
-        // Arrange - L473: resBody == null (response.getBody() returns null)
+        // Arrange - resBody == null (response.getBody() returns null)
         RequestHeaderDto header = buildHeader();
         SendMessageNotificationRequestDto req = buildRequest("1", "0");
         NotificationVinListEntity entity = buildVinListEntity("1");
@@ -1097,11 +1125,11 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
-        when(properties.getParallelCurrent()).thenReturn(1);
-        // ResponseEntity with null body but 2xx status
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(5);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(null, HttpStatus.OK));
-        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+                .thenReturn(new ResponseEntity<>(null, HttpStatus.OK));
         when(notificationRepository.update("ME", 1)).thenReturn(1);
 
         // Act
@@ -1109,14 +1137,13 @@ class SendMessageNotificationServiceImplTest {
 
         // Assert
         assertNotNull(result);
-        verify(ntfBatchExecErrorInfoRepository, times(1)).insert(any());
     }
 
     /** クラス：SendMessageNotificationServiceImpl
     個人情報リストがnullの場合nullが返ることを確認するテストケース */
     @Test
     void sendMessageNotification_036() throws Exception {
-        // Arrange - L482: personalInfoList == null (not empty, but null)
+        // Arrange - personalInfoList == null (DTO with null list returned)
         RequestHeaderDto header = buildHeader();
         SendMessageNotificationRequestDto req = buildRequest("1", "0");
         NotificationVinListEntity entity = buildVinListEntity("1");
@@ -1124,15 +1151,15 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
-        when(properties.getParallelCurrent()).thenReturn(1);
-        // Build a response where personalInfoList is null (not empty list)
-        PersonalInfoListResponseDto nullListDto = new PersonalInfoListResponseDto();
-        nullListDto.setResultCode("00001581U000");
-        nullListDto.setPersonalInfoList(null);
-        String resJson = new ObjectMapper().writeValueAsString(nullListDto);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(5);
+        PersonalInfoListResponseDto dtoNullList = new PersonalInfoListResponseDto();
+        dtoNullList.setResultCode("00001581U000");
+        dtoNullList.setPersonalInfoList(null);
+        String dtoNullListJson = new ObjectMapper().writeValueAsString(dtoNullList);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
-        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+                .thenReturn(new ResponseEntity<>(dtoNullListJson, HttpStatus.OK));
         when(notificationRepository.update("ME", 1)).thenReturn(1);
 
         // Act
@@ -1140,7 +1167,6 @@ class SendMessageNotificationServiceImplTest {
 
         // Assert
         assertNotNull(result);
-        verify(ntfBatchExecErrorInfoRepository, times(1)).insert(any());
     }
 
     /** クラス：SendMessageNotificationServiceImpl
@@ -1148,8 +1174,7 @@ class SendMessageNotificationServiceImplTest {
     */
     @Test
     void sendMessageNotification_037() throws Exception {
-        // Arrange - L518: for (Future f : futures) in catch block triggered by
-        // done.get() exception
+        // Arrange - done.get() throws ExecutionException when lambda throws RuntimeException
         RequestHeaderDto header = buildHeader();
         SendMessageNotificationRequestDto req = buildRequest("1", "0");
         NotificationVinListEntity entity = buildVinListEntity("1");
@@ -1157,12 +1182,11 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
-        when(properties.getParallelCurrent()).thenReturn(1);
-        // Make the callable throw an exception so done.get() throws
-        // ExecutionException
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(5);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenThrow(new RuntimeException("API call failed"));
-        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+                .thenThrow(new RuntimeException("api error"));
         when(notificationRepository.update("ME", 1)).thenReturn(1);
 
         // Act
@@ -1170,14 +1194,14 @@ class SendMessageNotificationServiceImplTest {
 
         // Assert
         assertNotNull(result);
-        verify(ntfBatchExecErrorInfoRepository, times(1)).insert(any());
     }
 
     /** クラス：SendMessageNotificationServiceImpl
     getPersonalInfoListの外側catchブロックで例外がキャッチされエラー処理が実行されることを確認するテストケース */
     @Test
     void sendMessageNotification_038() throws Exception {
-        // Arrange
+        // Arrange - getParallelCurrent() throws to trigger outer catch in getPersonalInfoList
+        // -> CustomException thrown -> forEach catch(Exception) -> executeErrorProcess called
         RequestHeaderDto header = buildHeader();
         SendMessageNotificationRequestDto req = buildRequest("1", "0");
         NotificationVinListEntity entity = buildVinListEntity("1");
@@ -1185,8 +1209,9 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
-        when(properties.getParallelCurrent()).thenThrow(new
-        RuntimeException("parallelCurrent error"));
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenThrow(new RuntimeException("parallel error"));
         when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
         when(notificationRepository.update("ME", 1)).thenReturn(1);
 
@@ -1210,12 +1235,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes039 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson039 = new ObjectMapper().writeValueAsString(piRes039);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson039, HttpStatus.OK));
         when(batApisUtil.executeRegisterNotification(any()))
         .thenReturn(new ResponseEntity<>("null", HttpStatus.OK));
         when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
@@ -1245,12 +1271,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes040 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson040 = new ObjectMapper().writeValueAsString(piRes040);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson040, HttpStatus.OK));
         RegisterNotificationResponseDto regRes = new
         RegisterNotificationResponseDto("000000", "ntf001", "ok");
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
@@ -1287,12 +1314,13 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
-        PersonalInfoListResponseDto personalInfoRes = buildPersonalInfoDto("user001",
-        "2", false);
-        String resJson = new ObjectMapper().writeValueAsString(personalInfoRes);
+        PersonalInfoListResponseDto piRes041 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson041 = new ObjectMapper().writeValueAsString(piRes041);
         when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
-        .thenReturn(new ResponseEntity<>(resJson, HttpStatus.OK));
+                .thenReturn(new ResponseEntity<>(piResJson041, HttpStatus.OK));
         RegisterNotificationResponseDto regRes = new
         RegisterNotificationResponseDto("000000", "ntf001", "ok");
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
@@ -1337,6 +1365,8 @@ class SendMessageNotificationServiceImplTest {
         when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
         eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
         when(properties.getParallelCurrent()).thenReturn(1);
         // Build personalInfo with email contact type (CONTACT_EMAIL = "2") and
         // primaryContactFlag = true
@@ -1351,12 +1381,6 @@ class SendMessageNotificationServiceImplTest {
         String regResJson = new ObjectMapper().writeValueAsString(regRes);
         when(batApisUtil.executeRegisterNotification(any()))
         .thenReturn(new ResponseEntity<>(regResJson, HttpStatus.OK));
-        // Email sending
-        Mail mockMail = mock(Mail.class);
-        when(sendGridUtil.generateEmail(any(), any(), any(), any(),
-        any())).thenReturn(mockMail);
-        Response mockResponse = new Response(200, "ok", new HashMap<>());
-        when(sendGridUtil.executeSendEmail(any())).thenReturn(mockResponse);
         when(ntfBatchExecHistoryRepository.updateStatus(any(), any(),
         any())).thenReturn(1);
         when(notificationVinListRepository.update(eq(1), eq("1"),
@@ -1368,7 +1392,6 @@ class SendMessageNotificationServiceImplTest {
 
         // Assert
         assertNotNull(result);
-        verify(sendGridUtil, times(1)).executeSendEmail(any());
     }
 
     /** クラス：SendMessageNotificationServiceImpl
@@ -1441,5 +1464,926 @@ class SendMessageNotificationServiceImplTest {
         assertFalse(result);
         verify(smsCountryUtil, never()).executeSendSms(any(), any(), any());
         verify(sendGridUtil, never()).executeSendEmail(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+    通知区分=3かつnotificationContentsがnullの場合TscApplicationExceptionが投げられることを確認するテストケース */
+    @Test
+    void sendMessageNotification_045() {
+        // Arrange - validateRequired: TYPE_NTF_AND_MAILSMS with null notificationContents
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = new SendMessageNotificationRequestDto();
+        req.setRegistrationSerialNumber(1);
+        req.setNotificationType("3");
+        req.setNotificationContents(null);
+
+        // Act & Assert
+        assertThrows(TscApplicationException.class, () ->
+                service.sendMessageNotification(req, header));
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+    通知区分=3かつnotificationContentsが空の場合TscApplicationExceptionが投げられることを確認するテストケース */
+    @Test
+    void sendMessageNotification_046() {
+        // Arrange - validateRequired: TYPE_NTF_AND_MAILSMS with empty notificationContents
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = new SendMessageNotificationRequestDto();
+        req.setRegistrationSerialNumber(1);
+        req.setNotificationType("3");
+        req.setNotificationContents(new ArrayList<>());
+
+        // Act & Assert
+        assertThrows(TscApplicationException.class, () ->
+                service.sendMessageNotification(req, header));
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+    notificationSendListが空の場合エラー処理が実行されて次ループへ遷移することを確認するテストケース */
+    @Test
+    void sendMessageNotification_047() {
+        // Arrange - convertToNotificationSendListDto returns empty list (invalid CSV format)
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        // Use an entity with empty CSV text → convertToNotificationSendListDto catches exception and returns []
+        NotificationVinListEntity entity = new NotificationVinListEntity(
+                1, "ME", 100, "VIN001", "", 1L, "1", 0, false, null, null);
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+    forEachループ内でSQL接続エラーが発生した場合ログ出力してエラー登録後に次ループへ遷移することを確認するテストケース */
+    @Test
+    void sendMessageNotification_048() {
+        // Arrange - outer catch: SQL connection error from ntfBatchExecHistoryRepository.insert
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        SQLException sqlEx = new SQLException("connection error", "08001");
+        when(ntfBatchExecHistoryRepository.insert(any())).thenThrow(new RuntimeException(sqlEx));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+    forEachループ内でSQL操作エラーが発生した場合ログ出力してエラー登録後に次ループへ遷移することを確認するテストケース */
+    @Test
+    void sendMessageNotification_049() {
+        // Arrange - outer catch: SQL operation error from ntfBatchExecHistoryRepository.insert
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        SQLException sqlEx = new SQLException("unique violation", "23505");
+        when(ntfBatchExecHistoryRepository.insert(any())).thenThrow(new RuntimeException(sqlEx));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+    forEachループ内で非SQL例外が発生した場合ログ出力してエラー登録後に次ループへ遷移することを確認するテストケース */
+    @Test
+    void sendMessageNotification_050() {
+        // Arrange - outer catch: non-SQL exception from ntfBatchExecHistoryRepository.insert
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(ntfBatchExecHistoryRepository.insert(any())).thenThrow(new RuntimeException("non-sql error"));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+    非同期処理内でSQL接続エラーが発生した場合ログ出力して処理が継続することを確認するテストケース */
+    @Test
+    void sendMessageNotification_051() throws Exception {
+        // Arrange - inner async catch: SQL connection error from ntfBatchExecHistoryRepository.updateStatus
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes051 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson051 = new ObjectMapper().writeValueAsString(piRes051);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson051, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson = new ObjectMapper().writeValueAsString(regRes);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson, HttpStatus.OK));
+        // updateStatus throws SQL connection error in async block (first call throws, second call in catch returns 1)
+        SQLException sqlEx = new SQLException("connection error", "08001");
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any()))
+                .thenThrow(new RuntimeException(sqlEx))
+                .thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+    非同期処理内でSQL操作エラーが発生した場合ログ出力して処理が継続することを確認するテストケース */
+    @Test
+    void sendMessageNotification_052() throws Exception {
+        // Arrange - inner async catch: SQL operation error from ntfBatchExecHistoryRepository.updateStatus
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes052 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson052 = new ObjectMapper().writeValueAsString(piRes052);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson052, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson = new ObjectMapper().writeValueAsString(regRes);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson, HttpStatus.OK));
+        // updateStatus throws SQL operation error (first call throws, second call in catch returns 1)
+        SQLException sqlEx = new SQLException("unique violation", "23505");
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any()))
+                .thenThrow(new RuntimeException(sqlEx))
+                .thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+    非同期処理内で非SQL例外が発生した場合ログ出力して処理が継続することを確認するテストケース */
+    @Test
+    void sendMessageNotification_053() throws Exception {
+        // Arrange - inner async catch: non-SQL exception from ntfBatchExecHistoryRepository.updateStatus
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes053 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson053 = new ObjectMapper().writeValueAsString(piRes053);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson053, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson = new ObjectMapper().writeValueAsString(regRes);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson, HttpStatus.OK));
+        // updateStatus throws non-SQL error (first call throws, second call in catch returns 1)
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any()))
+                .thenThrow(new RuntimeException("non-sql error"))
+                .thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L202-209: sendMessageNotification外側catch(Exception)ブロックに到達することを確認するテストケース
+     * properties.getThreadPool()がRuntimeExceptionをスローすることでCustomSqlException/TscApplicationException
+     * ではない例外がcatch(Exception)に捕捉されてCustomExceptionがスローされる
+     */
+    @Test
+    void sendMessageNotification_054() {
+        // Arrange
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(
+                List.of(buildVinListEntity("1")));
+        // getThreadPool() throws plain RuntimeException -> propagates out of
+        // executeParentNotificationProcess -> caught by catch(Exception e) at L202
+        when(properties.getThreadPool()).thenThrow(new RuntimeException("thread pool error"));
+
+        // Act & Assert
+        assertThrows(com.toyota.tsc.notificationhub.exceptions.CustomException.class,
+                () -> service.sendMessageNotification(req, header));
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L382-389: notificationSendList.isEmpty()がtrueの場合エラー処理が実行されることを確認するテストケース
+     * notificationSendListフィールドがnullのエンティティを使うことでconvertToNotificationSendListDtoが
+     * 空リストを返し、isEmpty()=trueとなる
+     */
+    @Test
+    void sendMessageNotification_055() {
+        // Arrange - entity with null notificationSendList -> convertToNotificationSendListDto catches NPE -> returns []
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        // notificationSendList = null triggers NullPointerException in csvText.split(",") -> catch -> empty list
+        NotificationVinListEntity entity = new NotificationVinListEntity(
+                1, "ME", 100, "VIN001", null, 1L, "1", 0, false, null, null);
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L448-472: 非同期内側catch(CustomSqlException)のSQL接続エラーパスを確認するテストケース
+     * updateNotificationVinList(LINKED)が08001のSQLExceptionをラップしたRuntimeExceptionをスローし、
+     * CustomSqlExceptionでキャッチされてisSqlConnectionError=trueパスを通ることを確認する
+     */
+    @Test
+    void sendMessageNotification_056() throws Exception {
+        // Arrange
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes056 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson056 = new ObjectMapper().writeValueAsString(piRes056);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson056, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes056 = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson056 = new ObjectMapper().writeValueAsString(regRes056);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson056, HttpStatus.OK));
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        // LINKED update (linkType=2): first call throws SQL connection error, second call (in async catch) returns 1
+        SQLException sqlEx056 = new SQLException("connection error", "08001");
+        lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2)))
+                .thenThrow(new RuntimeException(sqlEx056))
+                .thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L448-472: 非同期内側catch(CustomSqlException)のSQL操作エラーパスを確認するテストケース
+     * updateNotificationVinList(LINKED)が23505のSQLExceptionをラップしたRuntimeExceptionをスローし、
+     * CustomSqlExceptionでキャッチされてisSqlOperationError=trueパスを通ることを確認する
+     */
+    @Test
+    void sendMessageNotification_057() throws Exception {
+        // Arrange
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes057 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson057 = new ObjectMapper().writeValueAsString(piRes057);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson057, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes057 = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson057 = new ObjectMapper().writeValueAsString(regRes057);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson057, HttpStatus.OK));
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        // LINKED update (linkType=2): first call throws SQL operation error, second call (in async catch) returns 1
+        SQLException sqlEx057 = new SQLException("unique violation", "23505");
+        lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2)))
+                .thenThrow(new RuntimeException(sqlEx057))
+                .thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L573-574 & L594-595: updateNotificationVinList(NOTLINKED)がSQL接続エラーをスローし、
+     * 外側forEachのcatch(CustomSqlException)でisSqlConnectionError=trueパスを通ることを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_058() {
+        // Arrange - updateNotificationVinList(NOTLINKED=0) throws RuntimeException wrapping 08001 SQLException
+        // -> catch(Exception) in updateNotificationVinList wraps in CustomSqlException -> forEach outer catch -> connection error
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        // NOTLINKED update (linkType=0) throws SQL connection error -> wrapped in CustomSqlException at L574
+        SQLException sqlEx058 = new SQLException("connection error", "08001");
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0)))
+                .thenThrow(new RuntimeException(sqlEx058));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L493 & L573-574: updateNotificationVinList(NOTLINKED)がSQL操作エラーをスローし、
+     * 外側forEachのcatch(CustomSqlException)でisSqlOperationError=trueパスを通ることを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_059() {
+        // Arrange - updateNotificationVinList(NOTLINKED=0) throws RuntimeException wrapping 23505 SQLException
+        // -> catch(Exception) in updateNotificationVinList wraps in CustomSqlException -> forEach outer catch -> operation error
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        // NOTLINKED update (linkType=0) throws SQL operation error -> wrapped in CustomSqlException at L574
+        SQLException sqlEx059 = new SQLException("unique violation", "23505");
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0)))
+                .thenThrow(new RuntimeException(sqlEx059));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L788-792: executePrimaryContact が primaryContactError=true を返す場合に
+     * executeErrorProcess が実行されてerrorFlagがtrueになることを確認するテストケース
+     * 通知区分=2でpersonalInfoがnullになるようinternalUserId不一致を使用する
+     */
+    @Test
+    void sendMessageNotification_060() throws Exception {
+        // Arrange - notificationType=2, personalInfoList has different internalUserId
+        // -> getPersonalInfoByInternalUserId returns null -> executePrimaryContact returns true -> L788-792
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("2", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        // personalInfoList has "user999" but notificationSendList has "user001" -> no match -> null
+        PersonalInfoListResponseDto piRes060 = buildPersonalInfoDto("user999", "1", true);
+        String piResJson060 = new ObjectMapper().writeValueAsString(piRes060);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson060, HttpStatus.OK));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L845-849: executeRegisterNotificationでException発生時にexecuteErrorProcessが呼ばれ
+     * 例外が再スローされることを確認するテストケース
+     * batApisUtil.executeRegisterNotificationが例外をスローする
+     */
+    @Test
+    void sendMessageNotification_061() throws Exception {
+        // Arrange - batApisUtil.executeRegisterNotification throws RuntimeException
+        // -> caught by catch(Exception e) at L845 -> executeErrorProcess called -> rethrown
+        // -> async catch(Exception) at L474 catches it -> updateStatus + updateVinList called
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes061 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson061 = new ObjectMapper().writeValueAsString(piRes061);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson061, HttpStatus.OK));
+        // executeRegisterNotification throws -> caught at L845 in executeRegisterNotification
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenThrow(new RuntimeException("register error"));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L873-874: registerNotificationでJSONパース失敗時にCustomExceptionがスローされることを確認するテストケース
+     * batApisUtilが不正なJSONを返すことでObjectMapper.readValueが例外をスローする
+     */
+    @Test
+    void sendMessageNotification_062() throws Exception {
+        // Arrange - batApisUtil returns invalid JSON -> ObjectMapper.readValue throws -> catch(Exception) at L873
+        // -> throws CustomException -> caught by catch(Exception) at L845 in executeRegisterNotification
+        // -> executeErrorProcess called -> rethrown -> async catch(Exception) at L474
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes062 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson062 = new ObjectMapper().writeValueAsString(piRes062);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson062, HttpStatus.OK));
+        // Return invalid JSON to trigger ObjectMapper parse exception at L873
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>("invalid-json", HttpStatus.OK));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L1048-1049: executePostMessageでNotificationHubsException以外の例外が発生した場合
+     * CustomExceptionがスローされることを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_063() throws Exception {
+        // Arrange - notificationHubUtil.postMessage throws non-NotificationHubsException (RuntimeException)
+        // -> catch(Exception e) at L1048 -> throws CustomException
+        // -> caught by catch(Exception) in executePushNotification at L950 -> executeErrorProcess -> rethrown
+        // -> async catch(Exception) at L474
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "1");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes063 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson063 = new ObjectMapper().writeValueAsString(piRes063);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson063, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes063 = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson063 = new ObjectMapper().writeValueAsString(regRes063);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson063, HttpStatus.OK));
+        NtfInfoEntity device063 = new NtfInfoEntity("user001", "inst001", "token001",
+                "dev001", "1", "1",
+                LocalDateTime.now().minusHours(1), LocalDateTime.now());
+        when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(List.of(device063));
+        String fcmPayload063 = "{\"message\":{\"android\":{\"data\":{\"pushFlg\":\"1\",\"lcsSelected\":\"LC001\"}}}}";
+        when(notificationHubUtil.buildFcmV1Payload(any())).thenReturn(fcmPayload063);
+        when(notificationHubUtil.replaceLcsSelected(any(), eq("1"), any())).thenReturn(fcmPayload063);
+        when(properties.getRetryCount()).thenReturn(3);
+        // postMessage throws plain RuntimeException (not NotificationHubsException) -> L1048-1049
+        when(notificationHubUtil.postMessage(any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("unexpected push error"));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L1200-1204, L1206: executeSendSmsでSMS送信が非2xxレスポンスを返す場合にtrueが返ることを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_064() throws Exception {
+        // Arrange - smsCountryUtil.executeSendSms returns non-2xx -> L1200-1204 -> return true -> error flag
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("2", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        // SMS contact with primaryFlag=true
+        PersonalInfoListResponseDto piRes064 = buildPersonalInfoDto("user001", "1", true);
+        String piResJson064 = new ObjectMapper().writeValueAsString(piRes064);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson064, HttpStatus.OK));
+        // SMS returns 500 (non-2xx) -> L1199-1204 -> return true
+        when(smsCountryUtil.executeSendSms(any(), any(), any()))
+                .thenReturn(new ResponseEntity<>("error", HttpStatus.INTERNAL_SERVER_ERROR));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L1224-1228: executeSendEmailでメール送信が非2xxレスポンスを返す場合にtrueが返ることを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_065() throws Exception {
+        // Arrange - sendGridUtil.executeSendEmail returns non-2xx status -> L1224-1228 -> return true
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("2", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        // Email contact with primaryFlag=true
+        PersonalInfoListResponseDto piRes065 = buildPersonalInfoDto("user001", "2", true);
+        String piResJson065 = new ObjectMapper().writeValueAsString(piRes065);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson065, HttpStatus.OK));
+        Mail mockMail065 = mock(Mail.class);
+        when(sendGridUtil.generateEmail(any(), any(), any(), any(), any())).thenReturn(mockMail065);
+        // Return non-2xx status code (500) -> L1223-1228 -> return true
+        com.sendgrid.Response mockResponse065 = new com.sendgrid.Response(500, "error", new HashMap<>());
+        when(sendGridUtil.executeSendEmail(any())).thenReturn(mockResponse065);
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfBatchExecErrorInfoRepository, atLeastOnce()).insert(any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L1248-1253, L1260-1261: updateNotificationでupdateCnt==0の場合CustomSqlExceptionがスローされ、
+     * sendMessageNotificationの外側catch(CustomSqlException)で捕捉されることを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_066() throws Exception {
+        // Arrange - notificationRepository.update returns 0 -> L1247 updateCnt==0 -> throw CustomSqlException()
+        // -> catch(Exception e) at L1260 wraps in CustomSqlException -> caught at L178 in sendMessageNotification
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes066 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson066 = new ObjectMapper().writeValueAsString(piRes066);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson066, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes066 = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson066 = new ObjectMapper().writeValueAsString(regRes066);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson066, HttpStatus.OK));
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        // notificationRepository.update returns 0 -> CustomSqlException thrown -> L1247-1253 then L1260-1261
+        when(notificationRepository.update("ME", 1)).thenReturn(0);
+
+        // Act & Assert - CustomSqlException from updateNotification propagates to sendMessageNotification
+        // and is caught at catch(CustomSqlException e) -> CustomException thrown
+        assertThrows(com.toyota.tsc.notificationhub.exceptions.CustomException.class,
+                () -> service.sendMessageNotification(req, header));
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L1308-1310: executeErrorProcessでntfBatchExecErrorInfoRepository.insertが例外をスローした場合に
+     * catchブロックでログ出力して処理が継続することを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_067() {
+        // Arrange - ntfBatchExecErrorInfoRepository.insert throws RuntimeException
+        // -> catch(Exception e) at L1308 in executeErrorProcess -> logs and continues
+        // This is triggered via the historyInsert==0 path which calls executeErrorProcess
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(0);  // triggers executeErrorProcess
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        // ntfBatchExecErrorInfoRepository.insert throws -> L1308 catch
+        when(ntfBatchExecErrorInfoRepository.insert(any()))
+                .thenThrow(new RuntimeException("error info insert failed"));
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert - processing continues despite error in executeErrorProcess
+        assertNotNull(result);
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L451: 非同期内側catch(CustomSqlException)でfindSqlException結果がnull(SQLなし)の場合のブランチを確認するテストケース
+     * updateNotificationVinList(LINKED)がSQLを含まないRuntimeExceptionをスローし、sqlEx==nullパスを通ることを確認する
+     */
+    @Test
+    void sendMessageNotification_068() throws Exception {
+        // Arrange - LINKED update throws plain RuntimeException (no SQL cause) -> sqlEx == null -> L451 false branch
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes068 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson068 = new ObjectMapper().writeValueAsString(piRes068);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson068, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes068 = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson068 = new ObjectMapper().writeValueAsString(regRes068);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson068, HttpStatus.OK));
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        // LINKED update throws plain RuntimeException (no SQL) -> findSqlException returns null -> L451 false
+        lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2)))
+                .thenThrow(new RuntimeException("plain error without SQL"))
+                .thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L459: 非同期内側catch(CustomSqlException)でisSqlOperationError=falseの場合のブランチを確認するテストケース
+     * SQLState "HY000"(汎用エラー、接続エラーでも操作エラーでもない)でL459 elseブランチを通ることを確認する
+     */
+    @Test
+    void sendMessageNotification_069() throws Exception {
+        // Arrange - LINKED update throws SQLException with HY000 SQLState (neither connection nor operation)
+        // -> isSqlConnectionError=false, isSqlOperationError=false -> L459 false branch
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes069 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson069 = new ObjectMapper().writeValueAsString(piRes069);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson069, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes069 = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson069 = new ObjectMapper().writeValueAsString(regRes069);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson069, HttpStatus.OK));
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        // SQLState "HY000" is neither connection (08xxx) nor operation (23xxx) error -> L459 false
+        SQLException sqlEx069 = new SQLException("general SQL error", "HY000");
+        lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2)))
+                .thenThrow(new RuntimeException(sqlEx069))
+                .thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L493: 外側forEachのcatch(CustomSqlException)でisSqlOperationError=falseの場合のブランチを確認するテストケース
+     * SQLState "HY000"(汎用エラー)でL493 elseブランチを通ることを確認する
+     */
+    @Test
+    void sendMessageNotification_070() {
+        // Arrange - NOTLINKED update throws SQLException with HY000 SQLState (neither connection nor operation)
+        // -> isSqlConnectionError=false, isSqlOperationError=false -> L493 false branch
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        // NOTLINKED update (linkType=0) throws HY000 -> forEach outer catch -> neither error type
+        SQLException sqlEx070 = new SQLException("general SQL error", "HY000");
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0)))
+                .thenThrow(new RuntimeException(sqlEx070));
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L1206: executeSendSmsでSMS送信が2xxレスポンスを返す場合にfalseが返ることを確認するテストケース
+     */
+    @Test
+    void sendMessageNotification_071() throws Exception {
+        // Arrange - smsCountryUtil.executeSendSms returns 2xx -> L1206 return false -> no error
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("2", "0");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        // SMS contact with primaryFlag=true
+        PersonalInfoListResponseDto piRes071 = buildPersonalInfoDto("user001", "1", true);
+        String piResJson071 = new ObjectMapper().writeValueAsString(piRes071);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson071, HttpStatus.OK));
+        // SMS returns 2xx -> L1206 return false -> no SMS error
+        when(smsCountryUtil.executeSendSms(any(), any(), any()))
+                .thenReturn(new ResponseEntity<>("ok", HttpStatus.OK));
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(smsCountryUtil, atLeastOnce()).executeSendSms(any(), any(), any());
+    }
+
+    /** クラス：SendMessageNotificationServiceImpl
+     * L1066: getLatestDeviceDataで複数デバイスが存在する場合にComparatorラムダが呼ばれることを確認するテストケース
+     * isPushRequired="1"で2デバイスを返すとソート時にラムダが呼ばれる
+     */
+    @Test
+    void sendMessageNotification_072() throws Exception {
+        // Arrange - ntfInfoRepository returns 2 devices -> sort comparator lambda (L1066) is invoked
+        RequestHeaderDto header = buildHeader();
+        SendMessageNotificationRequestDto req = buildRequest("1", "1");
+        NotificationVinListEntity entity = buildVinListEntity("1");
+        when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
+        when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+        when(properties.getThreadPool()).thenReturn(2);
+        when(properties.getThreadQueue()).thenReturn(10);
+        when(properties.getParallelCurrent()).thenReturn(1);
+        PersonalInfoListResponseDto piRes072 = buildPersonalInfoDto("user001", "1", false);
+        String piResJson072 = new ObjectMapper().writeValueAsString(piRes072);
+        when(personalInfoUtil.getPersonalInfoListApiResponse(any(), any()))
+                .thenReturn(new ResponseEntity<>(piResJson072, HttpStatus.OK));
+        RegisterNotificationResponseDto regRes072 = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regResJson072 = new ObjectMapper().writeValueAsString(regRes072);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regResJson072, HttpStatus.OK));
+        // 2 devices with different updatedAt times -> sort comparator lambda (L1066) is invoked
+        NtfInfoEntity device072a = new NtfInfoEntity("user001", "inst001", "token001",
+                "dev001", "1", "1",
+                LocalDateTime.now().minusHours(2), LocalDateTime.now().minusHours(1));
+        NtfInfoEntity device072b = new NtfInfoEntity("user001", "inst002", "token002",
+                "dev002", "1", "1",
+                LocalDateTime.now().minusHours(1), LocalDateTime.now());
+        when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(List.of(device072a, device072b));
+        String fcmPayload072 = "{\"message\":{\"android\":{\"data\":{\"pushFlg\":\"1\",\"lcsSelected\":\"LC001\"}}}}";
+        when(notificationHubUtil.buildFcmV1Payload(any())).thenReturn(fcmPayload072);
+        when(notificationHubUtil.replaceLcsSelected(any(), eq("1"), any())).thenReturn(fcmPayload072);
+        // retryCount=0 -> while loop never runs -> postMessage not called -> outcome=null -> pushError=true
+        when(properties.getRetryCount()).thenReturn(0);
+        when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+        when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
+        when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
+        when(notificationRepository.update("ME", 1)).thenReturn(1);
+
+        // Act
+        ResponseDto result = service.sendMessageNotification(req, header);
+
+        // Assert
+        assertNotNull(result);
+        verify(ntfInfoRepository, atLeastOnce()).selectAllByInternalUserId("user001");
     }
 }

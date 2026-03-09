@@ -10,12 +10,14 @@ import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.models.DvcLinkageResponseDto;
-import com.toyota.tsc.notificationhub.models.GetAccessTokenResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
 import com.toyota.tsc.notificationhub.models.RegistNotificationDeviceInfoRequestDto;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
 import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.repositories.SaNtfInfoRepositoryIF;
+
+import jp.toyota.res.common.auth.GetALJTokenResultDto;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -23,7 +25,6 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.sql.SQLException;
 
@@ -38,927 +39,935 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class SaRegistNotificationDeviceInfoServiceImplTest {
 
-    @Mock
-    private SaNtfInfoRepositoryIF saNtfInfoRepository;
+        @Mock
+        private SaNtfInfoRepositoryIF saNtfInfoRepository;
 
-    @Mock
-    private JsapUtil jsapUtil;
+        @Mock
+        private JsapUtil jsapUtil;
 
-    private static RegistNotificationDeviceInfoRequestDto req(
-            String internalUserId, String platform, String deviceToken, String dvcId, String brdCd) {
-        RegistNotificationDeviceInfoRequestDto r = mock(RegistNotificationDeviceInfoRequestDto.class);
-        when(r.getInternalUserId()).thenReturn(internalUserId);
-        when(r.getPlatform()).thenReturn(platform);
-        when(r.getDeviceToken()).thenReturn(deviceToken);
-        when(r.getDvcId()).thenReturn(dvcId);
-        when(r.getBrdCd()).thenReturn(brdCd);
-        return r;
-    }
-
-    private static RequestHeaderDto header(String correlationId) {
-        RequestHeaderDto h = mock(RequestHeaderDto.class);
-        when(h.getCorrelationId()).thenReturn(correlationId);
-        return h;
-    }
-
-    /** トークンDTOのヘルパー（アクセストークンあり） */
-    private static GetAccessTokenResponseDto tokenDto(String accessToken) {
-        GetAccessTokenResponseDto dto = mock(GetAccessTokenResponseDto.class);
-        when(dto.getAccess_token()).thenReturn(accessToken);
-        return dto;
-    }
-
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * 正常に成功コードが返ることを確認するテストケース
-     */
-
-    @Test
-    void registDeviceInfo_001() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
-
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any())).thenReturn(1);
-        when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
-                .thenReturn(ResponseEntity.ok("{json}"));
-        when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString()))
-                .thenReturn(ResponseEntity.ok("{json2}"));
-
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
-        GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
-        when(getUserIdDto.getResultCode()).thenReturn("00001548B123");
-        when(getUserIdDto.getUserId()).thenReturn("userId");
-
-        DvcLinkageResponseDto dvcDto = mock(DvcLinkageResponseDto.class);
-        when(dvcDto.getResultCode()).thenReturn("000000");
-
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-            when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
-            when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class))).thenReturn(dvcDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
-
-            // Act
-            ResponseDto resp = sut.registDeviceInfo(request, header);
-
-            // Assert
-            assertNotNull(resp);
-            verify(saNtfInfoRepository, times(1)).upsert(any());
-            verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
-            verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString());
+        private static RegistNotificationDeviceInfoRequestDto req(
+                        String internalUserId, String platform, String deviceToken, String dvcId, String brdCd) {
+                RegistNotificationDeviceInfoRequestDto r = mock(RegistNotificationDeviceInfoRequestDto.class);
+                when(r.getInternalUserId()).thenReturn(internalUserId);
+                when(r.getPlatform()).thenReturn(platform);
+                when(r.getDeviceToken()).thenReturn(deviceToken);
+                when(r.getDvcId()).thenReturn(dvcId);
+                when(r.getBrdCd()).thenReturn(brdCd);
+                return r;
         }
-    }
 
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * 必須項目不足の場合にTscApplicationExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_002() {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req(null, "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
-
-        try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
-
-            // Act
-            assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
-
-            // Assert
-            verify(saNtfInfoRepository, never()).upsert(any());
+        private static RequestHeaderDto header(String correlationId) {
+                RequestHeaderDto h = mock(RequestHeaderDto.class);
+                when(h.getCorrelationId()).thenReturn(correlationId);
+                return h;
         }
-    }
 
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo DB
-     * upsertが0の場合にCustomExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_003() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * 正常に成功コードが返ることを確認するテストケース
+         */
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any())).thenReturn(0);
+        @Test
+        void registDeviceInfo_001() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
 
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any())).thenReturn(1);
+                when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
+                                .thenReturn(ResponseEntity.ok("{json}"));
+                when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString()))
+                                .thenReturn(ResponseEntity.ok("{json2}"));
 
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
+                when(getUserIdDto.getResultCode()).thenReturn("00001548B123");
+                when(getUserIdDto.getUserId()).thenReturn("userId");
 
-            // Act
-            assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
+                DvcLinkageResponseDto dvcDto = mock(DvcLinkageResponseDto.class);
+                when(dvcDto.getResultCode()).thenReturn("000000");
 
-            // Assert
-            verify(saNtfInfoRepository, times(1)).upsert(any());
+                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
+                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
+                        when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class))).thenReturn(dvcDto);
+                });
+                                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                        common.when(() -> CommonUtil.getBrd(anyString())).thenReturn("TOYOTA");
+                        common.when(() -> CommonUtil.getPlt(anyString())).thenReturn("Android");
+
+                        // Act
+                        ResponseDto resp = sut.registDeviceInfo(request, header);
+
+                        // Assert
+                        assertNotNull(resp);
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                        verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
+                        verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString());
+                }
         }
-    }
 
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * getUserIdの結果コードがSUCCESSでない場合にTscApplicationExceptionが送出されることを確認するテストケース
-     */
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * 必須項目不足の場合にTscApplicationExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_002() {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req(null, "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-    @Test
-    void registDeviceInfo_004() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+                        // Act
+                        assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any())).thenReturn(1);
-        when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
-                .thenReturn(ResponseEntity.ok("{json}"));
-
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
-        GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
-        when(getUserIdDto.getResultCode()).thenReturn("NOT_SUCCESS");
-
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-            when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
-
-            // Act & Assert
-            assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
-
-            // Assert（GetUserId 失敗時は DvcLink まで到達しない）
-            verify(saNtfInfoRepository, times(1)).upsert(any());
-            verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
-            verify(jsapUtil, never()).executeDvcLink(anyString(), anyString(), anyString(), anyString());
+                        // Assert
+                        verify(saNtfInfoRepository, never()).upsert(any());
+                }
         }
-    }
 
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * dvcLinkage結果が非成功の場合にTscApplicationExceptionが送出されることを確認するテストケース
-     */
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo DB
+         * upsertが0の場合にCustomExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_003() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-    @Test
-    void registDeviceInfo_005() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any())).thenReturn(0);
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any())).thenReturn(1);
-        when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
-                .thenReturn(ResponseEntity.ok("{json}"));
-        when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString()))
-                .thenReturn(ResponseEntity.ok("{json2}"));
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
-        GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
-        when(getUserIdDto.getResultCode()).thenReturn("00001548B123");
-        when(getUserIdDto.getUserId()).thenReturn("userId");
+                        // Act
+                        assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
 
-        DvcLinkageResponseDto dvcDto = mock(DvcLinkageResponseDto.class);
-        when(dvcDto.getResultCode()).thenReturn("999999");
-
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-            when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
-            when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class))).thenReturn(dvcDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
-
-            // Act & Assert
-            assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
-
-            // Assert（DvcLink まで到達することを確認）
-            verify(saNtfInfoRepository, times(1)).upsert(any());
-            verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
-            verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString());
+                        // Assert
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                }
         }
-    }
 
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * JSON処理例外時にCustomExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_006() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * getUserIdの結果コードがSUCCESSでない場合にTscApplicationExceptionが送出されることを確認するテストケース
+         */
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any())).thenReturn(1);
-        when(jsapUtil.executeGetUserId(eq("u"), eq("cid"))).thenReturn(ResponseEntity.ok("{json}"));
+        @Test
+        void registDeviceInfo_004() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
 
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-            when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class)))
-                    .thenThrow(new JsonProcessingException("boom") {
-                    });
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any())).thenReturn(1);
+                when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
+                                .thenReturn(ResponseEntity.ok("{json}"));
 
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
+                when(getUserIdDto.getResultCode()).thenReturn("NOT_SUCCESS");
 
-            // Act
-            assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
+                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
+                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
+                });
+                                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-            // Assert
-            verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                        common.when(() -> CommonUtil.getBrd(anyString())).thenReturn("TOYOTA");
+                        common.when(() -> CommonUtil.getPlt(anyString())).thenReturn("Android");
+
+                        // Act & Assert
+                        assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
+
+                        // Assert（GetUserId 失敗時は DvcLink まで到達しない）
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                        verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
+                        verify(jsapUtil, never()).executeDvcLink(anyString(), anyString(), anyString(), anyString());
+                }
         }
-    }
 
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * SQL接続系例外の場合にCustomExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_007() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * dvcLinkage結果が非成功の場合にTscApplicationExceptionが送出されることを確認するテストケース
+         */
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any()))
-                .thenThrow(new RuntimeException(new SQLException("x", "08S01")));
+        @Test
+        void registDeviceInfo_005() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
 
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any())).thenReturn(1);
+                when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
+                                .thenReturn(ResponseEntity.ok("{json}"));
+                when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString()))
+                                .thenReturn(ResponseEntity.ok("{json2}"));
 
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
+                when(getUserIdDto.getResultCode()).thenReturn("00001548B123");
+                when(getUserIdDto.getUserId()).thenReturn("userId");
 
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                DvcLinkageResponseDto dvcDto = mock(DvcLinkageResponseDto.class);
+                when(dvcDto.getResultCode()).thenReturn("999999");
 
-            // Act
-            assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
+                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
+                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
+                        when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class))).thenReturn(dvcDto);
+                });
+                                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-            // Assert
-            verify(saNtfInfoRepository, times(1)).upsert(any());
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                        common.when(() -> CommonUtil.getBrd(anyString())).thenReturn("TOYOTA");
+                        common.when(() -> CommonUtil.getPlt(anyString())).thenReturn("Android");
+
+                        // Act & Assert
+                        assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
+
+                        // Assert（DvcLink まで到達することを確認）
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                        verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
+                        verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("1"), anyString());
+                }
         }
-    }
 
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * SQL操作系例外の場合にCustomSqlExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_008() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * JSON処理例外時にCustomExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_006() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any()))
-                .thenThrow(new RuntimeException(new SQLException("x", "23505")));
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any())).thenReturn(1);
+                when(jsapUtil.executeGetUserId(eq("u"), eq("cid"))).thenReturn(ResponseEntity.ok("{json}"));
 
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
+                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
+                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class)))
+                                        .thenThrow(new JsonProcessingException("boom") {
+                                        });
+                });
+                                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                        common.when(() -> CommonUtil.getBrd(anyString())).thenReturn("TOYOTA");
+                        common.when(() -> CommonUtil.getPlt(anyString())).thenReturn("Android");
 
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                        // Act
+                        assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
 
-            // Act
-            assertThrows(CustomSqlException.class, () -> sut.registDeviceInfo(request, header));
-
-            // Assert
-            verify(saNtfInfoRepository, times(1)).upsert(any());
+                        // Assert
+                        verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
+                }
         }
-    }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * リクエストがnullの場合にTscApplicationExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_009() {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = null;
-        RequestHeaderDto header = header("cid");
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * SQL接続系例外の場合にCustomExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_007() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any()))
+                                .thenThrow(new RuntimeException(new SQLException("x", "08S01")));
 
-            // Act
-            assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-            // Assert
-            verify(saNtfInfoRepository, never()).upsert(any());
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+
+                        // Act
+                        assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
+
+                        // Assert
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                }
         }
-    }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * 不正ブランドの場合にTscApplicationExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_010() {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "9");
-        RequestHeaderDto header = header("cid");
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * SQL操作系例外の場合にCustomSqlExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_008() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any()))
+                                .thenThrow(new RuntimeException(new SQLException("x", "23505")));
 
-            // Act
-            assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-            // Assert
-            verify(saNtfInfoRepository, never()).upsert(any());
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+
+                        // Act
+                        assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
+
+                        // Assert
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                }
         }
-    }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * 不正プラットフォームの場合にTscApplicationExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_011() {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "9", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * リクエストがnullの場合にTscApplicationExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_009() {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = null;
+                RequestHeaderDto header = header("cid");
 
-        try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-            // Act
-            assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
+                        // Act
+                        assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
 
-            // Assert
-            verify(saNtfInfoRepository, never()).upsert(any());
+                        // Assert
+                        verify(saNtfInfoRepository, never()).upsert(any());
+                }
         }
-    }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * ブランド=2/プラットフォーム=2の有効値で正常に成功コードが返ることを確認するテストケース
-     */
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * 不正ブランドの場合にTscApplicationExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_010() {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "9");
+                RequestHeaderDto header = header("cid");
 
-    @Test
-    void registDeviceInfo_012() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "2", "tok", "dvc", "2");
-        RequestHeaderDto header = header("cid");
+                        // Act
+                        assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any())).thenReturn(1);
-        when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
-                .thenReturn(ResponseEntity.ok("{json}"));
-        when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("2"), anyString()))
-                .thenReturn(ResponseEntity.ok("{json2}"));
-
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
-        GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
-        when(getUserIdDto.getResultCode()).thenReturn("00001548B123");
-        when(getUserIdDto.getUserId()).thenReturn("userId");
-
-        DvcLinkageResponseDto dvcDto = mock(DvcLinkageResponseDto.class);
-        when(dvcDto.getResultCode()).thenReturn("000000");
-
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-            when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
-            when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class))).thenReturn(dvcDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
-
-            // Act
-            ResponseDto resp = sut.registDeviceInfo(request, header);
-
-            // Assert
-            assertNotNull(resp);
-            verify(saNtfInfoRepository, times(1)).upsert(any());
-            verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
-            verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("2"), anyString());
+                        // Assert
+                        verify(saNtfInfoRepository, never()).upsert(any());
+                }
         }
-    }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * SQLExceptionが存在するが接続/操作どちらでもない場合にCustomExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_013() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * 不正プラットフォームの場合にTscApplicationExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_011() {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "9", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any()))
-                .thenThrow(new RuntimeException(new SQLException("x", "99999")));
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
+                        // Act
+                        assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
 
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
-
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
-
-            // Act
-            assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
-
-            // Assert
-            verify(saNtfInfoRepository, times(1)).upsert(any());
+                        // Assert
+                        verify(saNtfInfoRepository, never()).upsert(any());
+                }
         }
-    }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * SQLExceptionが存在しない場合にCustomExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_014() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * ブランド=2/プラットフォーム=2の有効値で正常に成功コードが返ることを確認するテストケース
+         */
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
-        when(saNtfInfoRepository.upsert(any())).thenThrow(new RuntimeException("boom"));
+        @Test
+        void registDeviceInfo_012() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
 
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("mytoken");
+                RegistNotificationDeviceInfoRequestDto request = req("u", "2", "tok", "dvc", "2");
+                RequestHeaderDto header = header("cid");
 
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any())).thenReturn(1);
+                when(jsapUtil.executeGetUserId(eq("u"), eq("cid")))
+                                .thenReturn(ResponseEntity.ok("{json}"));
+                when(jsapUtil.executeDvcLink(eq("userId"), eq("tok"), eq("2"), anyString()))
+                                .thenReturn(ResponseEntity.ok("{json2}"));
 
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                GetUserIdResponseDto getUserIdDto = mock(GetUserIdResponseDto.class);
+                when(getUserIdDto.getResultCode()).thenReturn("00001548B123");
+                when(getUserIdDto.getUserId()).thenReturn("userId");
 
-            // Act
-            assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
+                DvcLinkageResponseDto dvcDto = mock(DvcLinkageResponseDto.class);
+                when(dvcDto.getResultCode()).thenReturn("000000");
 
-            // Assert
-            verify(saNtfInfoRepository, times(1)).upsert(any());
+                try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
+                        when(mock.readValue(anyString(), eq(GetUserIdResponseDto.class))).thenReturn(getUserIdDto);
+                        when(mock.readValue(anyString(), eq(DvcLinkageResponseDto.class))).thenReturn(dvcDto);
+                });
+                                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                        common.when(() -> CommonUtil.getBrd(anyString())).thenReturn("LEXUS");
+                        common.when(() -> CommonUtil.getPlt(anyString())).thenReturn("iOS");
+
+                        // Act
+                        ResponseDto resp = sut.registDeviceInfo(request, header);
+
+                        // Assert
+                        assertNotNull(resp);
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                        verify(jsapUtil, times(1)).executeGetUserId(eq("u"), eq("cid"));
+                        verify(jsapUtil, times(1)).executeDvcLink(eq("userId"), eq("tok"), eq("2"), anyString());
+                }
         }
-    }
 
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * アクセストークンが空の場合にTscApplicationExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_015() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * SQLExceptionが存在するが接続/操作どちらでもない場合にCustomExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_013() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any()))
+                                .thenThrow(new RuntimeException(new SQLException("x", "99999")));
 
-        // トークンが空文字のDTO
-        GetAccessTokenResponseDto accessTokenDto = tokenDto("");
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                        // Act
+                        assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
 
-            // Act
-            assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
-
-            // Assert（トークンエラー時はupsertまで到達しない）
-            verify(saNtfInfoRepository, never()).upsert(any());
+                        // Assert
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                }
         }
-    }
 
-    /**
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
-     * アクセストークンがnullの場合にTscApplicationExceptionが送出されることを確認するテストケース
-     */
-    @Test
-    void registDeviceInfo_016() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
-        RequestHeaderDto header = header("cid");
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * SQLExceptionが存在しない場合にCustomExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_014() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        when(jsapUtil.executeGetToken()).thenReturn(ResponseEntity.ok("tok-body"));
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
+                when(saNtfInfoRepository.upsert(any())).thenThrow(new RuntimeException("boom"));
 
-        // トークンがnullのDTO
-        GetAccessTokenResponseDto accessTokenDto = tokenDto(null);
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-        try (MockedConstruction<ObjectMapper> om = mockConstruction(ObjectMapper.class, (mock, ctx) -> {
-            when(mock.readValue(anyString(), eq(GetAccessTokenResponseDto.class))).thenReturn(accessTokenDto);
-        });
-                MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-            common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
-            common.when(() -> CommonUtil.getMessage(anyString(), any(Object[].class)))
-                    .thenReturn("msg");
-            common.when(() -> CommonUtil.getResultCode(anyString()))
-                    .thenAnswer(inv -> "RC_" + inv.getArgument(0));
+                        // Act
+                        assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
 
-            // Act
-            assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
-
-            // Assert（トークンエラー時はupsertまで到達しない）
-            verify(saNtfInfoRepository, never()).upsert(any());
+                        // Assert
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                }
         }
-    }
 
-    // ----- validateRequired の分岐網羅（Reflectionで直接テスト） -----
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * ALJトークンが空の場合にTscApplicationExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_015() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * リクエストがnullの場合に"requestBody"が返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_001() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+                // ALJトークンが空文字
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, ""));
 
-        // Act
-        String result = (String) m.invoke(sut, (RegistNotificationDeviceInfoRequestDto) null);
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-        // Assert
-        assertEquals("requestBody", result);
-    }
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * 必須項目がすべて有効な場合にnullが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_002() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+                        // Act
+                        assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                        // Assert（upsertまで到達する）
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                }
+        }
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * ALJトークンがnullの場合にCustomExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_016() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        // Assert
-        assertNull(result);
-    }
+                // ALJトークンがnull
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, null));
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * internalUserIdがnullの場合に不足項目としてinternalUserIdが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_003() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
 
-        RegistNotificationDeviceInfoRequestDto request = req(null, "1", "tok", "dvc", "1");
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getLogsMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                        // Act
+                        assertThrows(CustomException.class, () -> sut.registDeviceInfo(request, header));
 
-        // Assert
-        assertEquals("internalUserId", result);
-    }
+                        // Assert（upsertまで到達する）
+                        verify(saNtfInfoRepository, times(1)).upsert(any());
+                }
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * internalUserIdが空文字の場合に不足項目としてinternalUserIdが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_004() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * executeGetTokenがnullを返した場合にTscApplicationExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_017() throws Exception {
+                // Arrange - executeGetToken returns null → resToken == null → TscApplicationException
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        RegistNotificationDeviceInfoRequestDto request = req("", "1", "tok", "dvc", "1");
+                when(jsapUtil.executeGetToken()).thenReturn(null);
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getSaMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-        // Assert
-        assertEquals("internalUserId", result);
-    }
+                        // Act + Assert
+                        assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
+                }
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * platformがnullの場合に不足項目としてplatformが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_005() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        /**
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl registDeviceInfo
+         * executeGetTokenのresultがfalseの場合にTscApplicationExceptionが送出されることを確認するテストケース
+         */
+        @Test
+        void registDeviceInfo_018() throws Exception {
+                // Arrange - executeGetToken returns result=false → !resToken.getResult() → TscApplicationException
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
+                RequestHeaderDto header = header("cid");
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", null, "tok", "dvc", "1");
+                when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(false, "someToken"));
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                try (MockedStatic<CommonUtil> common = mockStatic(CommonUtil.class)) {
+                        common.when(() -> CommonUtil.toJson(any())).thenReturn("{}");
+                        common.when(() -> CommonUtil.getSaMessage(anyString(), any(Object[].class)))
+                                        .thenReturn("msg");
+                        common.when(() -> CommonUtil.getResultCode(anyString()))
+                                        .thenAnswer(inv -> "RC_" + inv.getArgument(0));
 
-        // Assert
-        assertEquals("platform", result);
-    }
+                        // Act + Assert
+                        assertThrows(TscApplicationException.class, () -> sut.registDeviceInfo(request, header));
+                }
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * platformが空文字の場合に不足項目としてplatformが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_006() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        // ----- validateRequired の分岐網羅（Reflectionで直接テスト） -----
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "", "tok", "dvc", "1");
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * リクエストがnullの場合に"requestBody"が返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_001() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                // Act
+                String result = (String) m.invoke(sut, (RegistNotificationDeviceInfoRequestDto) null);
 
-        // Assert
-        assertEquals("platform", result);
-    }
+                // Assert
+                assertEquals("requestBody", result);
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * deviceTokenがnullの場合に不足項目としてdeviceTokenが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_007() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * 必須項目がすべて有効な場合にnullが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_002() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", null, "dvc", "1");
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "1");
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                // Act
+                String result = (String) m.invoke(sut, request);
 
-        // Assert
-        assertEquals("deviceToken", result);
-    }
+                // Assert
+                assertNull(result);
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * deviceTokenが空文字の場合に不足項目としてdeviceTokenが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_008() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * internalUserIdがnullの場合に不足項目としてinternalUserIdが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_003() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "", "dvc", "1");
+                RegistNotificationDeviceInfoRequestDto request = req(null, "1", "tok", "dvc", "1");
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                // Act
+                String result = (String) m.invoke(sut, request);
 
-        // Assert
-        assertEquals("deviceToken", result);
-    }
+                // Assert
+                assertEquals("internalUserId", result);
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * dvcIdがnullの場合に不足項目としてdvcIdが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_009() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * internalUserIdが空文字の場合に不足項目としてinternalUserIdが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_004() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", null, "1");
+                RegistNotificationDeviceInfoRequestDto request = req("", "1", "tok", "dvc", "1");
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                // Act
+                String result = (String) m.invoke(sut, request);
 
-        // Assert
-        assertEquals("dvcId", result);
-    }
+                // Assert
+                assertEquals("internalUserId", result);
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * dvcIdが空文字の場合に不足項目としてdvcIdが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_010() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * platformがnullの場合に不足項目としてplatformが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_005() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "", "1");
+                RegistNotificationDeviceInfoRequestDto request = req("u", null, "tok", "dvc", "1");
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                // Act
+                String result = (String) m.invoke(sut, request);
 
-        // Assert
-        assertEquals("dvcId", result);
-    }
+                // Assert
+                assertEquals("platform", result);
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * brdCdがnullの場合に不足項目としてbrdCdが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_011() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * platformが空文字の場合に不足項目としてplatformが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_006() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", null);
+                RegistNotificationDeviceInfoRequestDto request = req("u", "", "tok", "dvc", "1");
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                // Act
+                String result = (String) m.invoke(sut, request);
 
-        // Assert
-        assertEquals("brdCd", result);
-    }
+                // Assert
+                assertEquals("platform", result);
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * brdCdが空文字の場合に不足項目としてbrdCdが返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_012() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * deviceTokenがnullの場合に不足項目としてdeviceTokenが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_007() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
 
-        RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "");
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", null, "dvc", "1");
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                // Act
+                String result = (String) m.invoke(sut, request);
 
-        // Assert
-        assertEquals("brdCd", result);
-    }
+                // Assert
+                assertEquals("deviceToken", result);
+        }
 
-    /*
-     * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
-     * 必須項目が複数不足している場合にカンマ区切りで返ることを確認するテストケース
-     */
-    @Test
-    void validateRequired_013() throws Exception {
-        // Arrange
-        SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
-                saNtfInfoRepository, jsapUtil);
-        java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
-                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
-        m.setAccessible(true);
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * deviceTokenが空文字の場合に不足項目としてdeviceTokenが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_008() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
 
-        // internalUserId と platform を不足させる（順序は実装のadd順）
-        RegistNotificationDeviceInfoRequestDto request = req(null, "", "tok", "dvc", "1");
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "", "dvc", "1");
 
-        // Act
-        String result = (String) m.invoke(sut, request);
+                // Act
+                String result = (String) m.invoke(sut, request);
 
-        // Assert
-        assertEquals("internalUserId,platform", result);
-    }
+                // Assert
+                assertEquals("deviceToken", result);
+        }
+
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * dvcIdがnullの場合に不足項目としてdvcIdが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_009() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", null, "1");
+
+                // Act
+                String result = (String) m.invoke(sut, request);
+
+                // Assert
+                assertEquals("dvcId", result);
+        }
+
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * dvcIdが空文字の場合に不足項目としてdvcIdが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_010() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "", "1");
+
+                // Act
+                String result = (String) m.invoke(sut, request);
+
+                // Assert
+                assertEquals("dvcId", result);
+        }
+
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * brdCdがnullの場合に不足項目としてbrdCdが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_011() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", null);
+
+                // Act
+                String result = (String) m.invoke(sut, request);
+
+                // Assert
+                assertEquals("brdCd", result);
+        }
+
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * brdCdが空文字の場合に不足項目としてbrdCdが返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_012() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                RegistNotificationDeviceInfoRequestDto request = req("u", "1", "tok", "dvc", "");
+
+                // Act
+                String result = (String) m.invoke(sut, request);
+
+                // Assert
+                assertEquals("brdCd", result);
+        }
+
+        /*
+         * クラス：SaRegistNotificationDeviceInfoServiceImpl validateRequired
+         * 必須項目が複数不足している場合にカンマ区切りで返ることを確認するテストケース
+         */
+        @Test
+        void validateRequired_013() throws Exception {
+                // Arrange
+                SaRegistNotificationDeviceInfoServiceImpl sut = new SaRegistNotificationDeviceInfoServiceImpl(
+                                saNtfInfoRepository, jsapUtil);
+                java.lang.reflect.Method m = SaRegistNotificationDeviceInfoServiceImpl.class
+                                .getDeclaredMethod("validateRequired", RegistNotificationDeviceInfoRequestDto.class);
+                m.setAccessible(true);
+
+                // internalUserId と platform を不足させる（順序は実装のadd順）
+                RegistNotificationDeviceInfoRequestDto request = req(null, "", "tok", "dvc", "1");
+
+                // Act
+                String result = (String) m.invoke(sut, request);
+
+                // Assert
+                assertEquals("internalUserId,platform", result);
+        }
 
 }
