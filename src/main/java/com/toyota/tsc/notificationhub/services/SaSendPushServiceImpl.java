@@ -8,7 +8,6 @@ import com.toyota.tsc.notificationhub.commons.JsapUtil;
 import com.toyota.tsc.notificationhub.commons.LogUtil;
 import com.toyota.tsc.notificationhub.commons.NotificationHubUtil;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
-import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.exceptions.TscNotificationHubsException;
 import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;

@@ -377,6 +377,27 @@ class JsapUtilTest {
     }
 
     /**
+     * クラス：JsapUtil executeGetToken result=trueのとき requestUpdateALJTokenが呼ばれないことを確認するテストケース
+     */
+    @Test
+    void executeGetToken_003() throws Exception {
+        // Arrange
+        jp.toyota.res.common.auth.GetALJTokenResultDto expected =
+                mock(jp.toyota.res.common.auth.GetALJTokenResultDto.class);
+        when(expected.getResult()).thenReturn(true);
+        when(aljToken.getALJToken()).thenReturn(expected);
+
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
+
+        // Act
+        jp.toyota.res.common.auth.GetALJTokenResultDto actual = sut.executeGetToken();
+
+        // Assert
+        assertSame(expected, actual);
+        verify(aljToken, never()).requestUpdateALJToken();
+    }
+
+    /**
      * クラス：JsapUtil executeGetToken
      * ALJToken例外時にCustomExceptionが送出されることを確認するテストケース
      */

@@ -14,9 +14,6 @@ import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
 import com.toyota.tsc.notificationhub.models.GetUserInfoResponseDto;
-import com.toyota.tsc.notificationhub.models.NotificationSendListDto;
-import com.toyota.tsc.notificationhub.models.PersonalInfoListResponseDto;
-import com.toyota.tsc.notificationhub.models.PersonalInfoListResponseDto.PersonalInfoList;
 import com.toyota.tsc.notificationhub.models.RequestHeaderDto;
 import com.toyota.tsc.notificationhub.models.ResponseDto;
 import com.toyota.tsc.notificationhub.models.SaNotificationSendListDto;
@@ -105,18 +102,14 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
     private static final String RESULT_EXCEPTION = "ME_BAT_EXCEPTION";
     // Notification登録 APIレスポンス 正常終了コード
     private static final String REGISTNOTIFICATION_SUCCESS = "000000";
-    // オンプレ個人情報リスト取得API 正常終了コード
-    private static final String GETPERSONAL_SUCCESS = "00001581U000";
     // 内部UserID変換 APIレスポンス 正常終了コード
     private static final String GETUSERID_SUCCESS = "00001548B123";
     // Jsap 正常終了コード
     private static final String JSAP_SUCCESS = "000000";
     // テーブル名
     private static final String TBL_NTF_BATCH_EXEC_HISTORY = "ntf_batch_exec_history";
-    private static final String TBL_NTF_BATCH_EXEC_ERROR_INFO = "ntf_batch_exec_error_info";
     private static final String TBL_NOTIFICATION_VIN_LIST = "notification_vin_list";
     private static final String TBL_NOTIFICATION = "notification";
-    private static final String TBL_NTF_INFO = "ntf_info";
     // 通知バッチ処理履歴テーブル 処理ステータス
     private static final String STATUS_STR = "0";
     private static final String STATUS_ERR = "2";
@@ -1251,10 +1244,8 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             ObjectMapper mapper = new ObjectMapper();
             SendMessageResponseDto sendMessageDto = mapper.readValue(sendMessageResponse.getBody(),
                     SendMessageResponseDto.class);
-            if (!sendMessageDto.getResultCode().equals(JSAP_SUCCESS)) {
-                return true;
-            }
-            return false;
+
+            return !sendMessageDto.getResultCode().equals(JSAP_SUCCESS);
 
         } catch (Exception e) {
             throw new CustomException(e);

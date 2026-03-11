@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -12,19 +11,18 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
-import com.toyota.tsc.notificationhub.models.DvcLinkageResponseDto;
-import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
-import com.toyota.tsc.notificationhub.models.GetUserInfoResponseDto;
 import com.toyota.tsc.notificationhub.models.MailContextDto;
-import com.toyota.tsc.notificationhub.models.PushRequestResponseDto;
-import com.toyota.tsc.notificationhub.models.SendMessageResponseDto;
 import com.toyota.tsc.notificationhub.models.SmsContextDto;
-
 import jp.toyota.res.common.auth.GetALJTokenResultDto;
 import jp.toyota.res.common.utils.ALJToken;
+
+// import com.fasterxml.jackson.databind.ObjectMapper;
+// import com.toyota.tsc.notificationhub.models.DvcLinkageResponseDto;
+// import com.toyota.tsc.notificationhub.models.GetUserIdResponseDto;
+// import com.toyota.tsc.notificationhub.models.GetUserInfoResponseDto;
+// import com.toyota.tsc.notificationhub.models.PushRequestResponseDto;
+// import com.toyota.tsc.notificationhub.models.SendMessageResponseDto;
 
 @Component
 public class JsapUtil {
@@ -39,14 +37,18 @@ public class JsapUtil {
 
     private static final String PLATFORM_ANDROID = "1"; // FCM v1
     private static final String PLATFORM_IOS = "2"; // APNs
-    private static final String X_API_KEY_HEADER = "x-api-key";
     private static final String USER_ID_BODY = "userId";
     private static final String AUTH_TOKEN = "authorization";
 
     public GetALJTokenResultDto executeGetToken() {
 
         try {
-            return aljToken.getALJToken();
+            GetALJTokenResultDto tokenResult = aljToken.getALJToken();
+            boolean result = tokenResult.getResult();
+            if (!result) {
+                aljToken.requestUpdateALJToken();
+            }
+            return tokenResult;
         } catch (Exception e) {
             throw new CustomException(e);
         }

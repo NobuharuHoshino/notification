@@ -1,23 +1,18 @@
 package com.toyota.tsc.notificationhub.commons;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.models.PersonalInfoListRequestDto;
-import com.toyota.tsc.notificationhub.models.PersonalInfoListResponseDto;
 import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
 
-// @@@@@@@@@@@@@@@@@ Test Import @@@@@@@@@@@@@@@@@
 // import java.util.ArrayList;
 // import java.util.List;
 // import org.springframework.http.MediaType;
