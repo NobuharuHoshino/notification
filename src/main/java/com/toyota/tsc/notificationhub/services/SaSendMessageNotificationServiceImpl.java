@@ -317,6 +317,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
         try {
 
             userInfoList.forEach(entity -> {
+                LogUtil.info(getClass(), "Starting parent process" + entity.getSequenceNumber());
                 try {
 
                     // 4-1:お知らせ通知処理履歴登録
@@ -390,6 +391,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                             header.getCorrelationId()));
 
                     // 4-5:非同期で通知処理実行
+                    LogUtil.info(getClass(), "Starting child process" + entity.getSequenceNumber());
                     f.add(CompletableFuture.runAsync(() -> {
                         try {
                             boolean errorFlag = this.executeNotificationProcess(
@@ -731,6 +733,8 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
 
         try {
             if (Set.of(TYPE_NTF, TYPE_NTF_AND_MAILSMS).contains(request.getNotificationType())) {
+                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00022",
+                        "Notification登録", notificationData.getInternalUserId(), header.getCorrelationId()));
                 // Notification登録実行
                 RegisterNotificationResponseDto responseDto = registerNotification(request, notificationData);
                 if (responseDto == null) {
@@ -830,6 +834,8 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
         try {
 
             if (request.getIsPushNotificationRequired().equals("1")) {
+                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00022",
+                        "Push通知送信", notificationData.getInternalUserId(), header.getCorrelationId()));
                 // 登録済みデバイス取得実行
                 NtfInfoEntity deviceData = getLatestDeviceData(notificationData.getInternalUserId());
                 if (deviceData == null) {
@@ -982,6 +988,8 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             if (request.getNotificationType().equals(TYPE_MAILSMS) ||
                     request.getNotificationType().equals(TYPE_NTF_AND_MAILSMS)) {
 
+                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00022",
+                        "PrimaryContact送信", notificationData.getInternalUserId(), header.getCorrelationId()));
                 // コンタクト取得
                 GetUserInfoResponseDto personalInfoResponse = getPersonalInfo(
                         notificationData, token);
