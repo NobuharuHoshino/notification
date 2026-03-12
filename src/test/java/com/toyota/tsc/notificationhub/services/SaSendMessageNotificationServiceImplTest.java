@@ -104,7 +104,7 @@ class SaSendMessageNotificationServiceImplTest {
                 return req;
         }
 
-        private NotificationVinListEntity buildVinListEntity(String seqNum) {
+        private NotificationVinListEntity buildVinListEntity(Long seqNum) {
                 return new NotificationVinListEntity(1, "SA", 100, "VIN001",
                                 "VIN001:user001:LC001:1", 1L, seqNum, 0, false, null, null);
         }
@@ -340,13 +340,13 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(0);
                 // SQLException thrown inside forEach → caught gracefully → executeErrorProcess
                 // called
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -365,15 +365,15 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 // GetUserId returns failure result code
                 String failJson = buildGetUserIdResponseJson("99999999", null);
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(failJson, HttpStatus.OK));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -393,14 +393,14 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(0);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(0);
                 // SQLException thrown inside forEach → caught gracefully → executeErrorProcess
                 // called
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -417,17 +417,16 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 // Token returns empty access_token
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, ""));
-                when(properties.getParallelCurrent()).thenReturn(5);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -447,16 +446,16 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenThrow(new CustomException("jsap error"));
                 // CustomException inside forEach → caught gracefully → executeErrorProcess
                 // called
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -476,17 +475,17 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(jsapUtil.executeGetToken()).thenThrow(new CustomException("token error"));
                 // CustomException thrown in async inner loop; caught by async catch block (no
                 // executeErrorProcess)
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -524,7 +523,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "0");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -544,11 +543,9 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
-                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList,
-                                new ArrayList<GetUserInfoResponseDto>());
+                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList);
 
                 // Assert
                 assertFalse(result);
@@ -562,7 +559,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "0");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -582,11 +579,9 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
-                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList,
-                                new ArrayList<GetUserInfoResponseDto>());
+                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList);
 
                 // Assert - register succeeds, push not required, primary not applicable -> false
                 assertFalse(result);
@@ -601,7 +596,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "0");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -622,11 +617,9 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
-                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList,
-                                new ArrayList<GetUserInfoResponseDto>());
+                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList);
 
                 // Assert - register succeeds, push not required, primary not applicable -> false
                 assertFalse(result);
@@ -640,7 +633,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "0");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -657,11 +650,9 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
-                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList,
-                                new ArrayList<GetUserInfoResponseDto>());
+                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList);
 
                 // Assert - register error (null response) → errorFlag=true
                 assertTrue(result);
@@ -675,7 +666,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "1"); // isPushRequired=1
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -698,11 +689,9 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
-                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList,
-                                new ArrayList<GetUserInfoResponseDto>());
+                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList);
 
                 // Assert - push error (deviceData null because ntfInfoRepository not mocked) → errorFlag=true
                 assertTrue(result);
@@ -718,7 +707,7 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto request = buildRequest("3", "0"); // TYPE_NTF_AND_MAILSMS, push not
                                                                                     // required
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -732,7 +721,15 @@ class SaSendMessageNotificationServiceImplTest {
                 when(batApisUtil.executeRegisterNotification(any()))
                                 .thenReturn(new ResponseEntity<>(regJson5, HttpStatus.OK));
 
-                // Error process mocks (primaryContact will fail: empty personalInfoList)
+                // getPersonalInfo → executeGetUserInfo returns non-2xx with valid JSON body
+                // → readValue succeeds → !is2xxSuccessful() → return null → executePrimaryContact returns true
+                GetUserInfoResponseDto errDto = new GetUserInfoResponseDto();
+                errDto.setUserId("jsapUser001");
+                errDto.setContactList(new java.util.ArrayList<>());
+                String errJson = new ObjectMapper().writeValueAsString(errDto);
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>(errJson, HttpStatus.INTERNAL_SERVER_ERROR));
+                // Error process mocks (primaryContact will fail)
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
 
                 // Act
@@ -741,13 +738,11 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
-                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList,
-                                new ArrayList<GetUserInfoResponseDto>());
+                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList);
 
-                // Assert - primaryContact error (user not found in empty list) → errorFlag=true
+                // Assert - primaryContact error → errorFlag=true
                 assertTrue(result);
         }
 
@@ -760,7 +755,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("3", "1"); // NTF_AND_MAILSMS, push required
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -783,11 +778,9 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
-                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList,
-                                new ArrayList<GetUserInfoResponseDto>());
+                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList);
 
                 // Assert - push error (no device data) → errorFlag=true
                 assertTrue(result);
@@ -804,7 +797,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "2", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
@@ -831,7 +824,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Register notification mock - success
                 RegisterNotificationResponseDto regDto = new RegisterNotificationResponseDto("000000", "ntf-001", "OK");
@@ -864,7 +857,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "3", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Register notification mock - failure
                 RegisterNotificationResponseDto regDto = new RegisterNotificationResponseDto("999999", "ntf-001",
@@ -898,7 +891,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Register notification mock - returns response with invalid JSON -> mapper
                 // throws
@@ -929,7 +922,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
@@ -958,7 +951,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Device data mock - APN
                 NtfInfoEntity device = buildNtfInfoEntity("user001", "2");
@@ -998,7 +991,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Device data mock - FCM
                 NtfInfoEntity device = buildNtfInfoEntity("user001", "1");
@@ -1038,7 +1031,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Device data mock - empty list -> null
                 when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(Collections.emptyList());
@@ -1070,7 +1063,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "1", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
@@ -1079,11 +1072,10 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
                 Boolean result = (Boolean) method.invoke(service, request, header, notificationData, "test-token",
-                                vinListEntity, new ArrayList<GetUserInfoResponseDto>());
+                                vinListEntity);
 
                 // Assert
                 assertFalse(result);
@@ -1100,7 +1092,11 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "2", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
+
+                // executeGetUserInfo returns non-2xx -> getPersonalInfo returns null -> executePrimaryContact returns true
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>("{}", HttpStatus.INTERNAL_SERVER_ERROR));
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
@@ -1109,13 +1105,12 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
                 Boolean result = (Boolean) method.invoke(service, request, header, notificationData, "test-token",
-                                vinListEntity, new ArrayList<GetUserInfoResponseDto>());
+                                vinListEntity);
 
-                // Assert - getPersonalInfoByUserId returns null (empty list) -> true
+                // Assert - getPersonalInfo returns null (non-2xx response) -> true
                 assertTrue(result);
         }
 
@@ -1130,7 +1125,11 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "3", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
+
+                // executeGetUserInfo returns non-2xx -> getPersonalInfo returns null -> executePrimaryContact returns true
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>("{}", HttpStatus.INTERNAL_SERVER_ERROR));
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
@@ -1139,14 +1138,12 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
                 Boolean result = (Boolean) method.invoke(service, request, header, notificationData, "test-token",
-                                vinListEntity, new ArrayList<GetUserInfoResponseDto>());
+                                vinListEntity);
 
-                // Assert - getPersonalInfoList returns null (executeGetUserInfo not mocked) ->
-                // true
+                // Assert - getPersonalInfo returns null (non-2xx response) -> true
                 assertTrue(result);
         }
 
@@ -1370,7 +1367,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "1");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
                 NtfInfoEntity deviceData = buildNtfInfoEntity("user001", "1"); // FCM
 
                 when(notificationHubUtil.buildFcmV1Payload(any())).thenReturn("fcm-payload");
@@ -1397,7 +1394,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "1");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
                 NtfInfoEntity deviceData = buildNtfInfoEntity("user001", "2"); // APN
 
                 when(notificationHubUtil.buildApnsPayload(any())).thenReturn("apns-payload");
@@ -1424,7 +1421,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "1");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
                 NtfInfoEntity deviceData = buildNtfInfoEntity("user001", "99"); // Unknown
 
                 // Act & Assert
@@ -1556,7 +1553,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "0");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -1570,13 +1567,11 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
 
                 InvocationTargetException ex = assertThrows(InvocationTargetException.class,
-                                () -> method.invoke(service, request, header, userInfo, notificationSendList,
-                                                new ArrayList<GetUserInfoResponseDto>()));
+                                () -> method.invoke(service, request, header, userInfo, notificationSendList));
                 assertInstanceOf(CustomException.class, ex.getCause());
         }
 
@@ -1622,11 +1617,11 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
                 // empty CSV → convertToNotificationSendListDto catches exception → returns []
                 NotificationVinListEntity entity = new NotificationVinListEntity(
-                                1, "SA", 100, "VIN001", "", 1L, "1", 0, false, null, null);
+                                1, "SA", 100, "VIN001", "", 1L, 1L, 0, false, null, null);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
 
@@ -1643,13 +1638,13 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_018() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 // executeGetUserId returns null → response == null → errorFlag → empty list
                 when(jsapUtil.executeGetUserId(any(), any())).thenReturn(null);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
 
@@ -1665,13 +1660,13 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_018b() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 // response.getBody() == null → errorFlag → empty list
                 when(jsapUtil.executeGetUserId(any(), any())).thenReturn(new ResponseEntity<>(null, HttpStatus.OK));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
 
@@ -1687,7 +1682,7 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_019() {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
@@ -1695,7 +1690,7 @@ class SaSendMessageNotificationServiceImplTest {
                 when(ntfBatchExecHistoryRepository.insert(any())).thenThrow(
                                 new RuntimeException(new SQLException("connection error", "08001")));
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -1709,7 +1704,7 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_020() {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
@@ -1717,7 +1712,7 @@ class SaSendMessageNotificationServiceImplTest {
                 when(ntfBatchExecHistoryRepository.insert(any())).thenThrow(
                                 new RuntimeException(new SQLException("unique violation", "23505")));
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -1731,7 +1726,7 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_021() {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
@@ -1740,7 +1735,7 @@ class SaSendMessageNotificationServiceImplTest {
                 when(ntfBatchExecHistoryRepository.insert(any())).thenThrow(
                                 new RuntimeException(new SQLException("other error", "99999")));
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -1754,17 +1749,16 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_026() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(5);
-                // mock executeGetUserInfo so getPersonalInfoList returns non-empty list (enables async)
+                // mock executeGetUserInfo so getPersonalInfo returns non-null dto (enables async notification processing)
                 GetUserInfoResponseDto userInfoDto = new GetUserInfoResponseDto();
                 userInfoDto.setUserId("jsapUser001");
                 ContactDto userContact = buildContactDto("1", true, "09012345678");
@@ -1785,8 +1779,8 @@ class SaSendMessageNotificationServiceImplTest {
                 lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any()))
                                 .thenThrow(new RuntimeException(new SQLException("connection error", "08001")))
                                 .thenReturn(1);
-                lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                lenient().when(notificationVinListRepository.update(eq(1), eq(1L), eq(2))).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -1800,17 +1794,16 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_027() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(5);
-                // mock executeGetUserInfo so getPersonalInfoList returns non-empty list (enables async)
+                // mock executeGetUserInfo so getPersonalInfo returns non-null dto (enables async notification processing)
                 GetUserInfoResponseDto userInfoDto27 = new GetUserInfoResponseDto();
                 userInfoDto27.setUserId("jsapUser001");
                 ContactDto userContact27 = buildContactDto("1", true, "09012345678");
@@ -1830,8 +1823,8 @@ class SaSendMessageNotificationServiceImplTest {
                 lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any()))
                                 .thenThrow(new RuntimeException(new SQLException("unique violation", "23505")))
                                 .thenReturn(1);
-                lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                lenient().when(notificationVinListRepository.update(eq(1), eq(1L), eq(2))).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -1848,7 +1841,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // batApisUtil returns null → response == null → registerNotification returns null
                 // → executeRegisterNotification returns true (errorFlag)
@@ -1924,7 +1917,11 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "2", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
+
+                // executeGetUserInfo returns non-2xx -> getPersonalInfo returns null -> executePrimaryContact returns true
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>("{}", HttpStatus.INTERNAL_SERVER_ERROR));
 
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "executePrimaryContact",
@@ -1932,11 +1929,10 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
                 Boolean result = (Boolean) method.invoke(service, request, header, notificationData,
-                                "test-token", vinListEntity, new ArrayList<GetUserInfoResponseDto>());
+                                "test-token", vinListEntity);
 
                 assertTrue(result);
         }
@@ -1950,7 +1946,15 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "2", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
+
+                // executeGetUserInfo returns dto with empty contactList -> personalInfoResponse.getContactList().isEmpty() -> true
+                GetUserInfoResponseDto emptyContactDto = new GetUserInfoResponseDto();
+                emptyContactDto.setUserId("jsapUser001");
+                emptyContactDto.setContactList(new ArrayList<>());
+                String emptyContactJson = new ObjectMapper().writeValueAsString(emptyContactDto);
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>(emptyContactJson, HttpStatus.OK));
 
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "executePrimaryContact",
@@ -1958,11 +1962,10 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
                 Boolean result = (Boolean) method.invoke(service, request, header, notificationData,
-                                "test-token", vinListEntity, new ArrayList<GetUserInfoResponseDto>());
+                                "test-token", vinListEntity);
 
                 assertTrue(result);
         }
@@ -1976,7 +1979,11 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "2", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
+
+                // executeGetUserInfo returns non-2xx -> getPersonalInfo returns null -> executePrimaryContact returns true
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>("{}", HttpStatus.INTERNAL_SERVER_ERROR));
 
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "executePrimaryContact",
@@ -1984,11 +1991,10 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
                 Boolean result = (Boolean) method.invoke(service, request, header, notificationData,
-                                "test-token", vinListEntity, new ArrayList<GetUserInfoResponseDto>());
+                                "test-token", vinListEntity);
 
                 assertTrue(result);
         }
@@ -2002,7 +2008,11 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "3", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
+
+                // executeGetUserInfo returns non-2xx -> getPersonalInfo returns null -> executePrimaryContact returns true
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>("{}", HttpStatus.INTERNAL_SERVER_ERROR));
 
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "executePrimaryContact",
@@ -2010,11 +2020,10 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
                 Boolean result = (Boolean) method.invoke(service, request, header, notificationData,
-                                "test-token", vinListEntity, new ArrayList<GetUserInfoResponseDto>());
+                                "test-token", vinListEntity);
 
                 assertTrue(result);
         }
@@ -2028,9 +2037,21 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "2", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
-                // Pass a list with a different userId so getPersonalInfoByUserId returns null
-                GetUserInfoResponseDto otherUser = buildGetUserInfoResponseDto("otherUser", new ArrayList<>());
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
+
+                // executeGetUserInfo returns dto with null contactList -> personalInfoResponse.getContactList() is null
+                // but executePrimaryContact checks isEmpty() on it - so need to cover null contactList path
+                // getPersonalInfo returns the dto (not null since 2xx), but contactList == null
+                // -> personalInfoResponse.getContactList().isEmpty() would throw NPE, but check is:
+                // if (personalInfoResponse == null || personalInfoResponse.getContactList().isEmpty())
+                // Actually with null contactList, isEmpty() would throw NPE -> wrapped in catch -> re-thrown
+                // So let's use empty contactList to test the isEmpty() == true branch
+                GetUserInfoResponseDto emptyContactDto2 = new GetUserInfoResponseDto();
+                emptyContactDto2.setUserId("jsapUser001");
+                emptyContactDto2.setContactList(new ArrayList<>());
+                String emptyContactJson2 = new ObjectMapper().writeValueAsString(emptyContactDto2);
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>(emptyContactJson2, HttpStatus.OK));
 
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "executePrimaryContact",
@@ -2038,11 +2059,10 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
                 Boolean result = (Boolean) method.invoke(service, request, header, notificationData,
-                                "test-token", vinListEntity, List.of(otherUser));
+                                "test-token", vinListEntity);
 
                 assertTrue(result);
         }
@@ -2056,9 +2076,14 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "2", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
                 ContactDto contact = buildContactDto("1", true, "09012345678");
                 GetUserInfoResponseDto personalInfo = buildGetUserInfoResponseDto("jsapUser001", List.of(contact));
+
+                // Mock executeGetUserInfo to return the personalInfo DTO
+                String personalInfoJson = new ObjectMapper().writeValueAsString(personalInfo);
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>(personalInfoJson, HttpStatus.OK));
 
                 // sendMessage success mock
                 when(jsapUtil.createSmsContext(any())).thenReturn(new SmsContextDto("sms-body"));
@@ -2073,11 +2098,10 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
                 Boolean result = (Boolean) method.invoke(service, request, header, notificationData,
-                                "test-token", vinListEntity, List.of(personalInfo));
+                                "test-token", vinListEntity);
 
                 assertFalse(result);
         }
@@ -2139,7 +2163,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 // properties.getThreadPool() throws RuntimeException → outer catch(Exception)
                 when(properties.getThreadPool()).thenThrow(new RuntimeException("threadpool error"));
@@ -2160,14 +2184,14 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
                 // notificationSendList=null → convertToNotificationSendListDto catches NPE → returns []
                 NotificationVinListEntity entity = new NotificationVinListEntity(
-                                1, "SA", 100, "VIN001", null, 1L, "1", 0, false, null, null);
+                                1, "SA", 100, "VIN001", null, 1L, 1L, 0, false, null, null);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2187,19 +2211,19 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
                 // executeGetToken returns null → L413-421 branch
                 when(jsapUtil.executeGetToken()).thenReturn(null);
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2219,19 +2243,19 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
                 // executeGetToken returns result=false → L424-432 branch
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(false, "tok"));
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2251,17 +2275,16 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(5);
-                // getPersonalInfoList returns non-empty list
+                // getPersonalInfo returns non-null dto (enables async notification processing)
                 GetUserInfoResponseDto userInfoDto32 = new GetUserInfoResponseDto();
                 userInfoDto32.setUserId("jsapUser001");
                 ContactDto userContact32 = buildContactDto("1", true, "09012345678");
@@ -2276,8 +2299,8 @@ class SaSendMessageNotificationServiceImplTest {
                 lenient().when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
                 // updateStatus succeeds
                 lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
-                lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2))).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                lenient().when(notificationVinListRepository.update(eq(1), eq(1L), eq(2))).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2296,17 +2319,16 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(5);
-                // getPersonalInfoList returns non-empty list
+                // getPersonalInfo returns non-null dto (enables async notification processing)
                 GetUserInfoResponseDto userInfoDto33 = new GetUserInfoResponseDto();
                 userInfoDto33.setUserId("jsapUser001");
                 ContactDto userContact33 = buildContactDto("1", true, "09012345678");
@@ -2322,10 +2344,10 @@ class SaSendMessageNotificationServiceImplTest {
                 lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
                 // update(1,"1",2): 1回目throw → updateNotificationVinList wrap → async catch(CustomSqlException)
                 // catch内でも再呼び出しされるため、2回目はreturn 1でCompletableFutureを正常完了させる
-                lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2)))
+                lenient().when(notificationVinListRepository.update(eq(1), eq(1L), eq(2)))
                                 .thenThrow(new RuntimeException(new SQLException("connection error", "08001")))
                                 .thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2344,17 +2366,17 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 // update(1,"1",0) throws RuntimeException → updateNotificationVinList catch → CustomSqlException
                 // → outer catch(CustomSqlException) → executeErrorProcess → next loop → updateNotification → CustomException
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0)))
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0)))
                                 .thenThrow(new RuntimeException("update failed"));
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2373,26 +2395,25 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(5);
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
-                // executeGetUserInfo returns dto with null contactList → L731 check → return null
-                // → getPersonalInfoList returns empty → outer loop returns early
+                // executeGetUserInfo returns dto with null contactList → getPersonalInfo still returns dto
+                // but executePrimaryContact checks contactList == null || isEmpty() → returns true (error)
                 GetUserInfoResponseDto noContactDto = new GetUserInfoResponseDto();
                 noContactDto.setUserId("jsapUser001");
                 noContactDto.setContactList(null);
                 String noContactJson = new ObjectMapper().writeValueAsString(noContactDto);
                 lenient().when(jsapUtil.executeGetUserInfo(any(), any()))
                                 .thenReturn(new ResponseEntity<>(noContactJson, HttpStatus.OK));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2411,22 +2432,21 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(5);
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
-                // executeGetUserInfo throws RuntimeException inside the Callable
-                // → Future.get() throws ExecutionException → catch(Exception) at L762 executes
+                // executeGetUserInfo throws RuntimeException inside the per-user getPersonalInfo call
+                // if executePrimaryContact is triggered → CustomException propagates
                 lenient().when(jsapUtil.executeGetUserInfo(any(), any()))
                                 .thenThrow(new RuntimeException("user info fetch error"));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2445,21 +2465,21 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
-                // properties.getParallelCurrent() throws → outer catch at L775 in getPersonalInfoList
-                // → CustomException wraps it → caught by forEach catch(Exception) → executeErrorProcess
-                when(properties.getParallelCurrent()).thenThrow(new RuntimeException("parallel error"));
+                // batApisUtil not mocked → null response → NPE in registerNotification → CustomException
+                // → forEach catch in executeNotificationProcess → throws CustomException
+                // → async catch(Exception) → executeErrorProcess called
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2478,12 +2498,12 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 String successJson;
                 try {
                         successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
@@ -2496,7 +2516,7 @@ class SaSendMessageNotificationServiceImplTest {
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
                 // updateNotification: notificationRepository.update returns 0 → throws CustomSqlException
                 // → outer catch(CustomSqlException) → CustomException
-                when(notificationRepository.update("ME", 1)).thenReturn(0);
+                when(notificationRepository.update("SA", 1)).thenReturn(0);
 
                 // Act & Assert
                 assertThrows(CustomException.class, () -> service.sendMessageNotification(req, header));
@@ -2512,12 +2532,12 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 String successJson;
                 try {
                         successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
@@ -2530,7 +2550,7 @@ class SaSendMessageNotificationServiceImplTest {
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
                 // notificationRepository.update throws RuntimeException → catch wraps in CustomSqlException
                 // → outer catch(CustomSqlException) → CustomException
-                when(notificationRepository.update("ME", 1)).thenThrow(new RuntimeException("db error"));
+                when(notificationRepository.update("SA", 1)).thenThrow(new RuntimeException("db error"));
 
                 // Act & Assert
                 assertThrows(CustomException.class, () -> service.sendMessageNotification(req, header));
@@ -2546,14 +2566,14 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(0);
                 // ntfBatchExecErrorInfoRepository.insert throws → executeErrorProcess catch → log only
                 when(ntfBatchExecErrorInfoRepository.insert(any())).thenThrow(new RuntimeException("insert error"));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 // Act
                 ResponseDto result = service.sendMessageNotification(req, header);
@@ -2572,7 +2592,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "0");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -2587,11 +2607,9 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
-                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList,
-                                new ArrayList<GetUserInfoResponseDto>());
+                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList);
 
                 // Assert - tokenResult==null → continue → errorFlag remains false
                 assertFalse(result);
@@ -2607,7 +2625,7 @@ class SaSendMessageNotificationServiceImplTest {
                 // Arrange
                 SendMessageNotificationRequestDto request = buildRequest("1", "0");
                 RequestHeaderDto header = buildHeader();
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 List<SaNotificationSendListDto> notificationSendList = buildNotificationSendList("user001",
                                 "jsapUser001");
@@ -2622,11 +2640,9 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                List.class,
                                 List.class);
                 method.setAccessible(true);
-                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList,
-                                new ArrayList<GetUserInfoResponseDto>());
+                Boolean result = (Boolean) method.invoke(service, request, header, userInfo, notificationSendList);
 
                 // Assert - !tokenResult.getResult() → continue → errorFlag remains false
                 assertFalse(result);
@@ -2644,7 +2660,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Device data mock - FCM
                 NtfInfoEntity device = buildNtfInfoEntity("user001", "1");
@@ -2682,7 +2698,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
                                 "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Device data mock - FCM
                 NtfInfoEntity device = buildNtfInfoEntity("user001", "1");
@@ -2724,9 +2740,14 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "2", "jsapUser001");
-                NotificationVinListEntity vinListEntity = buildVinListEntity("1");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
                 ContactDto contact = buildContactDto("1", true, "09012345678");
                 GetUserInfoResponseDto personalInfo = buildGetUserInfoResponseDto("jsapUser001", List.of(contact));
+
+                // Mock executeGetUserInfo to return the personalInfo DTO
+                String personalInfoJson = new ObjectMapper().writeValueAsString(personalInfo);
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>(personalInfoJson, HttpStatus.OK));
 
                 // jsapUtil.createSmsContext throws → sendRequest propagates CustomException
                 // → executePrimaryContact catch(Exception) L1155 → executeErrorProcess → rethrow
@@ -2740,13 +2761,49 @@ class SaSendMessageNotificationServiceImplTest {
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
                                 String.class,
-                                NotificationVinListEntity.class,
-                                List.class);
+                                NotificationVinListEntity.class);
                 method.setAccessible(true);
 
                 InvocationTargetException ex = assertThrows(InvocationTargetException.class,
                                 () -> method.invoke(service, request, header, notificationData, "test-token",
-                                                vinListEntity, List.of(personalInfo)));
+                                                vinListEntity));
+                assertInstanceOf(RuntimeException.class, ex.getCause());
+        }
+
+        /**
+         * クラス：SaSendMessageNotificationServiceImpl
+         * L1024-1025: getPersonalInfo catch(Exception) - executeGetUserInfoが例外をスローした場合
+         * CustomExceptionがスローされることを確認するテストケース（リフレクション経由executePrimaryContact）
+         */
+        @Test
+        void executePrimaryContact_011() throws Exception {
+                // Arrange
+                SendMessageNotificationRequestDto request = buildRequest("2", "0");
+                RequestHeaderDto header = buildHeader();
+                SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
+                                "VIN001", "user001", "LC001", "2", "jsapUser001");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
+
+                // jsapUtil.executeGetUserInfo throws RuntimeException
+                // -> getPersonalInfo catch(Exception e) L1024 -> throws CustomException
+                // -> executePrimaryContact catch(Exception e) L996 -> executeErrorProcess -> rethrow
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenThrow(new RuntimeException("user info network error"));
+                when(ntfBatchExecErrorInfoRepository.insert(any())).thenReturn(1);
+
+                // Act & Assert
+                Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                                "executePrimaryContact",
+                                SendMessageNotificationRequestDto.class,
+                                RequestHeaderDto.class,
+                                SaNotificationSendListDto.class,
+                                String.class,
+                                NotificationVinListEntity.class);
+                method.setAccessible(true);
+
+                InvocationTargetException ex = assertThrows(InvocationTargetException.class,
+                                () -> method.invoke(service, request, header, notificationData, "test-token",
+                                                vinListEntity));
                 assertInstanceOf(RuntimeException.class, ex.getCause());
         }
 
@@ -2761,7 +2818,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "1", "jsapUser001");
-                NotificationVinListEntity userInfo = buildVinListEntity("1");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // response.getBody() == null → registerNotification returns null
                 when(batApisUtil.executeRegisterNotification(any()))
@@ -2788,16 +2845,15 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_041() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(5);
                 GetUserInfoResponseDto userInfoDto41 = new GetUserInfoResponseDto();
                 userInfoDto41.setUserId("jsapUser001");
                 ContactDto contact41 = buildContactDto("1", true, "09012345678");
@@ -2813,10 +2869,10 @@ class SaSendMessageNotificationServiceImplTest {
                 lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
                 // 操作エラー("23505") → isSqlOperationError=true → L492-500 パスをカバー
                 // catch内でも再呼び出しされるため2回目はreturn 1
-                lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2)))
+                lenient().when(notificationVinListRepository.update(eq(1), eq(1L), eq(2)))
                                 .thenThrow(new RuntimeException(new SQLException("unique violation", "23505")))
                                 .thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -2831,16 +2887,15 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_042() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(5);
                 GetUserInfoResponseDto userInfoDto42 = new GetUserInfoResponseDto();
                 userInfoDto42.setUserId("jsapUser001");
                 ContactDto contact42 = buildContactDto("1", true, "09012345678");
@@ -2856,10 +2911,10 @@ class SaSendMessageNotificationServiceImplTest {
                 lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
                 // SQL原因なしのRuntimeException → findSqlException(e)==null → if(sqlEx!=null) false
                 // catch内でも再呼び出しされるため2回目はreturn 1
-                lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2)))
+                lenient().when(notificationVinListRepository.update(eq(1), eq(1L), eq(2)))
                                 .thenThrow(new RuntimeException("no sql cause"))
                                 .thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -2873,20 +2928,19 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_043() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(1);
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
                 // response == null → lambda returns null → getPersonalInfoList returns []
                 lenient().when(jsapUtil.executeGetUserInfo(any(), any())).thenReturn(null);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -2900,21 +2954,20 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_044() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(1);
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
                 // resBody == null → lambda returns null → getPersonalInfoList returns []
                 lenient().when(jsapUtil.executeGetUserInfo(any(), any()))
                                 .thenReturn(new ResponseEntity<>((String) null, HttpStatus.OK));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -2928,16 +2981,15 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_045() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(1);
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
                 // contactList == null → lambda returns null → getPersonalInfoList returns []
                 GetUserInfoResponseDto dtoNoContact = new GetUserInfoResponseDto();
@@ -2946,7 +2998,7 @@ class SaSendMessageNotificationServiceImplTest {
                 String jsonNoContact = new ObjectMapper().writeValueAsString(dtoNoContact);
                 lenient().when(jsapUtil.executeGetUserInfo(any(), any()))
                                 .thenReturn(new ResponseEntity<>(jsonNoContact, HttpStatus.OK));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -2960,21 +3012,20 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_046() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(1);
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
                 // response != null AND !is2xxSuccessful → L721 second OR branch → return null
                 lenient().when(jsapUtil.executeGetUserInfo(any(), any()))
                                 .thenReturn(new ResponseEntity<>("error", HttpStatus.INTERNAL_SERVER_ERROR));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -2988,21 +3039,20 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_047() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(1);
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
                 // resBody is empty string (non-null but empty) → L726 second OR branch → return null
                 lenient().when(jsapUtil.executeGetUserInfo(any(), any()))
                                 .thenReturn(new ResponseEntity<>("", HttpStatus.OK));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -3017,16 +3067,15 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_049() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(5);
                 GetUserInfoResponseDto userInfoDto49 = new GetUserInfoResponseDto();
                 userInfoDto49.setUserId("jsapUser001");
                 ContactDto contact49 = buildContactDto("1", true, "09012345678");
@@ -3041,10 +3090,10 @@ class SaSendMessageNotificationServiceImplTest {
                                 .thenReturn(new ResponseEntity<>(regResJson49, HttpStatus.OK));
                 lenient().when(ntfBatchExecHistoryRepository.updateStatus(any(), any(), any())).thenReturn(1);
                 // SQLState "HY000" → neither connection(08xxx) nor operation(23xxx) → L492 false branch
-                lenient().when(notificationVinListRepository.update(eq(1), eq("1"), eq(2)))
+                lenient().when(notificationVinListRepository.update(eq(1), eq(1L), eq(2)))
                                 .thenThrow(new RuntimeException(new SQLException("general SQL error", "HY000")))
                                 .thenReturn(1);
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
@@ -3058,16 +3107,15 @@ class SaSendMessageNotificationServiceImplTest {
         void sendMessageNotification_048() throws Exception {
                 RequestHeaderDto header = buildHeader();
                 SendMessageNotificationRequestDto req = buildRequest("1", "0");
-                NotificationVinListEntity entity = buildVinListEntity("1");
+                NotificationVinListEntity entity = buildVinListEntity(1L);
                 when(notificationVinListRepository.select(1, 0)).thenReturn(List.of(entity));
                 when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
                 String successJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
                 when(jsapUtil.executeGetUserId(any(), any()))
                                 .thenReturn(new ResponseEntity<>(successJson, HttpStatus.OK));
-                when(notificationVinListRepository.update(eq(1), eq("1"), eq(0))).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
                 when(properties.getThreadPool()).thenReturn(2);
                 when(properties.getThreadQueue()).thenReturn(10);
-                when(properties.getParallelCurrent()).thenReturn(1);
                 when(jsapUtil.executeGetToken()).thenReturn(new GetALJTokenResultDto(true, "test"));
                 // contactList is not null but empty → L731 second OR branch → return null
                 GetUserInfoResponseDto dtoEmptyContact = new GetUserInfoResponseDto();
@@ -3076,7 +3124,7 @@ class SaSendMessageNotificationServiceImplTest {
                 String jsonEmptyContact = new ObjectMapper().writeValueAsString(dtoEmptyContact);
                 lenient().when(jsapUtil.executeGetUserInfo(any(), any()))
                                 .thenReturn(new ResponseEntity<>(jsonEmptyContact, HttpStatus.OK));
-                when(notificationRepository.update("ME", 1)).thenReturn(1);
+                when(notificationRepository.update("SA", 1)).thenReturn(1);
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);

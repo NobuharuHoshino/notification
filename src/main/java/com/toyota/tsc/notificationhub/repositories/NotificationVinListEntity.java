@@ -15,7 +15,7 @@ public class NotificationVinListEntity {
     private String vinList;
     private String notificationSendList; // DBではnotification_send_list
     private Long registrationSerialNumber;
-    private String sequenceNumber; // DBではseqence_number
+    private Long sequenceNumber; // DBではseqence_number
     private Integer isLinked;
     private Boolean isDeleted;
     private LocalDateTime created;

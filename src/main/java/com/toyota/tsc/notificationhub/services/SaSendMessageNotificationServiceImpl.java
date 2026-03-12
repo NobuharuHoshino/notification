@@ -1,4 +1,3 @@
-
 package com.toyota.tsc.notificationhub.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,13 +38,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionService;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.springframework.context.annotation.Profile;
@@ -129,7 +122,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
     private static final String CONTACT_PHONE = "1";
     private static final String CONTACT_EMAIL = "2";
     // 国・言語コード
-    private static final String CNT_ME = "ME";
+    private static final String CNT_SA = "SA";
     // 連携フラグ
     private static final int LINKTYPE_NOTLINKED = 0;
     private static final int LINKTYPE_LINKED = 2;
@@ -385,7 +378,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                     // 4-4:内部UserIDをUserIDに変換
                     List<SaNotificationSendListDto> modNotificationSendList = convertInternalUserIdToUserId(
                             header, notificationSendList);
-                    if (modNotificationSendList == null || modNotificationSendList.isEmpty()) {
+                    if (modNotificationSendList.isEmpty()) {
                         executeErrorProcess(
                                 request, header, entity, "",
                                 ERR_STATUS_SKP, ERR_STATUS_SKP, ERR_STATUS_SKP);
@@ -396,65 +389,16 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                             entity.getSequenceNumber(),
                             header.getCorrelationId()));
 
-                    // 4-5:ALJトークン取得
-                    LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00014",
-                            request.getRegistrationSerialNumber(),
-                            entity.getSequenceNumber(),
-                            header.getCorrelationId()));
-                    GetALJTokenResultDto tokenResult = jsapUtil.executeGetToken();
-                    if (tokenResult == null) {
-                        LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00013",
-                                "tokenResult is null",
-                                request.getRegistrationSerialNumber(),
-                                entity.getSequenceNumber(),
-                                header.getCorrelationId()));
-                        executeErrorProcess(
-                                request, header, entity, "",
-                                ERR_STATUS_SKP, ERR_STATUS_SKP, ERR_STATUS_SKP);
-                        return;
-                    }
-                    if (!tokenResult.getResult()) {
-                        LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00013",
-                                tokenResult.getResult(),
-                                request.getRegistrationSerialNumber(),
-                                entity.getSequenceNumber(),
-                                header.getCorrelationId()));
-                        executeErrorProcess(
-                                request, header, entity, "",
-                                ERR_STATUS_SKP, ERR_STATUS_SKP, ERR_STATUS_SKP);
-                        return;
-                    }
-                    LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00015",
-                            tokenResult.getResult(),
-                            request.getRegistrationSerialNumber(),
-                            entity.getSequenceNumber(),
-                            header.getCorrelationId()));
-
-                    // 4-6:ALJ会員情報取得
-                    List<GetUserInfoResponseDto> personalInfoListResponse = getPersonalInfoList(
-                            modNotificationSendList, tokenResult.getAljToken());
-                    if (personalInfoListResponse == null || personalInfoListResponse.isEmpty()) {
-                        LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00015",
-                                request.getRegistrationSerialNumber(),
-                                entity.getSequenceNumber(),
-                                header.getCorrelationId()));
-                        return;
-                    }
-                    LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00010",
-                            request.getRegistrationSerialNumber(),
-                            entity.getSequenceNumber(),
-                            header.getCorrelationId()));
-
-                    // 4-7:非同期で通知処理実行
+                    // 4-5:非同期で通知処理実行
                     f.add(CompletableFuture.runAsync(() -> {
                         try {
                             boolean errorFlag = this.executeNotificationProcess(
-                                    request, header, entity, modNotificationSendList, personalInfoListResponse);
+                                    request, header, entity, modNotificationSendList);
                             // お知らせ通知処理履歴更新
                             if (errorFlag) {
                                 ntfBatchExecHistoryRepository.updateStatus(
                                         request.getRegistrationSerialNumber(),
-                                        Integer.valueOf(entity.getSequenceNumber()),
+                                        entity.getSequenceNumber().intValue(),
                                         STATUS_ERR);
                                 LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07D00006",
                                         request.getRegistrationSerialNumber(), entity.getSequenceNumber(),
@@ -462,7 +406,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                             } else {
                                 ntfBatchExecHistoryRepository.updateStatus(
                                         request.getRegistrationSerialNumber(),
-                                        Integer.valueOf(entity.getSequenceNumber()),
+                                        entity.getSequenceNumber().intValue(),
                                         STATUS_DONE);
                                 LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07D00006",
                                         request.getRegistrationSerialNumber(), entity.getSequenceNumber(),
@@ -494,13 +438,13 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                                 }
                             }
                             ntfBatchExecHistoryRepository.updateStatus(request.getRegistrationSerialNumber(),
-                                    Integer.valueOf(entity.getSequenceNumber()), STATUS_ERR);
+                                    entity.getSequenceNumber().intValue(), STATUS_ERR);
                             this.updateNotificationVinList(request, entity, LINKTYPE_LINKED);
 
                         } catch (Exception e) {
                             // 想定外のエラー：ステータス&フラグ更新
                             ntfBatchExecHistoryRepository.updateStatus(request.getRegistrationSerialNumber(),
-                                    Integer.valueOf(entity.getSequenceNumber()), STATUS_ERR);
+                                    entity.getSequenceNumber().intValue(), STATUS_ERR);
                             this.updateNotificationVinList(request, entity, LINKTYPE_LINKED);
                         }
                     }, executor));
@@ -565,7 +509,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
         try {
             NtfBatchExecHistoryEntity historyEntity = new NtfBatchExecHistoryEntity(
                     request.getRegistrationSerialNumber(),
-                    Integer.valueOf(vinListEntity.getSequenceNumber()),
+                    vinListEntity.getSequenceNumber().intValue(),
                     STATUS_STR,
                     request.getScheduledSendData(),
                     null,
@@ -675,104 +619,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
     }
     // #endregion
 
-    // #region 4-6:ALJ会員情報取得
-    /**
-     * ALJから連絡先リストを取得します。
-     * 
-     * @param request  リクエストDTO
-     * @param header   ヘッダーDTO
-     * @param userInfo ユーザー情報
-     */
-    private List<GetUserInfoResponseDto> getPersonalInfoList(
-            List<SaNotificationSendListDto> notificationSendList,
-            String token) {
-
-        final ObjectMapper mapper = new ObjectMapper();
-        final int pal = properties.getParallelCurrent();
-        final Semaphore semaphore = new Semaphore(pal);
-
-        // 多重度=palで並列処理実行
-        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-
-            final CompletionService<GetUserInfoResponseDto> completion = new ExecutorCompletionService<>(executor);
-            final List<Future<GetUserInfoResponseDto>> futures = new ArrayList<>(notificationSendList.size());
-
-            // 並列処理タスク投入（100件単位の内部UserIDリスト数に応じたAPI呼び出し）
-            for (SaNotificationSendListDto notificationSendListDto : notificationSendList) {
-
-                futures.add(completion.submit(() -> {
-
-                    // 処理枠（=多重度）を確保
-                    semaphore.acquire();
-                    try {
-
-                        // API実行
-                        ResponseEntity<String> response = jsapUtil.executeGetUserInfo(
-                                notificationSendListDto.getUserId(), token);
-
-                        // 異常検知の場合null返却 ※レスポンス無しorレスポンス200以外
-                        if (response == null || !response.getStatusCode().is2xxSuccessful()) {
-                            return null;
-                        }
-                        // 異常検知の場合null返却 ※レスポンスボディなし
-                        var resBody = response.getBody();
-                        if (resBody == null || resBody.isEmpty()) {
-                            return null;
-                        }
-                        // 異常検知の場合null返却 ※連絡先リストが空
-                        GetUserInfoResponseDto dto = mapper.readValue(resBody, GetUserInfoResponseDto.class);
-                        if (dto.getContactList() == null || dto.getContactList().isEmpty()) {
-                            return null;
-                        }
-                        // 正常応答の場合DTOを返却
-                        return dto;
-
-                    } finally {
-                        // 処理枠を開放
-                        semaphore.release();
-                    }
-                }));
-            }
-
-            // 結果取得（GetUserInfoResponseDtoをリストに収集していく）
-            List<GetUserInfoResponseDto> resultList = new ArrayList<>();
-            for (int i = 0; i < notificationSendList.size(); i++) {
-
-                // タスク完了分の結果（実行結果DTO）取得
-                Future<GetUserInfoResponseDto> done = completion.take();
-                try {
-                    GetUserInfoResponseDto dto = done.get();
-                    // null返却されてきた場合は残リスト分のタスクをキャンセルして個人情報取得処理を終了。
-                    if (dto == null) {
-                        for (Future<GetUserInfoResponseDto> f : futures) {
-                            f.cancel(true);
-                        }
-                        return new ArrayList<>();
-                    }
-                    // 正常に個人情報取得できた場合、DTOをリストに追加
-                    resultList.add(dto);
-
-                } catch (Exception e) {
-                    // completion.takeで検知された例外発生時、残タスクキャンセルして個人情報取得処理を終了。
-                    Thread.currentThread().interrupt();
-                    for (Future<GetUserInfoResponseDto> f : futures) {
-                        f.cancel(true);
-                    }
-                    return new ArrayList<>();
-                }
-            }
-
-            // すべてのタスクが正常に完了した場合、収集済みリストを返却
-            return resultList;
-
-        } catch (Exception e) {
-            Thread.currentThread().interrupt();
-            throw new CustomException(e);
-        }
-    }
-    // #endregion
-
-    // #region 4-7:通知処理実行
+    // #region 4-5:通知処理実行
     /**
      * 通知処理実行基幹（1~Eを個人）
      * 1:Notification登録判定&実行
@@ -791,8 +638,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             SendMessageNotificationRequestDto request,
             RequestHeaderDto header,
             NotificationVinListEntity vinList,
-            List<SaNotificationSendListDto> notificationSendList,
-            List<GetUserInfoResponseDto> personalInfoListResDto) {
+            List<SaNotificationSendListDto> notificationSendList) {
 
         boolean errorFlag = false;
         for (SaNotificationSendListDto notificationData : notificationSendList) {
@@ -847,7 +693,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
 
                 // 3:PrimaryContact送信判定&実行
                 boolean primaryContactError = executePrimaryContact(
-                        request, header, notificationData, tokenResult.getAljToken(), vinList, personalInfoListResDto);
+                        request, header, notificationData, tokenResult.getAljToken(), vinList);
                 if (primaryContactError) {
                     // エラー処理（エラー登録＆ロギング＆次ループ）
                     executeErrorProcess(request, header, vinList, notificationData.getInternalUserId(),
@@ -947,12 +793,21 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
     private RegisterNotificationRequestDto createRegisterNotificationRequestDto(
             SendMessageNotificationRequestDto request,
             SaNotificationSendListDto notificationData) {
-        return new RegisterNotificationRequestDto(
-                request.getRegistrationSerialNumber().toString(),
-                CNT_ME,
-                notificationData.getInternalUserId(),
-                request.getNotificationContents(),
-                request.getNotificationType());
+        RegisterNotificationRequestDto.NotificationTarget notificationTarget = new RegisterNotificationRequestDto.NotificationTarget(
+                notificationData.getVin(),
+                "Administrator",
+                CNT_SA,
+                notificationData.getInternalUserId());
+        List<RegisterNotificationRequestDto.NotificationContent> contents = request.getNotificationContents().stream()
+                .map(c -> new RegisterNotificationRequestDto.NotificationContent(
+                        c.getLanguageCode(),
+                        c.getTitle(),
+                        c.getDlrMsgDatFmt(),
+                        c.getDetail(),
+                        c.getDlrSetUri(),
+                        c.getDlrCntUrl()))
+                .toList();
+        return new RegisterNotificationRequestDto(notificationTarget, contents, "16");
     }
     // #endregion
 
@@ -1120,8 +975,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             RequestHeaderDto header,
             SaNotificationSendListDto notificationData,
             String token,
-            NotificationVinListEntity vinList,
-            List<GetUserInfoResponseDto> personalInfoListResponse) {
+            NotificationVinListEntity vinList) {
 
         try {
 
@@ -1129,19 +983,22 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                     request.getNotificationType().equals(TYPE_NTF_AND_MAILSMS)) {
 
                 // コンタクト取得
-                GetUserInfoResponseDto personalInfo = getPersonalInfoByUserId(
-                        notificationData.getUserId(),
-                        personalInfoListResponse);
-                if (personalInfo == null) {
+                GetUserInfoResponseDto personalInfoResponse = getPersonalInfo(
+                        notificationData, token);
+                if (personalInfoResponse == null || personalInfoResponse.getContactList().isEmpty()) {
                     LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00015",
                             request.getRegistrationSerialNumber(),
                             vinList.getSequenceNumber(),
                             header.getCorrelationId()));
                     return true;
                 }
+                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00010",
+                        request.getRegistrationSerialNumber(),
+                        vinList.getSequenceNumber(),
+                        header.getCorrelationId()));
 
                 // PrimaryContact送信処理実行
-                return sendRequest(request, header, personalInfo, token);
+                return sendRequest(request, header, personalInfoResponse, token);
             }
             return false;
 
@@ -1153,18 +1010,29 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
     }
 
     /**
-     * ループ中のユーザーIDに対応する会員情報を抽出します。
+     * ALJから連絡先リストを取得します。
+     * 
+     * @param request  リクエストDTO
+     * @param header   ヘッダーDTO
+     * @param userInfo ユーザー情報
      */
-    private GetUserInfoResponseDto getPersonalInfoByUserId(
-            String userId,
-            List<GetUserInfoResponseDto> personalInfoListResponse) {
+    private GetUserInfoResponseDto getPersonalInfo(
+            SaNotificationSendListDto notificationSendList,
+            String token) {
 
-        for (GetUserInfoResponseDto personalInfo : personalInfoListResponse) {
-            if (personalInfo.getUserId().equals(userId)) {
-                return personalInfo;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            ResponseEntity<String> getUserInfoResponce = jsapUtil.executeGetUserInfo(
+                    notificationSendList.getUserId(), token);
+            GetUserInfoResponseDto getUserInfoDto = mapper.readValue(getUserInfoResponce.getBody(),
+                    GetUserInfoResponseDto.class);
+            if (!getUserInfoResponce.getStatusCode().is2xxSuccessful()) {
+                return null;
             }
+            return getUserInfoDto;
+        } catch (Exception e) {
+            throw new CustomException(e);
         }
-        return null;
     }
 
     /**
@@ -1265,7 +1133,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             RequestHeaderDto header) {
 
         try {
-            int updateCnt = notificationRepository.update(CNT_ME, request.getRegistrationSerialNumber());
+            int updateCnt = notificationRepository.update(CNT_SA, request.getRegistrationSerialNumber());
             if (updateCnt == 0) {
                 LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00021",
                         TBL_NOTIFICATION,
@@ -1310,7 +1178,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             ntfBatchExecErrorInfoRepository.insert(
                     new NtfBatchExecErrorInfoEntity(
                             request.getRegistrationSerialNumber(),
-                            Integer.valueOf(userInfo.getSequenceNumber()),
+                            userInfo.getSequenceNumber().intValue(),
                             internalUserId,
                             notificationStatus,
                             pushStatus,

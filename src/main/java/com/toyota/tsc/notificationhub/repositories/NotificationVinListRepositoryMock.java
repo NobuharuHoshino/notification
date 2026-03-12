@@ -18,7 +18,7 @@ public class NotificationVinListRepositoryMock implements NotificationVinListRep
     }
 
     @Override
-    public int update(Integer registrationSerialNumber, String sequenceNumber, Integer isLinked) {
+    public int update(Integer registrationSerialNumber, Long sequenceNumber, Integer isLinked) {
         return 1;
     }
 }

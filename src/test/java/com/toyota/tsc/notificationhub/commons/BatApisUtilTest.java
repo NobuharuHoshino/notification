@@ -41,7 +41,8 @@ class BatApisUtilTest {
         when(propertiesUtil.getRegisterNotificationUrl()).thenReturn("http://localhost/test");
 
         RegisterNotificationRequestDto request = new RegisterNotificationRequestDto(
-                "123", "ME", "user001", List.of(), "1");
+                new RegisterNotificationRequestDto.NotificationTarget("VIN001", "Administrator", "ME", "user001"),
+                List.of(), "1");
 
         ResponseEntity<String> expected = new ResponseEntity<>("{\"returnCode\":\"000000\"}", HttpStatus.OK);
 
@@ -71,7 +72,8 @@ class BatApisUtilTest {
         when(propertiesUtil.getRegisterNotificationUrl()).thenReturn("http://localhost/test");
 
         RegisterNotificationRequestDto request = new RegisterNotificationRequestDto(
-                "123", "ME", "user001", List.of(), "1");
+                new RegisterNotificationRequestDto.NotificationTarget("VIN001", "Administrator", "ME", "user001"),
+                List.of(), "1");
 
         try (MockedConstruction<RestTemplate> mockedConstruction = mockConstruction(RestTemplate.class,
                 (mock, context) -> {

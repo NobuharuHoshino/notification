@@ -16,6 +16,6 @@ public interface NotificationVinListMapper {
         // 更新
         int update(
                         @Param("registrationSerialNumber") Integer registrationSerialNumber,
-                        @Param("sequenceNumber") String sequenceNumber,
+                        @Param("sequenceNumber") Long sequenceNumber,
                         @Param("isLinked") Integer isLinked);
 }

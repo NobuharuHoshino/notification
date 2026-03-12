@@ -53,14 +53,14 @@ class NotificationVinListRepositoryImplTest {
         // Arrange
         NotificationVinListRepositoryImpl sut = new NotificationVinListRepositoryImpl(notificationVinListMapper, propertiesUtil);
         when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(3);
-        when(notificationVinListMapper.update(123, "1", 2)).thenReturn(1);
+        when(notificationVinListMapper.update(123, 1L, 2)).thenReturn(1);
 
         // Act
-        int actual = sut.update(123, "1", 2);
+        int actual = sut.update(123, 1L, 2);
 
         // Assert
         assertEquals(1, actual);
-        verify(notificationVinListMapper, times(1)).update(123, "1", 2);
+        verify(notificationVinListMapper, times(1)).update(123, 1L, 2);
     }
 
     /** クラス：NotificationVinListRepositoryImpl SQLTransientException発生時にリトライして成功することを確認するテストケース */
@@ -71,16 +71,16 @@ class NotificationVinListRepositoryImplTest {
         when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(3);
         when(propertiesUtil.getNtfinfoUpsertRetryBaseInterval()).thenReturn(1);
         when(propertiesUtil.getNtfinfoUpsertRetryMaxInterval()).thenReturn(100);
-        when(notificationVinListMapper.update(123, "1", 2))
+        when(notificationVinListMapper.update(123, 1L, 2))
                 .thenThrow(new RuntimeException(new SQLTransientException("transient")))
                 .thenReturn(1);
 
         // Act
-        int actual = sut.update(123, "1", 2);
+        int actual = sut.update(123, 1L, 2);
 
         // Assert
         assertEquals(1, actual);
-        verify(notificationVinListMapper, times(2)).update(123, "1", 2);
+        verify(notificationVinListMapper, times(2)).update(123, 1L, 2);
     }
 
     /** クラス：NotificationVinListRepositoryImpl SQLTransientExceptionでリトライ上限を超えCustomExceptionが投げられることを確認するテストケース */
@@ -89,10 +89,10 @@ class NotificationVinListRepositoryImplTest {
         // Arrange
         NotificationVinListRepositoryImpl sut = new NotificationVinListRepositoryImpl(notificationVinListMapper, propertiesUtil);
         when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(0);
-        when(notificationVinListMapper.update(123, "1", 2)).thenThrow(new RuntimeException(new SQLTransientException("transient")));
+        when(notificationVinListMapper.update(123, 1L, 2)).thenThrow(new RuntimeException(new SQLTransientException("transient")));
 
         // Act & Assert
-        assertThrows(CustomException.class, () -> sut.update(123, "1", 2));
+        assertThrows(CustomException.class, () -> sut.update(123, 1L, 2));
     }
 
     /** クラス：NotificationVinListRepositoryImpl 非SQL例外発生時にCustomExceptionが投げられることを確認するテストケース */
@@ -101,10 +101,10 @@ class NotificationVinListRepositoryImplTest {
         // Arrange
         NotificationVinListRepositoryImpl sut = new NotificationVinListRepositoryImpl(notificationVinListMapper, propertiesUtil);
         when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(3);
-        when(notificationVinListMapper.update(123, "1", 2)).thenThrow(new RuntimeException("runtime"));
+        when(notificationVinListMapper.update(123, 1L, 2)).thenThrow(new RuntimeException("runtime"));
 
         // Act & Assert
-        assertThrows(CustomException.class, () -> sut.update(123, "1", 2));
+        assertThrows(CustomException.class, () -> sut.update(123, 1L, 2));
     }
 
     /** クラス：NotificationVinListRepositoryImpl SQLNonTransientException発生時にCustomExceptionが投げられることを確認するテストケース */
@@ -113,10 +113,10 @@ class NotificationVinListRepositoryImplTest {
         // Arrange
         NotificationVinListRepositoryImpl sut = new NotificationVinListRepositoryImpl(notificationVinListMapper, propertiesUtil);
         when(propertiesUtil.getNtfinfoUpsertRetryCount()).thenReturn(3);
-        when(notificationVinListMapper.update(123, "1", 2)).thenThrow(new RuntimeException(new SQLNonTransientException("non-transient")));
+        when(notificationVinListMapper.update(123, 1L, 2)).thenThrow(new RuntimeException(new SQLNonTransientException("non-transient")));
 
         // Act & Assert
-        assertThrows(CustomException.class, () -> sut.update(123, "1", 2));
+        assertThrows(CustomException.class, () -> sut.update(123, 1L, 2));
     }
 
     /** クラス：NotificationVinListRepositoryImpl shouldThrow sqlExがnullの場合trueを返すことを確認するテストケース */
