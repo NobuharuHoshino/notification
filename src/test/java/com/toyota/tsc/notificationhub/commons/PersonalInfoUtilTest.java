@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.*;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -331,6 +332,52 @@ class PersonalInfoUtilTest {
         // Act & Assert
         assertThrows(CustomException.class,
         () -> sut.getPersonalInfoListApiResponse(null, "col-1"));
+    }
+
+    /**
+     * クラス：PersonalInfoUtil getPersonalInfoApiResponse
+     * HttpStatusCodeException発生時に再スローされることを確認するテストケース
+     */
+    @Test
+    void getPersonalInfoApiResponse_008() {
+        // Arrange
+        when(propertiesUtil.getPersonalInfoApiKey()).thenReturn("PI-KEY");
+        when(propertiesUtil.getPersonalInfoApiUrl()).thenReturn("https://example/personalinfo");
+
+        PersonalInfoUtil sut = new PersonalInfoUtil(propertiesUtil);
+        HttpClientErrorException expected = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, ctx) -> when(mock.exchange(anyString(), any(), any(HttpEntity.class), eq(String.class)))
+                        .thenThrow(expected))) {
+            // Act & Assert
+            HttpClientErrorException ex = assertThrows(HttpClientErrorException.class,
+                    () -> sut.getPersonalInfoApiResponse("internal-1", "col-1"));
+            assertSame(expected, ex);
+        }
+    }
+
+    /**
+     * クラス：PersonalInfoUtil getPersonalInfoListApiResponse
+     * HttpStatusCodeException発生時に再スローされることを確認するテストケース
+     */
+    @Test
+    void getPersonalInfoListApiResponse_004() {
+        // Arrange
+        when(propertiesUtil.getPersonalInfoListApiKey()).thenReturn("PIL-KEY");
+        when(propertiesUtil.getPersonalInfoListApiUrl()).thenReturn("https://example/personalinfolist");
+
+        PersonalInfoUtil sut = new PersonalInfoUtil(propertiesUtil);
+        HttpClientErrorException expected = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, ctx) -> when(mock.exchange(anyString(), any(), any(HttpEntity.class), eq(String.class)))
+                        .thenThrow(expected))) {
+            // Act & Assert
+            HttpClientErrorException ex = assertThrows(HttpClientErrorException.class,
+                    () -> sut.getPersonalInfoListApiResponse(new PersonalInfoListRequestDto("1", "D001", "DL001", List.of("user-1")), "col-1"));
+            assertSame(expected, ex);
+        }
     }
 
 }

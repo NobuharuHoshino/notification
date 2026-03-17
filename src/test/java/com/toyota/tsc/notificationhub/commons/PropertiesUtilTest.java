@@ -749,4 +749,43 @@ class PropertiesUtilTest {
         // Assert
         assertEquals(20, actual);
     }
+
+    /** クラス：PropertiesUtil getDatasourceHost 設定値が返ることを確認するテストケース */
+    @Test
+    void getDatasourceHost_001() throws Exception {
+        // Arrange
+        PropertiesUtil sut = new PropertiesUtil();
+        Field f = PropertiesUtil.class.getDeclaredField("datasourceHost");
+        f.setAccessible(true);
+        f.set(sut, "localhost");
+
+        // Act & Assert
+        assertEquals("localhost", sut.getDatasourceHost());
+    }
+
+    /** クラス：PropertiesUtil getDatasourcePort 設定値が返ることを確認するテストケース */
+    @Test
+    void getDatasourcePort_001() throws Exception {
+        // Arrange
+        PropertiesUtil sut = new PropertiesUtil();
+        Field f = PropertiesUtil.class.getDeclaredField("datasourcePort");
+        f.setAccessible(true);
+        f.set(sut, "5432");
+
+        // Act & Assert
+        assertEquals("5432", sut.getDatasourcePort());
+    }
+
+    /** クラス：PropertiesUtil getDatasourceName 設定値が返ることを確認するテストケース */
+    @Test
+    void getDatasourceName_001() throws Exception {
+        // Arrange
+        PropertiesUtil sut = new PropertiesUtil();
+        Field f = PropertiesUtil.class.getDeclaredField("datasourceName");
+        f.setAccessible(true);
+        f.set(sut, "notificationdb");
+
+        // Act & Assert
+        assertEquals("notificationdb", sut.getDatasourceName());
+    }
 }

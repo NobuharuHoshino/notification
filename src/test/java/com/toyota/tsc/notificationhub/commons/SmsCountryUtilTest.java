@@ -6,7 +6,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
@@ -117,6 +119,30 @@ class SmsCountryUtilTest {
                     () -> sut.executeSendSms("1", "msg", "1"));
             // Assert
             assertNotNull(ex.getCause());
+        }
+    }
+
+    /**
+     * クラス：SmsCountryUtil executeSendSms
+     * HttpStatusCodeException発生時に再スローされることを確認するテストケース
+     */
+    @Test
+    void executeSendSms_006() {
+        // Arrange
+        when(propertiesUtil.getSenderIdToyota()).thenReturn("SIDT");
+        when(propertiesUtil.getSmsCountryApiUrl()).thenReturn("https://example/sms");
+        when(propertiesUtil.getSmsCountryUser()).thenReturn("user");
+        when(propertiesUtil.getSmsCountryPass()).thenReturn("pass");
+        SmsCountryUtil sut = new SmsCountryUtil(propertiesUtil);
+        HttpClientErrorException expected = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, ctx) -> when(mock.getForEntity(any(URI.class), eq(String.class)))
+                        .thenThrow(expected))) {
+            // Act & Assert
+            HttpClientErrorException ex = assertThrows(HttpClientErrorException.class,
+                    () -> sut.executeSendSms("1", "msg", "1"));
+            assertSame(expected, ex);
         }
     }
 }

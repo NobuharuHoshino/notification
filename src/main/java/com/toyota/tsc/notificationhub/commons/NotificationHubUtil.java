@@ -280,6 +280,7 @@ public class NotificationHubUtil {
             }
             putAsStringIfPresent(dataNode, bodyDataMap, NOTIFICATION_ID);
             ObjectNode androidNode = mapper.createObjectNode();
+            androidNode.put("priority", "high");
             androidNode.set(DATA, dataNode);
             ObjectNode messageNode = mapper.createObjectNode();
             messageNode.set(ANDROID, androidNode);

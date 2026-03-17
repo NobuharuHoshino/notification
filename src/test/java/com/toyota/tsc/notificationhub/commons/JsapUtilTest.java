@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.*;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -476,6 +477,101 @@ class JsapUtilTest {
 
             // Assert
             assertNotNull(ex.getCause());
+        }
+    }
+
+    /** クラス：JsapUtil executeGetUserId HttpStatusCodeException発生時に再スローされることを確認するテストケース */
+    @Test
+    void executeGetUserId_003() {
+        // Arrange
+        when(propertiesUtil.getJsapGetUserIdApiUrl()).thenReturn("https://example/jsap/userid");
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
+        HttpClientErrorException expected = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, context) -> when(mock.exchange(anyString(), any(),
+                        any(HttpEntity.class), eq(String.class)))
+                        .thenThrow(expected))) {
+            // Act & Assert
+            HttpClientErrorException ex = assertThrows(HttpClientErrorException.class,
+                    () -> sut.executeGetUserId("internal-1", "col-1"));
+            assertSame(expected, ex);
+        }
+    }
+
+    /** クラス：JsapUtil executeDvcLink HttpStatusCodeException発生時に再スローされることを確認するテストケース */
+    @Test
+    void executeDvcLink_005() {
+        // Arrange
+        when(propertiesUtil.getJsapDvcLinkApiUrl()).thenReturn("https://example/jsap/dvclink");
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
+        HttpClientErrorException expected = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, context) -> when(mock.exchange(anyString(), any(),
+                        any(HttpEntity.class), eq(String.class)))
+                        .thenThrow(expected))) {
+            // Act & Assert
+            HttpClientErrorException ex = assertThrows(HttpClientErrorException.class,
+                    () -> sut.executeDvcLink("user-1", "token-1", "1", "AUTH"));
+            assertSame(expected, ex);
+        }
+    }
+
+    /** クラス：JsapUtil executePushRequest HttpStatusCodeException発生時に再スローされることを確認するテストケース */
+    @Test
+    void executePushRequest_003() {
+        // Arrange
+        when(propertiesUtil.getJsapNotificationApiUrl()).thenReturn("https://example/jsap/notify");
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
+        HttpClientErrorException expected = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, context) -> when(mock.exchange(anyString(), any(),
+                        any(HttpEntity.class), eq(String.class)))
+                        .thenThrow(expected))) {
+            // Act & Assert
+            HttpClientErrorException ex = assertThrows(HttpClientErrorException.class,
+                    () -> sut.executePushRequest("user-1", "payload", "AUTH"));
+            assertSame(expected, ex);
+        }
+    }
+
+    /** クラス：JsapUtil executeSendMessage HttpStatusCodeException発生時に再スローされることを確認するテストケース */
+    @Test
+    void executeSendMessage_003() {
+        // Arrange
+        when(propertiesUtil.getJsapNotificationApiUrl()).thenReturn("https://example/jsap/notify");
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
+        HttpClientErrorException expected = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, context) -> when(mock.exchange(anyString(), any(),
+                        any(HttpEntity.class), eq(String.class)))
+                        .thenThrow(expected))) {
+            // Act & Assert
+            HttpClientErrorException ex = assertThrows(HttpClientErrorException.class,
+                    () -> sut.executeSendMessage("p", "u", "1", "t", Map.of(), "AUTH"));
+            assertSame(expected, ex);
+        }
+    }
+
+    /** クラス：JsapUtil executeGetUserInfo HttpStatusCodeException発生時に再スローされることを確認するテストケース */
+    @Test
+    void executeGetUserInfo_003() {
+        // Arrange
+        when(propertiesUtil.getJsapGetUserInfoApiUrl()).thenReturn("https://example/jsap/userinfo");
+        JsapUtil sut = new JsapUtil(propertiesUtil, aljToken);
+        HttpClientErrorException expected = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+        try (MockedConstruction<RestTemplate> mocked = mockConstruction(RestTemplate.class,
+                (mock, context) -> when(mock.exchange(anyString(), any(),
+                        any(HttpEntity.class), eq(String.class)))
+                        .thenThrow(expected))) {
+            // Act & Assert
+            HttpClientErrorException ex = assertThrows(HttpClientErrorException.class,
+                    () -> sut.executeGetUserInfo("user-1", "AUTH"));
+            assertSame(expected, ex);
         }
     }
 

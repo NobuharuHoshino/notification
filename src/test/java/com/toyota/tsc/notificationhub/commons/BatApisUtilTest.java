@@ -11,6 +11,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -81,6 +82,35 @@ class BatApisUtilTest {
                 })) {
             // Act & Assert
             assertThrows(CustomException.class, () -> sut.executeRegisterNotification(request));
+        }
+    }
+
+    /**
+     * クラス：BatApisUtil executeRegisterNotification
+     * HttpStatusCodeException発生時に再スローされることを確認するテストケース
+     */
+    @Test
+    void executeRegisterNotification_003() {
+        // Arrange
+        BatApisUtil sut = new BatApisUtil(propertiesUtil);
+        when(propertiesUtil.getRegisterNotificationUrl()).thenReturn("http://localhost/test");
+
+        RegisterNotificationRequestDto request = new RegisterNotificationRequestDto(
+                new RegisterNotificationRequestDto.NotificationTarget("VIN001", "Administrator", "ME", "user001"),
+                List.of(), "1");
+
+        HttpClientErrorException expected = new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+
+        try (MockedConstruction<RestTemplate> mockedConstruction = mockConstruction(RestTemplate.class,
+                (mock, context) -> {
+                    when(mock.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class),
+                            eq(String.class)))
+                            .thenThrow(expected);
+                })) {
+            // Act & Assert
+            HttpClientErrorException ex = assertThrows(HttpClientErrorException.class,
+                    () -> sut.executeRegisterNotification(request));
+            assertSame(expected, ex);
         }
     }
 }

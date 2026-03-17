@@ -492,6 +492,7 @@ class NotificationHubUtilTest {
         assertNotNull(json);
         assertTrue(json.contains("\"message\""));
         assertTrue(json.contains("\"android\""));
+        assertTrue(json.contains("\"priority\":\"high\""));
         assertTrue(json.contains("\"data\""));
         assertTrue(json.contains("\"LocKey\":\"L1\""));
         assertTrue(json.contains("\"notificationId\":\"123\""));
@@ -507,6 +508,7 @@ class NotificationHubUtilTest {
         String json = sut.buildFcmV1Payload(bodyData);
         // Assert
         assertTrue(json.contains("\"pushInformationList\":\"["));
+        assertTrue(json.contains("\"priority\":\"high\""));
     }
 
     /** クラス：NotificationHubUtil buildFcmV1Payload popupInformationListが存在する場合にJSON文字列として埋め込まれることを確認するテストケース */
@@ -519,6 +521,23 @@ class NotificationHubUtilTest {
         String json = sut.buildFcmV1Payload(bodyData);
         // Assert
         assertTrue(json.contains("\"popupInformationList\":\"["));
+        assertTrue(json.contains("\"priority\":\"high\""));
+    }
+
+    /** クラス：NotificationHubUtil buildFcmV1Payload android.priority が "high" 固定で設定されることを確認するテストケース */
+    @Test
+    void buildFcmV1Payload_005() throws Exception {
+        // Arrange
+        NotificationHubUtil sut = new NotificationHubUtil(propertiesUtil);
+        String bodyData = "{\"LocKey\":\"L1\"}";
+        // Act
+        String json = sut.buildFcmV1Payload(bodyData);
+        // Assert
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode root = mapper.readTree(json);
+        com.fasterxml.jackson.databind.JsonNode androidNode = root.path("message").path("android");
+        assertEquals("high", androidNode.path("priority").asText());
+        assertTrue(androidNode.has("data"));
     }
 
     static class SelfRef {
