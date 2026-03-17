@@ -40,6 +40,13 @@ public class PropertiesUtil {
     private String datasourceUsername;
     @Value("${spring.datasource.password}")
     private String datasourcePassword;
+    @Value("${spring.datasource.host}")
+    private String datasourceHost;
+    @Value("${spring.datasource.port}")
+    private String datasourcePort;
+    @Value("${spring.datasource.name}")
+    private String datasourceName;
+
     @Value("${thread.pool}")
     private int threadPool;
     @Value("${thread.queue}")
@@ -162,6 +169,18 @@ public class PropertiesUtil {
 
     public String getDatasourcePassword() {
         return datasourcePassword;
+    }
+
+    public String getDatasourceHost() {
+        return datasourceHost;
+    }
+
+    public String getDatasourcePort() {
+        return datasourcePort;
+    }
+
+    public String getDatasourceName() {
+        return datasourceName;
     }
 
     // Runtime Configuration

@@ -8,6 +8,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
+import org.springframework.web.client.HttpStatusCodeException;
 
 /**
  * SMS送信（SmsCountry）ユーティリティクラス
@@ -53,6 +54,8 @@ public class SmsCountryUtil {
 
             return new RestTemplate().getForEntity(uri, String.class);
 
+        } catch (HttpStatusCodeException e) {
+            throw e;
         } catch (Exception e) {
             throw new CustomException(e);
         }

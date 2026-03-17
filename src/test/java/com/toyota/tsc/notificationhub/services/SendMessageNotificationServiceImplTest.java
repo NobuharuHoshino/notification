@@ -5,6 +5,7 @@ import com.sendgrid.Response;
 import com.sendgrid.helpers.mail.Mail;
 import com.toyota.tsc.notificationhub.commons.*;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
+import com.toyota.tsc.notificationhub.exceptions.CustomSqlException;
 import com.toyota.tsc.notificationhub.exceptions.TscApplicationException;
 import com.toyota.tsc.notificationhub.models.*;
 import com.toyota.tsc.notificationhub.models.PersonalInfoResponseDto;
@@ -21,7 +22,9 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -2282,5 +2285,127 @@ class SendMessageNotificationServiceImplTest {
         // Assert
         assertNotNull(result);
         verify(ntfInfoRepository, atLeastOnce()).selectAllByInternalUserId("user001");
+    }
+
+    /**
+     * getAllDeviceData - ntfInfoRepository が RuntimeException をスロー
+     * L935-936: catch(Exception) → CustomSqlException をカバー
+     */
+    @Test
+    void getAllDeviceData_001() throws Exception {
+        when(ntfInfoRepository.selectAllByInternalUserId(any()))
+                .thenThrow(new RuntimeException("db error"));
+
+        Method method = SendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                "getAllDeviceData", String.class);
+        method.setAccessible(true);
+
+        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
+                () -> method.invoke(service, "user001"));
+        assertInstanceOf(CustomSqlException.class, ex.getCause());
+    }
+
+    /**
+     * executeRegisterNotification - batApisUtil が HttpStatusCodeException をスロー
+     * L687-692: catch(HttpStatusCodeException) パスをカバー
+     */
+    @Test
+    void executeRegisterNotification_001() throws Exception {
+        SendMessageNotificationRequestDto request = buildRequest("1", "1");
+        RequestHeaderDto header = buildHeader();
+        NotificationVinListEntity vinList = buildVinListEntity(1L);
+        NotificationSendListDto notificationData = new NotificationSendListDto("VIN001", "user001", "LC001", "1");
+
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+        Method method = SendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                "executeRegisterNotification",
+                SendMessageNotificationRequestDto.class,
+                RequestHeaderDto.class,
+                NotificationSendListDto.class,
+                NotificationVinListEntity.class);
+        method.setAccessible(true);
+        Boolean result = (Boolean) method.invoke(service, request, header, notificationData, vinList);
+
+        assertTrue(result);
+    }
+
+    /**
+     * getPersonalInfo - personalInfoUtil が HttpStatusCodeException をスロー
+     * L1034-1035: catch(HttpStatusCodeException) パスをカバー
+     */
+    @Test
+    void getPersonalInfo_001() throws Exception {
+        RequestHeaderDto header = buildHeader();
+
+        when(personalInfoUtil.getPersonalInfoApiResponse(any(), any()))
+                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+        Method method = SendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                "getPersonalInfo", RequestHeaderDto.class, String.class);
+        method.setAccessible(true);
+        Object result = method.invoke(service, header, "user001");
+
+        assertNull(result);
+    }
+
+    /**
+     * executeSendSms - smsCountryUtil が HttpStatusCodeException をスロー
+     * L1106-1111: catch(HttpStatusCodeException) パスをカバー
+     */
+    @Test
+    void executeSendSms_001() throws Exception {
+        SendMessageNotificationRequestDto request = buildRequest("2", "0");
+        RequestHeaderDto header = buildHeader();
+
+        when(smsCountryUtil.executeSendSms(any(), any(), any()))
+                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+        Method method = SendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                "executeSendSms",
+                SendMessageNotificationRequestDto.class,
+                RequestHeaderDto.class,
+                String.class,
+                String.class);
+        method.setAccessible(true);
+        Boolean result = (Boolean) method.invoke(service, request, header, "09012345678", "1");
+
+        assertTrue(result);
+    }
+
+    /**
+     * executeNotificationProcess ループ - getAllDeviceData が CustomSqlException をスロー
+     * L630-631: catch(CustomSqlException) → rethrow をカバー
+     * ※ L935-936 も同時カバー（getAllDeviceData の catch(Exception) → CustomSqlException）
+     */
+    @Test
+    void executeNotificationProcess_001() throws Exception {
+        SendMessageNotificationRequestDto request = buildRequest("1", "1");
+        RequestHeaderDto header = buildHeader();
+        NotificationVinListEntity vinList = buildVinListEntity(1L);
+        NotificationSendListDto notificationData = new NotificationSendListDto("VIN001", "user001", "LC001", "1");
+
+        // executeRegisterNotification succeeds
+        RegisterNotificationResponseDto regRes = new RegisterNotificationResponseDto("000000", "ntf001", "ok");
+        String regJson = new ObjectMapper().writeValueAsString(regRes);
+        when(batApisUtil.executeRegisterNotification(any()))
+                .thenReturn(new ResponseEntity<>(regJson, HttpStatus.OK));
+
+        // getAllDeviceData throws RuntimeException → wrapped in CustomSqlException
+        when(ntfInfoRepository.selectAllByInternalUserId(any()))
+                .thenThrow(new RuntimeException("db error"));
+
+        Method method = SendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                "executeNotificationProcess",
+                SendMessageNotificationRequestDto.class,
+                RequestHeaderDto.class,
+                NotificationVinListEntity.class,
+                List.class);
+        method.setAccessible(true);
+
+        InvocationTargetException ex = assertThrows(InvocationTargetException.class,
+                () -> method.invoke(service, request, header, vinList, List.of(notificationData)));
+        assertInstanceOf(CustomSqlException.class, ex.getCause());
     }
 }

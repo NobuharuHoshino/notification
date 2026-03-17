@@ -28,8 +28,8 @@ import com.toyota.tsc.notificationhub.repositories.NtfBatchExecErrorInfoEntity;
 import com.toyota.tsc.notificationhub.repositories.NtfBatchExecErrorInfoRepositoryIF;
 import com.toyota.tsc.notificationhub.repositories.NtfBatchExecHistoryEntity;
 import com.toyota.tsc.notificationhub.repositories.NtfBatchExecHistoryRepositoryIF;
-import com.toyota.tsc.notificationhub.repositories.NtfInfoEntity;
-import com.toyota.tsc.notificationhub.repositories.NtfInfoRepositoryIF;
+import com.toyota.tsc.notificationhub.repositories.SaNtfInfoEntity;
+import com.toyota.tsc.notificationhub.repositories.SaNtfInfoRepositoryIF;
 
 import jp.toyota.res.common.auth.GetALJTokenResultDto;
 import java.sql.SQLException;
@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 
 /**
  * お知らせ通知送信サービス実装クラス
@@ -57,7 +58,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
     private final NotificationVinListRepositoryIF notificationVinListRepository;
     private final NtfBatchExecErrorInfoRepositoryIF ntfBatchExecErrorInfoRepository;
     private final NtfBatchExecHistoryRepositoryIF ntfBatchExecHistoryRepository;
-    private final NtfInfoRepositoryIF ntfInfoRepository;
+    private final SaNtfInfoRepositoryIF ntfInfoRepository;
     private final BatApisUtil batApisUtil;
     private final JsapUtil jsapUtil;
     private final NotificationHubUtil notificationHubUtil;
@@ -68,7 +69,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             NotificationVinListRepositoryIF notificationVinListRepository,
             NtfBatchExecErrorInfoRepositoryIF ntfBatchExecErrorInfoRepository,
             NtfBatchExecHistoryRepositoryIF ntfBatchExecHistoryRepository,
-            NtfInfoRepositoryIF ntfInfoRepository,
+            SaNtfInfoRepositoryIF ntfInfoRepository,
             BatApisUtil batApisUtil,
             JsapUtil jsapUtil,
             NotificationHubUtil notificationHubUtil,
@@ -444,7 +445,11 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                             this.updateNotificationVinList(request, entity, LINKTYPE_LINKED);
 
                         } catch (Exception e) {
-                            // 想定外のエラー：ステータス&フラグ更新
+
+                            // 想定外のエラー：ログ出力 & ステータス&フラグ更新
+                            LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00001",
+                                    PROCESS_NAME, e.getMessage(), e.getStackTrace(),
+                                    header.getCorrelationId()));
                             ntfBatchExecHistoryRepository.updateStatus(request.getRegistrationSerialNumber(),
                                     entity.getSequenceNumber().intValue(), STATUS_ERR);
                             this.updateNotificationVinList(request, entity, LINKTYPE_LINKED);
@@ -472,14 +477,20 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                                     sqlEx.getErrorCode(),
                                     header.getCorrelationId()));
                         }
+                    } else {
+                        // その他エラー
+                        LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00001",
+                                PROCESS_NAME,
+                                e.getMessage(),
+                                e.getStackTrace(),
+                                header.getCorrelationId()));
                     }
                     executeErrorProcess(
                             request, header, entity, "",
                             ERR_STATUS_SKP, ERR_STATUS_SKP, ERR_STATUS_SKP);
                     return;
-
                 } catch (Exception e) {
-                    // 想定外のエラー：エラー登録 & 次ループ
+                    // 想定外エラー：ログ出力 & エラー登録して次ループ
                     executeErrorProcess(
                             request, header, entity, "",
                             ERR_STATUS_SKP, ERR_STATUS_SKP, ERR_STATUS_SKP);
@@ -582,19 +593,16 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             RequestHeaderDto header,
             List<SaNotificationSendListDto> notificationSendList) {
 
-        try {
-
-            boolean errorFlag = false;
-            for (SaNotificationSendListDto dto : notificationSendList) {
-
+        List<SaNotificationSendListDto> result = new ArrayList<>();
+        for (SaNotificationSendListDto dto : notificationSendList) {
+            try {
                 ResponseEntity<String> response = jsapUtil.executeGetUserId(
                         dto.getInternalUserId(), header.getCorrelationId());
 
                 if (response == null || response.getBody() == null) {
                     LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00014",
                             "response is null", dto.getInternalUserId(), header.getCorrelationId()));
-                    errorFlag = true;
-                    break;
+                    continue;
                 }
                 ObjectMapper mapper = new ObjectMapper();
                 GetUserIdResponseDto getUserIdDto = mapper.readValue(
@@ -602,22 +610,26 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                 if (!getUserIdDto.getResultCode().equals(GETUSERID_SUCCESS)) {
                     LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00014",
                             getUserIdDto.getResultCode(), dto.getInternalUserId(), header.getCorrelationId()));
-                    errorFlag = true;
-                    break;
+                    continue;
                 }
 
                 // 正常時UserIDをセット
+                LogUtil.debug(getClass(), "user id :" + getUserIdDto.getUserId());
                 dto.setUserId(getUserIdDto.getUserId());
-            }
+                result.add(dto);
 
-            if (errorFlag) {
+            } catch (HttpStatusCodeException e) {
+                // ログ出力して次のループへ
+                LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00014",
+                        e.getResponseBodyAsString(), dto.getInternalUserId(), header.getCorrelationId()));
+            } catch (Exception e) {
+                // ログ出力してループ抜ける
+                LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00014",
+                        e.getMessage(), dto.getInternalUserId(), header.getCorrelationId()));
                 return new ArrayList<>();
             }
-            return notificationSendList;
-
-        } catch (Exception e) {
-            throw new CustomException(e);
         }
+        return result;
     }
     // #endregion
 
@@ -679,8 +691,6 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                     errorFlag = true;
                     continue;
                 }
-                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00013",
-                        notificationData.getInternalUserId(), vinList.getNotificationId(), header.getCorrelationId()));
 
                 // 2:PUSH実行判定&実行
                 boolean pushError = executePushNotification(
@@ -703,8 +713,6 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                     errorFlag = true;
                     continue;
                 }
-                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00008",
-                        notificationData.getInternalUserId(), header.getCorrelationId()));
 
             } catch (Exception e) {
                 throw new CustomException(e);
@@ -752,8 +760,16 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                     return true;
                 }
             }
+            LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00013",
+                    notificationData.getInternalUserId(), vinList.getNotificationId(), header.getCorrelationId()));
             return false;
 
+        } catch (HttpStatusCodeException e) {
+            LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00017",
+                    notificationData.getInternalUserId(),
+                    e.getMessage(),
+                    header.getCorrelationId()));
+            return true;
         } catch (Exception e) {
             executeErrorProcess(
                     request, header, vinList, notificationData.getInternalUserId(),
@@ -800,8 +816,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
         RegisterNotificationRequestDto.NotificationTarget notificationTarget = new RegisterNotificationRequestDto.NotificationTarget(
                 notificationData.getVin(),
                 "Administrator",
-                CNT_SA,
-                notificationData.getInternalUserId());
+                null, null);
         List<RegisterNotificationRequestDto.NotificationContent> contents = request.getNotificationContents().stream()
                 .map(c -> new RegisterNotificationRequestDto.NotificationContent(
                         c.getLanguageCode(),
@@ -837,7 +852,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                 LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00022",
                         "Push通知送信", notificationData.getInternalUserId(), header.getCorrelationId()));
                 // 登録済みデバイス取得実行
-                NtfInfoEntity deviceData = getLatestDeviceData(notificationData.getInternalUserId());
+                SaNtfInfoEntity deviceData = getLatestDeviceData(notificationData.getInternalUserId());
                 if (deviceData == null) {
                     LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00007",
                             notificationData.getInternalUserId(), header.getCorrelationId()));
@@ -887,7 +902,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             SendMessageNotificationRequestDto request,
             RequestHeaderDto header,
             NotificationVinListEntity userInfo,
-            NtfInfoEntity deviceData) {
+            SaNtfInfoEntity deviceData) {
 
         try {
             switch (deviceData.getPlatformType()) {
@@ -919,7 +934,7 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
     private PushRequestResponseDto executePostMessage(
             RequestHeaderDto header,
             SaNotificationSendListDto notificationData,
-            NtfInfoEntity deviceData,
+            SaNtfInfoEntity deviceData,
             String payload,
             String token) {
 
@@ -932,9 +947,14 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             if (jsapNotificationResponce == null || jsapNotificationResponce.getBody() == null) {
                 return null;
             }
+            LogUtil.info(getClass(), "[DEBUG] executePushRequest response status="
+                    + jsapNotificationResponce.getStatusCode()
+                    + " body=" + jsapNotificationResponce.getBody());
             ObjectMapper mapper = new ObjectMapper();
             return mapper.readValue(
                     jsapNotificationResponce.getBody(), PushRequestResponseDto.class);
+        } catch (HttpStatusCodeException e) {
+            return null;
         } catch (Exception e) {
             throw new CustomException(e);
         }
@@ -946,12 +966,11 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
      * @param internalUserId
      * @return
      */
-    private NtfInfoEntity getLatestDeviceData(String internalUserId) {
-        List<NtfInfoEntity> deviceList = getAllDeviceData(internalUserId);
+    private SaNtfInfoEntity getLatestDeviceData(String internalUserId) {
+        List<SaNtfInfoEntity> deviceList = getAllDeviceData(internalUserId);
         if (deviceList.isEmpty()) {
             return null;
         }
-        deviceList.sort((d1, d2) -> d2.getUpdatedAt().compareTo(d1.getUpdatedAt()));
         return deviceList.get(0);
     }
 
@@ -961,9 +980,12 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
      * @param internalUserId ユーザーID
      * @return 端末情報リスト
      */
-    private List<NtfInfoEntity> getAllDeviceData(String internalUserId) {
-        List<NtfInfoEntity> deviceList = new ArrayList<>();
-        deviceList.addAll(ntfInfoRepository.selectAllByInternalUserId(internalUserId));
+    private List<SaNtfInfoEntity> getAllDeviceData(String internalUserId) {
+        List<SaNtfInfoEntity> deviceList = new ArrayList<>();
+        SaNtfInfoEntity entity = ntfInfoRepository.select(internalUserId);
+        if (entity != null) {
+            deviceList.add(entity);
+        }
         return deviceList;
     }
     // #endregion
@@ -1006,11 +1028,18 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                         header.getCorrelationId()));
 
                 // PrimaryContact送信処理実行
-                return sendRequest(request, header, personalInfoResponse, token);
+                boolean errorFlag = sendRequest(request, header, personalInfoResponse, token);
+                if (!errorFlag) {
+                    LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00008",
+                            notificationData.getInternalUserId(), header.getCorrelationId()));
+                }
+                return errorFlag;
             }
             return false;
 
-        } catch (Exception e) {
+        } catch (
+
+        Exception e) {
             executeErrorProcess(request, header, vinList, notificationData.getInternalUserId(),
                     ERR_STATUS_SUCCESS, ERR_STATUS_SUCCESS, ERR_STATUS_ERR);
             throw e;
@@ -1032,12 +1061,18 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
             ObjectMapper mapper = new ObjectMapper();
             ResponseEntity<String> getUserInfoResponce = jsapUtil.executeGetUserInfo(
                     notificationSendList.getUserId(), token);
+            LogUtil.info(getClass(), "getPersonalInfo response status: " + getUserInfoResponce.getStatusCode()
+                    + ", body: " + getUserInfoResponce.getBody());
             GetUserInfoResponseDto getUserInfoDto = mapper.readValue(getUserInfoResponce.getBody(),
                     GetUserInfoResponseDto.class);
             if (!getUserInfoResponce.getStatusCode().is2xxSuccessful()) {
                 return null;
             }
             return getUserInfoDto;
+        } catch (HttpStatusCodeException e) {
+            LogUtil.info(getClass(), "getPersonalInfo error response status: " + e.getStatusCode()
+                    + ", body: " + e.getResponseBodyAsString());
+            return null;
         } catch (Exception e) {
             throw new CustomException(e);
         }
@@ -1123,6 +1158,8 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
 
             return !sendMessageDto.getResultCode().equals(JSAP_SUCCESS);
 
+        } catch (HttpStatusCodeException e) {
+            return true;
         } catch (Exception e) {
             throw new CustomException(e);
         }

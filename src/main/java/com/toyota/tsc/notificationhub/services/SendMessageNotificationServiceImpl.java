@@ -48,6 +48,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 
 /**
  * お知らせ通知送信サービス実装クラス
@@ -105,6 +106,7 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
     private static final String TBL_NTF_BATCH_EXEC_HISTORY = "ntf_batch_exec_history";
     private static final String TBL_NOTIFICATION_VIN_LIST = "notification_vin_list";
     private static final String TBL_NOTIFICATION = "notification";
+    private static final String TBL_NTF_INFO = "ntf_info";
     // 通知バッチ処理履歴テーブル 処理ステータス
     private static final String STATUS_STR = "0";
     private static final String STATUS_ERR = "2";
@@ -601,10 +603,6 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                     errorFlag = true;
                     continue;
                 }
-                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00013",
-                        notificationData.getInternalUserId(),
-                        vinList.getNotificationId(),
-                        header.getCorrelationId()));
 
                 // 2:PUSH実行判定&実行
                 boolean pushError = executePushNotification(
@@ -629,10 +627,8 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                     errorFlag = true;
                     continue;
                 }
-                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00008",
-                        notificationData.getInternalUserId(),
-                        header.getCorrelationId()));
-
+            } catch (CustomSqlException e) {
+                throw e;
             } catch (Exception e) {
                 // X:システム例外時は例外スローして処理ループを抜ける
                 throw new CustomException(e);
@@ -680,9 +676,20 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                             header.getCorrelationId()));
                     return true;
                 }
+                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00013",
+                        notificationData.getInternalUserId(),
+                        vinList.getNotificationId(),
+                        header.getCorrelationId()));
             }
+
             return false;
 
+        } catch (HttpStatusCodeException e) {
+            LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00017",
+                    notificationData.getInternalUserId(),
+                    e.getMessage(),
+                    header.getCorrelationId()));
+            return true;
         } catch (Exception e) {
             executeErrorProcess(
                     request, header, vinList, notificationData.getInternalUserId(),
@@ -731,8 +738,7 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
         RegisterNotificationRequestDto.NotificationTarget notificationTarget = new RegisterNotificationRequestDto.NotificationTarget(
                 notificationData.getVin(),
                 "Administrator",
-                CNT_ME,
-                notificationData.getInternalUserId());
+                null, null);
         // NotificationContent生成（リクエストのNotificationContentをRegisterNotification用に移し替え）
         List<RegisterNotificationRequestDto.NotificationContent> contents = request.getNotificationContents().stream()
                 .map(c -> new RegisterNotificationRequestDto.NotificationContent(
@@ -785,15 +791,8 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                 // 通知送信実行
                 NotificationOutcome outcome = executePostMessage(header, notificationData, deviceData, payload);
                 if (outcome == null) {
-                    LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00009",
-                            0,
-                            notificationData.getInternalUserId(),
-                            payload,
-                            deviceData.getInstallationId(),
-                            header.getCorrelationId()));
                     return true;
                 }
-
                 LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00006",
                         notificationData.getInternalUserId(),
                         request.getPayload(),
@@ -929,9 +928,13 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
      * @return 端末情報リスト
      */
     private List<NtfInfoEntity> getAllDeviceData(String internalUserId) {
-        List<NtfInfoEntity> deviceList = new ArrayList<>();
-        deviceList.addAll(ntfInfoRepository.selectAllByInternalUserId(internalUserId));
-        return deviceList;
+        try {
+            List<NtfInfoEntity> deviceList = new ArrayList<>();
+            deviceList.addAll(ntfInfoRepository.selectAllByInternalUserId(internalUserId));
+            return deviceList;
+        } catch (Exception e) {
+            throw new CustomSqlException(TBL_NTF_INFO, e);
+        }
     }
     // #endregion
 
@@ -980,7 +983,15 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
                         header.getCorrelationId()));
 
                 // PrimaryContact送信処理実行
-                return sendRequest(request, header, personalInfoResponse, notificationData.getBrdCd());
+                boolean errorFlag = sendRequest(request, header, personalInfoResponse, notificationData.getBrdCd());
+                if (errorFlag) {
+                    return true;
+                } else {
+                    LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00008",
+                            notificationData.getInternalUserId(),
+                            header.getCorrelationId()));
+                    return false;
+                }
             }
             return false;
 
@@ -1003,22 +1014,28 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
             RequestHeaderDto header,
             String internalUserId) {
 
-        // API実行（synchronizedを利用してAPI呼出しのみ直列実行）
-        PersonalInfoResponseDto response;
-        synchronized (ONPREM_LOCK) {
-            response = personalInfoUtil.getPersonalInfoApiResponse(
-                    internalUserId, header.getCorrelationId());
-        }
+        try {
+            // API実行（synchronizedを利用してAPI呼出しのみ直列実行）
+            PersonalInfoResponseDto response;
+            synchronized (ONPREM_LOCK) {
+                response = personalInfoUtil.getPersonalInfoApiResponse(
+                        internalUserId, header.getCorrelationId());
+            }
 
-        if (response == null) {
-            return null;
-        }
-        List<PersonalInfoResponseDto.ContactDto> contactList = response.getContactList();
-        if (contactList == null || contactList.isEmpty()) {
-            return null;
-        }
+            if (response == null) {
+                return null;
+            }
+            List<PersonalInfoResponseDto.ContactDto> contactList = response.getContactList();
+            if (contactList == null || contactList.isEmpty()) {
+                return null;
+            }
 
-        return response;
+            return response;
+        } catch (HttpStatusCodeException e) {
+            return null;
+        } catch (Exception e) {
+            throw new CustomException(e);
+        }
     }
 
     /**
@@ -1076,15 +1093,25 @@ public class SendMessageNotificationServiceImpl implements SendMessageNotificati
     private boolean executeSendSms(SendMessageNotificationRequestDto request, RequestHeaderDto header, String phoneNo,
             String brdCd) {
 
-        ResponseEntity<String> smsResponse = smsCountryUtil.executeSendSms(phoneNo, request.getBodySms(), brdCd);
-        if (!smsResponse.getStatusCode().is2xxSuccessful()) {
+        try {
+            ResponseEntity<String> smsResponse = smsCountryUtil.executeSendSms(phoneNo, request.getBodySms(), brdCd);
+            if (!smsResponse.getStatusCode().is2xxSuccessful()) {
+                LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00010",
+                        smsResponse.getStatusCode().value(),
+                        CommonUtil.maskPhoneNumber(phoneNo),
+                        header.getCorrelationId()));
+                return true;
+            }
+            return false;
+        } catch (HttpStatusCodeException e) {
             LogUtil.error(getClass(), CommonUtil.getLogsMessage("RS07E00010",
-                    smsResponse.getStatusCode().value(),
+                    e.getStatusCode().value(),
                     CommonUtil.maskPhoneNumber(phoneNo),
                     header.getCorrelationId()));
             return true;
+        } catch (Exception e) {
+            throw new CustomException(e);
         }
-        return false;
     }
 
     /**

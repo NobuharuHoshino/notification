@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
+import org.springframework.web.client.HttpStatusCodeException;
 import com.toyota.tsc.notificationhub.models.MailContextDto;
 import com.toyota.tsc.notificationhub.models.SmsContextDto;
 import jp.toyota.res.common.auth.GetALJTokenResultDto;
@@ -69,7 +70,7 @@ public class JsapUtil {
             headers.set("x-correlation-id", colId);
             // ボディ設定
             Map<String, Object> body = new HashMap<>();
-            body.put("internalUserId", internalUserId);
+            body.put("internaluserId", internalUserId);
             // エンティティセット
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
             // 実行
@@ -79,6 +80,8 @@ public class JsapUtil {
                     entity,
                     String.class);
 
+        } catch (HttpStatusCodeException e) {
+            throw e;
         } catch (Exception e) {
             throw new CustomException(e);
         }
@@ -131,6 +134,8 @@ public class JsapUtil {
                     entity,
                     String.class);
 
+        } catch (HttpStatusCodeException e) {
+            throw e;
         } catch (Exception e) {
             throw new CustomException(e);
         }
@@ -178,6 +183,8 @@ public class JsapUtil {
                     entity,
                     String.class);
 
+        } catch (HttpStatusCodeException e) {
+            throw e;
         } catch (Exception e) {
             throw new CustomException(e);
         }
@@ -230,6 +237,8 @@ public class JsapUtil {
                     entity,
                     String.class);
 
+        } catch (HttpStatusCodeException e) {
+            throw e;
         } catch (Exception e) {
             throw new CustomException(e);
         }
@@ -276,6 +285,8 @@ public class JsapUtil {
                     entity,
                     String.class);
 
+        } catch (HttpStatusCodeException e) {
+            throw e;
         } catch (Exception e) {
             throw new CustomException(e);
         }

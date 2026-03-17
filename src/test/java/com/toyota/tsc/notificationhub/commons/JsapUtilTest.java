@@ -71,7 +71,7 @@ class JsapUtilTest {
 
             @SuppressWarnings("unchecked")
             Map<String, Object> body = (Map<String, Object>) entity.getBody();
-            assertEquals("internal-1", body.get("internalUserId"));
+            assertEquals("internal-1", body.get("internaluserId"));
         }
     }
 

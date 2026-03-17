@@ -37,7 +37,6 @@ class BatApisUtilTest {
     void executeRegisterNotification_001() {
         // Arrange
         BatApisUtil sut = new BatApisUtil(propertiesUtil);
-        when(propertiesUtil.getRegisterNotificationApiKey()).thenReturn("test-api-key");
         when(propertiesUtil.getRegisterNotificationUrl()).thenReturn("http://localhost/test");
 
         RegisterNotificationRequestDto request = new RegisterNotificationRequestDto(
@@ -68,7 +67,6 @@ class BatApisUtilTest {
     void executeRegisterNotification_002() {
         // Arrange
         BatApisUtil sut = new BatApisUtil(propertiesUtil);
-        when(propertiesUtil.getRegisterNotificationApiKey()).thenReturn("test-api-key");
         when(propertiesUtil.getRegisterNotificationUrl()).thenReturn("http://localhost/test");
 
         RegisterNotificationRequestDto request = new RegisterNotificationRequestDto(

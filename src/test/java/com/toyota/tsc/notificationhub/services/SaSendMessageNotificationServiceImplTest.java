@@ -21,8 +21,11 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -51,7 +54,7 @@ class SaSendMessageNotificationServiceImplTest {
         @Mock
         private NtfBatchExecHistoryRepositoryIF ntfBatchExecHistoryRepository;
         @Mock
-        private NtfInfoRepositoryIF ntfInfoRepository;
+        private SaNtfInfoRepositoryIF ntfInfoRepository;
         @Mock
         private BatApisUtil batApisUtil;
         @Mock
@@ -141,11 +144,11 @@ class SaSendMessageNotificationServiceImplTest {
                 return dto;
         }
 
-        /** ヘルパー: NtfInfoEntityを構築 */
-        private NtfInfoEntity buildNtfInfoEntity(String internalUserId, String platformType) {
-                return new NtfInfoEntity(
-                                internalUserId, "install-001", "device-token-001", "device-001",
-                                "1", platformType, LocalDateTime.now(), LocalDateTime.now());
+        /** ヘルパー: SaNtfInfoEntityを構築 */
+        private SaNtfInfoEntity buildNtfInfoEntity(String internalUserId, String platformType) {
+                return new SaNtfInfoEntity(
+                                internalUserId, "device-001", "1", platformType,
+                                LocalDateTime.now(), LocalDateTime.now());
         }
 
         /** ヘルパー: PersonalInfoListResponseDto（有効な個人情報リスト付き）を構築 */
@@ -954,8 +957,8 @@ class SaSendMessageNotificationServiceImplTest {
                 NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Device data mock - APN
-                NtfInfoEntity device = buildNtfInfoEntity("user001", "2");
-                when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(List.of(device));
+                SaNtfInfoEntity device = buildNtfInfoEntity("user001", "2");
+                when(ntfInfoRepository.select("user001")).thenReturn(device);
                 when(notificationHubUtil.buildApnsPayload(any())).thenReturn("apns-payload");
                 when(notificationHubUtil.replaceLcsSelected(any(), eq("2"), any())).thenReturn("final-apns-payload");
 
@@ -994,8 +997,8 @@ class SaSendMessageNotificationServiceImplTest {
                 NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Device data mock - FCM
-                NtfInfoEntity device = buildNtfInfoEntity("user001", "1");
-                when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(List.of(device));
+                SaNtfInfoEntity device = buildNtfInfoEntity("user001", "1");
+                when(ntfInfoRepository.select("user001")).thenReturn(device);
                 when(notificationHubUtil.buildFcmV1Payload(any())).thenReturn("fcm-payload");
                 when(notificationHubUtil.replaceLcsSelected(any(), eq("1"), any())).thenReturn("final-payload");
 
@@ -1033,8 +1036,8 @@ class SaSendMessageNotificationServiceImplTest {
                                 "LC001", "1", "jsapUser001");
                 NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
-                // Device data mock - empty list -> null
-                when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(Collections.emptyList());
+                // Device data mock - null -> getLatestDeviceData returns null
+                when(ntfInfoRepository.select("user001")).thenReturn(null);
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
@@ -1368,7 +1371,7 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto request = buildRequest("1", "1");
                 RequestHeaderDto header = buildHeader();
                 NotificationVinListEntity userInfo = buildVinListEntity(1L);
-                NtfInfoEntity deviceData = buildNtfInfoEntity("user001", "1"); // FCM
+                SaNtfInfoEntity deviceData = buildNtfInfoEntity("user001", "1"); // FCM
 
                 when(notificationHubUtil.buildFcmV1Payload(any())).thenReturn("fcm-payload");
 
@@ -1378,7 +1381,7 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                NtfInfoEntity.class);
+                                SaNtfInfoEntity.class);
                 method.setAccessible(true);
                 String result = (String) method.invoke(service, request, header, userInfo, deviceData);
 
@@ -1395,7 +1398,7 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto request = buildRequest("1", "1");
                 RequestHeaderDto header = buildHeader();
                 NotificationVinListEntity userInfo = buildVinListEntity(1L);
-                NtfInfoEntity deviceData = buildNtfInfoEntity("user001", "2"); // APN
+                SaNtfInfoEntity deviceData = buildNtfInfoEntity("user001", "2"); // APN
 
                 when(notificationHubUtil.buildApnsPayload(any())).thenReturn("apns-payload");
 
@@ -1405,7 +1408,7 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                NtfInfoEntity.class);
+                                SaNtfInfoEntity.class);
                 method.setAccessible(true);
                 String result = (String) method.invoke(service, request, header, userInfo, deviceData);
 
@@ -1422,7 +1425,7 @@ class SaSendMessageNotificationServiceImplTest {
                 SendMessageNotificationRequestDto request = buildRequest("1", "1");
                 RequestHeaderDto header = buildHeader();
                 NotificationVinListEntity userInfo = buildVinListEntity(1L);
-                NtfInfoEntity deviceData = buildNtfInfoEntity("user001", "99"); // Unknown
+                SaNtfInfoEntity deviceData = buildNtfInfoEntity("user001", "99"); // Unknown
 
                 // Act & Assert
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
@@ -1430,7 +1433,7 @@ class SaSendMessageNotificationServiceImplTest {
                                 SendMessageNotificationRequestDto.class,
                                 RequestHeaderDto.class,
                                 NotificationVinListEntity.class,
-                                NtfInfoEntity.class);
+                                SaNtfInfoEntity.class);
                 method.setAccessible(true);
 
                 InvocationTargetException ex = assertThrows(InvocationTargetException.class,
@@ -1439,51 +1442,43 @@ class SaSendMessageNotificationServiceImplTest {
         }
 
         /**
-         * getLatestDeviceData - デバイスリストが空の場合nullを返す
+         * getLatestDeviceData - select()がnullを返す場合nullを返す
          */
         @Test
         void getLatestDeviceData_001() throws Exception {
                 // Arrange
-                when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(Collections.emptyList());
+                when(ntfInfoRepository.select("user001")).thenReturn(null);
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "getLatestDeviceData", String.class);
                 method.setAccessible(true);
-                NtfInfoEntity result = (NtfInfoEntity) method.invoke(service, "user001");
+                SaNtfInfoEntity result = (SaNtfInfoEntity) method.invoke(service, "user001");
 
                 // Assert
                 assertNull(result);
         }
 
         /**
-         * getLatestDeviceData - 複数デバイスがある場合、最新のupdatedAtのものを返す
+         * getLatestDeviceData - デバイスがある場合、そのデバイスを返す
          */
         @Test
         void getLatestDeviceData_002() throws Exception {
                 // Arrange
-                NtfInfoEntity device1 = new NtfInfoEntity(
-                                "user001", "install-001", "token-001", "device-001",
-                                "1", "1", LocalDateTime.now().minusDays(2), LocalDateTime.now().minusDays(2));
-                NtfInfoEntity device2 = new NtfInfoEntity(
-                                "user001", "install-002", "token-002", "device-002",
-                                "1", "2", LocalDateTime.now().minusDays(1), LocalDateTime.now().minusDays(1));
-                NtfInfoEntity device3 = new NtfInfoEntity(
-                                "user001", "install-003", "token-003", "device-003",
-                                "1", "1", LocalDateTime.now(), LocalDateTime.now());
+                SaNtfInfoEntity device = new SaNtfInfoEntity(
+                                "user001", "device-003", "1", "1", LocalDateTime.now(), LocalDateTime.now());
 
-                when(ntfInfoRepository.selectAllByInternalUserId("user001"))
-                                .thenReturn(List.of(device1, device2, device3));
+                when(ntfInfoRepository.select("user001")).thenReturn(device);
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "getLatestDeviceData", String.class);
                 method.setAccessible(true);
-                NtfInfoEntity result = (NtfInfoEntity) method.invoke(service, "user001");
+                SaNtfInfoEntity result = (SaNtfInfoEntity) method.invoke(service, "user001");
 
-                // Assert - should return device3 (most recent updatedAt)
+                // Assert
                 assertNotNull(result);
-                assertEquals("install-003", result.getInstallationId());
+                assertEquals("device-003", result.getDeviceId());
         }
 
         /**
@@ -1492,34 +1487,34 @@ class SaSendMessageNotificationServiceImplTest {
         @Test
         void getLatestDeviceData_003() throws Exception {
                 // Arrange
-                NtfInfoEntity device = buildNtfInfoEntity("user001", "1");
-                when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(List.of(device));
+                SaNtfInfoEntity device = buildNtfInfoEntity("user001", "1");
+                when(ntfInfoRepository.select("user001")).thenReturn(device);
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "getLatestDeviceData", String.class);
                 method.setAccessible(true);
-                NtfInfoEntity result = (NtfInfoEntity) method.invoke(service, "user001");
+                SaNtfInfoEntity result = (SaNtfInfoEntity) method.invoke(service, "user001");
 
                 // Assert
                 assertNotNull(result);
-                assertEquals(device.getInstallationId(), result.getInstallationId());
+                assertEquals(device.getDeviceId(), result.getDeviceId());
         }
 
         /**
-         * getAllDeviceData - ntfInfoRepositoryからデバイスリストを取得できる
+         * getAllDeviceData - ntfInfoRepositoryからデバイスを取得してリストで返す
          */
         @Test
         void getAllDeviceData_001() throws Exception {
                 // Arrange
-                NtfInfoEntity device = buildNtfInfoEntity("user001", "1");
-                when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(List.of(device));
+                SaNtfInfoEntity device = buildNtfInfoEntity("user001", "1");
+                when(ntfInfoRepository.select("user001")).thenReturn(device);
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "getAllDeviceData", String.class);
                 method.setAccessible(true);
-                List<NtfInfoEntity> result = (List<NtfInfoEntity>) method.invoke(service, "user001");
+                List<SaNtfInfoEntity> result = (List<SaNtfInfoEntity>) method.invoke(service, "user001");
 
                 // Assert
                 assertNotNull(result);
@@ -1527,22 +1522,40 @@ class SaSendMessageNotificationServiceImplTest {
         }
 
         /**
-         * getAllDeviceData - ntfInfoRepositoryが空リストを返す場合、空リストを返す
+         * getAllDeviceData - ntfInfoRepositoryがnullを返す場合、空リストを返す
          */
         @Test
         void getAllDeviceData_002() throws Exception {
                 // Arrange
-                when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(Collections.emptyList());
+                when(ntfInfoRepository.select("user001")).thenReturn(null);
 
                 // Act
                 Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
                                 "getAllDeviceData", String.class);
                 method.setAccessible(true);
-                List<NtfInfoEntity> result = (List<NtfInfoEntity>) method.invoke(service, "user001");
+                List<SaNtfInfoEntity> result = (List<SaNtfInfoEntity>) method.invoke(service, "user001");
 
                 // Assert
                 assertNotNull(result);
                 assertTrue(result.isEmpty());
+        }
+
+        /**
+         * getLatestDeviceData - DBデータなし（select が null）の場合、null を返す
+         */
+        @Test
+        void getLatestDeviceData_004() throws Exception {
+                // Arrange
+                when(ntfInfoRepository.select("user001")).thenReturn(null);
+
+                // Act
+                Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                                "getLatestDeviceData", String.class);
+                method.setAccessible(true);
+                SaNtfInfoEntity result = (SaNtfInfoEntity) method.invoke(service, "user001");
+
+                // Assert
+                assertNull(result);
         }
 
         /**
@@ -1865,7 +1878,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "1", "jsapUser001");
-                NtfInfoEntity deviceData = buildNtfInfoEntity("user001", "1");
+                SaNtfInfoEntity deviceData = buildNtfInfoEntity("user001", "1");
 
                 when(jsapUtil.executePushRequest(any(), any(), any())).thenReturn(null);
 
@@ -1873,7 +1886,7 @@ class SaSendMessageNotificationServiceImplTest {
                                 "executePostMessage",
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
-                                NtfInfoEntity.class,
+                                SaNtfInfoEntity.class,
                                 String.class,
                                 String.class);
                 method.setAccessible(true);
@@ -1891,7 +1904,7 @@ class SaSendMessageNotificationServiceImplTest {
                 RequestHeaderDto header = buildHeader();
                 SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
                                 "VIN001", "user001", "LC001", "1", "jsapUser001");
-                NtfInfoEntity deviceData = buildNtfInfoEntity("user001", "1");
+                SaNtfInfoEntity deviceData = buildNtfInfoEntity("user001", "1");
 
                 when(jsapUtil.executePushRequest(any(), any(), any()))
                                 .thenReturn(new ResponseEntity<>(null, HttpStatus.OK));
@@ -1900,7 +1913,7 @@ class SaSendMessageNotificationServiceImplTest {
                                 "executePostMessage",
                                 RequestHeaderDto.class,
                                 SaNotificationSendListDto.class,
-                                NtfInfoEntity.class,
+                                SaNtfInfoEntity.class,
                                 String.class,
                                 String.class);
                 method.setAccessible(true);
@@ -2663,8 +2676,8 @@ class SaSendMessageNotificationServiceImplTest {
                 NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Device data mock - FCM
-                NtfInfoEntity device = buildNtfInfoEntity("user001", "1");
-                when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(List.of(device));
+                SaNtfInfoEntity device = buildNtfInfoEntity("user001", "1");
+                when(ntfInfoRepository.select("user001")).thenReturn(device);
                 when(notificationHubUtil.buildFcmV1Payload(any())).thenReturn("fcm-payload");
                 when(notificationHubUtil.replaceLcsSelected(any(), eq("1"), any())).thenReturn("final-payload");
                 // executePushRequest returns null → executePostMessage returns null → L1000-1004 branch
@@ -2701,8 +2714,8 @@ class SaSendMessageNotificationServiceImplTest {
                 NotificationVinListEntity userInfo = buildVinListEntity(1L);
 
                 // Device data mock - FCM
-                NtfInfoEntity device = buildNtfInfoEntity("user001", "1");
-                when(ntfInfoRepository.selectAllByInternalUserId("user001")).thenReturn(List.of(device));
+                SaNtfInfoEntity device = buildNtfInfoEntity("user001", "1");
+                when(ntfInfoRepository.select("user001")).thenReturn(device);
                 when(notificationHubUtil.buildFcmV1Payload(any())).thenReturn("fcm-payload");
                 when(notificationHubUtil.replaceLcsSelected(any(), eq("1"), any())).thenReturn("final-payload");
                 // executePushRequest throws RuntimeException wrapping CustomException
@@ -3128,5 +3141,203 @@ class SaSendMessageNotificationServiceImplTest {
 
                 ResponseDto result = service.sendMessageNotification(req, header);
                 assertNotNull(result);
+        }
+
+        /**
+         * executePrimaryContact - sendRequestがtrueを返す場合（送信エラー）trueを返す
+         * L1030: if(!errorFlag) の false ブランチをカバー
+         */
+        @Test
+        void executePrimaryContact_012() throws Exception {
+                SendMessageNotificationRequestDto request = buildRequest("2", "0");
+                RequestHeaderDto header = buildHeader();
+                SaNotificationSendListDto notificationData = new SaNotificationSendListDto(
+                                "VIN001", "user001", "LC001", "2", "jsapUser001");
+                NotificationVinListEntity vinListEntity = buildVinListEntity(1L);
+                ContactDto contact = buildContactDto("2", true, "test@example.com");
+                GetUserInfoResponseDto personalInfo = buildGetUserInfoResponseDto("jsapUser001", List.of(contact));
+
+                String personalInfoJson = new ObjectMapper().writeValueAsString(personalInfo);
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenReturn(new ResponseEntity<>(personalInfoJson, HttpStatus.OK));
+
+                // sendRequest → executeSendMessage → returns error code → true
+                when(jsapUtil.createMailContext(any(), any()))
+                                .thenReturn(List.of(new MailContextDto("text/plain", "body")));
+                SendMessageResponseDto sendMsgDto = new SendMessageResponseDto("999999", "Error");
+                String sendMsgJson = new ObjectMapper().writeValueAsString(sendMsgDto);
+                when(jsapUtil.executeSendMessage(any(), any(), any(), any(), any(), any()))
+                                .thenReturn(new ResponseEntity<>(sendMsgJson, HttpStatus.OK));
+
+                Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                                "executePrimaryContact",
+                                SendMessageNotificationRequestDto.class,
+                                RequestHeaderDto.class,
+                                SaNotificationSendListDto.class,
+                                String.class,
+                                NotificationVinListEntity.class);
+                method.setAccessible(true);
+                Boolean result = (Boolean) method.invoke(service, request, header, notificationData,
+                                "test-token", vinListEntity);
+
+                // sendRequest returns true (error) → !errorFlag = false → skip log → return true
+                assertTrue(result);
+        }
+
+        /**
+         * convertInternalUserIdToUserId - jsapUtil.executeGetUserId が HttpStatusCodeException をスロー
+         * L621-624: catch(HttpStatusCodeException) パスをカバー
+         */
+        @Test
+        void convertInternalUserIdToUserId_001() throws Exception {
+                RequestHeaderDto header = buildHeader();
+                SaNotificationSendListDto dto = new SaNotificationSendListDto("VIN001", "user001", "LC001", "1", null);
+                when(jsapUtil.executeGetUserId(any(), any()))
+                                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+                Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                                "convertInternalUserIdToUserId", RequestHeaderDto.class, List.class);
+                method.setAccessible(true);
+                List<SaNotificationSendListDto> result = (List<SaNotificationSendListDto>) method.invoke(
+                                service, header, List.of(dto));
+
+                // HttpStatusCodeException caught → continue → result is empty
+                assertNotNull(result);
+                assertTrue(result.isEmpty());
+        }
+
+        /**
+         * executeRegisterNotification - batApisUtil.executeRegisterNotification が HttpStatusCodeException をスロー
+         * L767-772: catch(HttpStatusCodeException) パスをカバー
+         */
+        @Test
+        void executeRegisterNotification_007() throws Exception {
+                SendMessageNotificationRequestDto request = buildRequest("1", "0");
+                RequestHeaderDto header = buildHeader();
+                SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
+                                "LC001", "1", "jsapUser001");
+                NotificationVinListEntity userInfo = buildVinListEntity(1L);
+
+                when(batApisUtil.executeRegisterNotification(any()))
+                                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+                Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                                "executeRegisterNotification",
+                                SendMessageNotificationRequestDto.class,
+                                RequestHeaderDto.class,
+                                SaNotificationSendListDto.class,
+                                NotificationVinListEntity.class);
+                method.setAccessible(true);
+                Boolean result = (Boolean) method.invoke(service, request, header, notificationData, userInfo);
+
+                assertTrue(result);
+        }
+
+        /**
+         * executePostMessage - jsapUtil.executePushRequest が HttpStatusCodeException をスロー
+         * L956-957: catch(HttpStatusCodeException) パスをカバー
+         */
+        @Test
+        void executePostMessage_003() throws Exception {
+                RequestHeaderDto header = buildHeader();
+                SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
+                                "LC001", "1", "jsapUser001");
+                SaNtfInfoEntity deviceData = buildNtfInfoEntity("user001", "1");
+
+                when(jsapUtil.executePushRequest(any(), any(), any()))
+                                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+                Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                                "executePostMessage",
+                                RequestHeaderDto.class,
+                                SaNotificationSendListDto.class,
+                                SaNtfInfoEntity.class,
+                                String.class,
+                                String.class);
+                method.setAccessible(true);
+                Object result = method.invoke(service, header, notificationData, deviceData, "payload", "token");
+
+                assertNull(result);
+        }
+
+        /**
+         * getPersonalInfo - jsapUtil.executeGetUserInfo が HttpStatusCodeException をスロー
+         * L1070-1073: catch(HttpStatusCodeException) パスをカバー
+         */
+        @Test
+        void getPersonalInfo_001() throws Exception {
+                SaNotificationSendListDto notificationData = new SaNotificationSendListDto("VIN001", "user001",
+                                "LC001", "1", "jsapUser001");
+                when(jsapUtil.executeGetUserInfo(any(), any()))
+                                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+                Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                                "getPersonalInfo",
+                                SaNotificationSendListDto.class,
+                                String.class);
+                method.setAccessible(true);
+                Object result = method.invoke(service, notificationData, "token");
+
+                assertNull(result);
+        }
+
+        /**
+         * executeSendMessage - jsapUtil.executeSendMessage が HttpStatusCodeException をスロー
+         * L1159-1160: catch(HttpStatusCodeException) パスをカバー
+         */
+        @Test
+        void executeSendMessage_006() throws Exception {
+                SendMessageNotificationRequestDto request = buildRequest("2", "0");
+                ContactDto contact = buildContactDto("2", true, "test@example.com");
+
+                when(jsapUtil.executeSendMessage(any(), any(), any(), any(), any(), any()))
+                                .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+                Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                                "executeSendMessage",
+                                SendMessageNotificationRequestDto.class,
+                                GetUserInfoResponseDto.ContactDto.class,
+                                String.class,
+                                Object.class,
+                                String.class);
+                method.setAccessible(true);
+                Boolean result = (Boolean) method.invoke(service, request, contact, "userId001", "context", "token");
+
+                assertTrue(result);
+        }
+
+        /**
+         * executeNotificationProcess - CompletableFuture.runAsync が RejectedExecutionException をスロー
+         * L492-497: 外側 catch(Exception) パスをカバー
+         */
+        @Test
+        void executeNotificationProcess_011() throws Exception {
+                SendMessageNotificationRequestDto request = buildRequest("1", "0");
+                RequestHeaderDto header = buildHeader();
+                NotificationVinListEntity entity = buildVinListEntity(1L);
+
+                when(properties.getThreadPool()).thenReturn(1);
+                when(properties.getThreadQueue()).thenReturn(1);
+                when(ntfBatchExecHistoryRepository.insert(any())).thenReturn(1);
+                when(notificationVinListRepository.update(eq(1), eq(1L), eq(0))).thenReturn(1);
+                String userIdJson = buildGetUserIdResponseJson("00001548B123", "jsapUser001");
+                when(jsapUtil.executeGetUserId(any(), any()))
+                                .thenReturn(new ResponseEntity<>(userIdJson, HttpStatus.OK));
+
+                Method method = SaSendMessageNotificationServiceImpl.class.getDeclaredMethod(
+                                "executeNotificationProcess",
+                                SendMessageNotificationRequestDto.class,
+                                RequestHeaderDto.class,
+                                List.class);
+                method.setAccessible(true);
+
+                try (MockedConstruction<ThreadPoolExecutor> mockedExec = mockConstruction(ThreadPoolExecutor.class,
+                                (mock, context) -> {
+                                        doThrow(new RejectedExecutionException("test")).when(mock)
+                                                        .execute(any(Runnable.class));
+                                })) {
+                        method.invoke(service, request, header, List.of(entity));
+                }
+                // RejectedExecutionException caught at L492 → executeErrorProcess → return (iteration ends)
         }
 }
