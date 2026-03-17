@@ -759,9 +759,10 @@ public class SaSendMessageNotificationServiceImpl implements SendMessageNotifica
                             header.getCorrelationId()));
                     return true;
                 }
+                LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00013",
+                        notificationData.getInternalUserId(), vinList.getNotificationId(), header.getCorrelationId()));
             }
-            LogUtil.info(getClass(), CommonUtil.getLogsMessage("RS07I00013",
-                    notificationData.getInternalUserId(), vinList.getNotificationId(), header.getCorrelationId()));
+
             return false;
 
         } catch (HttpStatusCodeException e) {
