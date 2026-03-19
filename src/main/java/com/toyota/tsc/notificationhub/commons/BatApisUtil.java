@@ -10,7 +10,7 @@ import org.springframework.web.client.RestTemplate;
 import com.toyota.tsc.notificationhub.exceptions.CustomException;
 import com.toyota.tsc.notificationhub.models.RegisterNotificationRequestDto;
 
-// import org.springframework.http.MediaType;
+import org.springframework.http.MediaType;
 
 @Component
 public class BatApisUtil {
@@ -27,39 +27,39 @@ public class BatApisUtil {
      * @param request
      * @return
      */
-    public ResponseEntity<String> executeRegisterNotification(
-            RegisterNotificationRequestDto request) {
-        try {
-            // テンプレート
-            RestTemplate restTemplate = new RestTemplate();
-            // エンティティセット
-            HttpEntity<RegisterNotificationRequestDto> entity = new HttpEntity<>(request);
-            // 実行
-            return restTemplate.exchange(
-                    propertiesUtil.getRegisterNotificationUrl(),
-                    HttpMethod.POST,
-                    entity,
-                    String.class);
-        } catch (HttpStatusCodeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new CustomException(e);
-        }
-    }
+    // public ResponseEntity<String> executeRegisterNotification(
+    // RegisterNotificationRequestDto request) {
+    // try {
+    // // テンプレート
+    // RestTemplate restTemplate = new RestTemplate();
+    // // エンティティセット
+    // HttpEntity<RegisterNotificationRequestDto> entity = new
+    // HttpEntity<>(request);
+    // // 実行
+    // return restTemplate.exchange(
+    // propertiesUtil.getRegisterNotificationUrl(),
+    // HttpMethod.POST,
+    // entity,
+    // String.class);
+    // } catch (HttpStatusCodeException e) {
+    // throw e;
+    // } catch (Exception e) {
+    // throw new CustomException(e);
+    // }
+    // }
 
     // @@@@@@@@@@@@@@@@@@@@@@ IT1用Mock @@@@@@@@@@@@@@@@@@@@@@
-    // public ResponseEntity<String>
-    // executeRegisterNotification(RegisterNotificationRequestDto request) {
-    // String dummyJson = """
-    // {
-    // "returnCode": "000000",
-    // "notificationId": "TEST-NOTIF-001",
-    // "message": "OK (dummy)"
-    // }
-    // """;
-    // return ResponseEntity
-    // .ok()
-    // .contentType(MediaType.APPLICATION_JSON)
-    // .body(dummyJson);
-    // }
+    public ResponseEntity<String> executeRegisterNotification(RegisterNotificationRequestDto request) {
+        String dummyJson = """
+                {
+                "returnCode": "000000",
+                "notificationId": "TEST-NOTIF-001",
+                "message": "OK (dummy)"
+                }
+                """;
+        return ResponseEntity
+                .ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(dummyJson);
+    }
 }

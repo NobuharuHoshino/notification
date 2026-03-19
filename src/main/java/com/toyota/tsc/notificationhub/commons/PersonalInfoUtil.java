@@ -34,87 +34,84 @@ public class PersonalInfoUtil {
      * @param internalUserId ユーザーID
      * @return 個人情報レスポンスDTO
      */
-    public PersonalInfoResponseDto getPersonalInfoApiResponse(String internalUserId, String colId) {
-        try {
-            // テンプレート
-            RestTemplate restTemplate = new RestTemplate();
-            // ヘッダー設定
-            HttpHeaders headers = new HttpHeaders();
-            headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
-            headers.set(HttpHeaders.CONNECTION, "keep-alive");
-            headers.set(HttpHeaders.ACCEPT_ENCODING, "gzip");
-            headers.set("x-api-key", propertiesUtil.getPersonalInfoApiKey());
-            headers.set("x-correlation-id", colId);
-            // ボディ設定
-            Map<String, Object> body = new HashMap<>();
-            body.put("internalUserId", internalUserId);
-            // エンティティセット
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-
-            // 実行
-            ResponseEntity<String> response = restTemplate.exchange(
-                    propertiesUtil.getPersonalInfoApiUrl(),
-                    HttpMethod.POST,
-                    entity,
-                    String.class);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new CustomException("An error occurred while retrieving personal information. Status:"
-                        + response.getStatusCode().value());
-            }
-
-            // レスポンスマッピング
-            ObjectMapper mapper = new ObjectMapper();
-            return mapper.readValue(response.getBody(), PersonalInfoResponseDto.class);
-        } catch (HttpStatusCodeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new CustomException(e);
-        }
-    }
-
-    // @@@@@@@@@@@@@@@@@@@@@@ IT用Mock @@@@@@@@@@@@@@@@@@@@@@
     // public PersonalInfoResponseDto getPersonalInfoApiResponse(String
     // internalUserId, String colId) {
     // try {
-    // return createDummyPersonalInfoResponse(internalUserId);
+    // // テンプレート
+    // RestTemplate restTemplate = new RestTemplate();
+    // // ヘッダー設定
+    // HttpHeaders headers = new HttpHeaders();
+    // headers.set(HttpHeaders.CONTENT_TYPE, "application/json");
+    // headers.set(HttpHeaders.CONNECTION, "keep-alive");
+    // headers.set(HttpHeaders.ACCEPT_ENCODING, "gzip");
+    // headers.set("x-api-key", propertiesUtil.getPersonalInfoApiKey());
+    // headers.set("x-correlation-id", colId);
+    // // ボディ設定
+    // Map<String, Object> body = new HashMap<>();
+    // body.put("internalUserId", internalUserId);
+    // // エンティティセット
+    // HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+    // // 実行
+    // ResponseEntity<String> response = restTemplate.exchange(
+    // propertiesUtil.getPersonalInfoApiUrl(),
+    // HttpMethod.POST,
+    // entity,
+    // String.class);
+    // if (!response.getStatusCode().is2xxSuccessful()) {
+    // throw new CustomException("An error occurred while retrieving personal
+    // information. Status:"
+    // + response.getStatusCode().value());
+    // }
+
+    // // レスポンスマッピング
+    // ObjectMapper mapper = new ObjectMapper();
+    // return mapper.readValue(response.getBody(), PersonalInfoResponseDto.class);
+    // } catch (HttpStatusCodeException e) {
+    // throw e;
     // } catch (Exception e) {
     // throw new CustomException(e);
     // }
     // }
 
-    // private PersonalInfoResponseDto createDummyPersonalInfoResponse(String
-    // internalUserId) {
-    // PersonalInfoResponseDto res = new PersonalInfoResponseDto();
-    // res.setResultCode("00001581U000");
-    // res.setInternalUserId(internalUserId);
-    // res.setUserId("user-" + internalUserId);
-    // res.setFirstName("太郎");
-    // res.setLastName("山田");
-    // res.setBirthday("1990-01-01");
-    // res.setMemberStatus("ACTIVE");
+    // @@@@@@@@@@@@@@@@@@@@@@ IT用Mock @@@@@@@@@@@@@@@@@@@@@@
+    public PersonalInfoResponseDto getPersonalInfoApiResponse(String internalUserId, String colId) {
+        try {
+            return createDummyPersonalInfoResponse(internalUserId);
+        } catch (Exception e) {
+            throw new CustomException(e);
+        }
+    }
 
-    // java.util.List<PersonalInfoResponseDto.ContactDto> contacts = new
-    // java.util.ArrayList<>();
+    private PersonalInfoResponseDto createDummyPersonalInfoResponse(String internalUserId) {
+        PersonalInfoResponseDto res = new PersonalInfoResponseDto();
+        res.setResultCode("00001581U000");
+        res.setInternalUserId(internalUserId);
+        res.setUserId("user-" + internalUserId);
+        res.setFirstName("太郎");
+        res.setLastName("山田");
+        res.setBirthday("1990-01-01");
+        res.setMemberStatus("ACTIVE");
 
-    // PersonalInfoResponseDto.ContactDto phone = new
-    // PersonalInfoResponseDto.ContactDto();
-    // phone.setDisplayOrder(1);
-    // phone.setContactType("1");
-    // phone.setContact("090-0000-0001");
-    // phone.setPrimaryContactFlag(true);
-    // contacts.add(phone);
+        java.util.List<PersonalInfoResponseDto.ContactDto> contacts = new java.util.ArrayList<>();
 
-    // PersonalInfoResponseDto.ContactDto email = new
-    // PersonalInfoResponseDto.ContactDto();
-    // email.setDisplayOrder(2);
-    // email.setContactType("2");
-    // email.setContact(internalUserId + "@example.com");
-    // email.setPrimaryContactFlag(false);
-    // contacts.add(email);
+        PersonalInfoResponseDto.ContactDto phone = new PersonalInfoResponseDto.ContactDto();
+        phone.setDisplayOrder(1);
+        phone.setContactType("1");
+        phone.setContact("090-0000-0001");
+        phone.setPrimaryContactFlag(true);
+        contacts.add(phone);
 
-    // res.setContactList(contacts);
-    // return res;
-    // }
+        PersonalInfoResponseDto.ContactDto email = new PersonalInfoResponseDto.ContactDto();
+        email.setDisplayOrder(2);
+        email.setContactType("2");
+        email.setContact(internalUserId + "@example.com");
+        email.setPrimaryContactFlag(false);
+        contacts.add(email);
+
+        res.setContactList(contacts);
+        return res;
+    }
 
     /**
      * 販売店申し込み個人情報検索APIからレスポンスを取得します。
